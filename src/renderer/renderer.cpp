@@ -34,8 +34,6 @@ void Renderer::init() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glLineWidth(2.0f);
 
-    world.generateChunks(2); // Generate initial chunks around the 0,0
-
     std::string vertexSource = loadShaderSource("shaders/vertex.glsl");
     std::string fragmentSource = loadShaderSource("shaders/fragment.glsl");
     shaderProgram = createShaderProgram(vertexSource.c_str(), fragmentSource.c_str());
@@ -90,7 +88,8 @@ void Renderer::init() {
     uFogColorLoc = glGetUniformLocation(shaderProgram, "fogColor");
     uCamPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
 
-    loadTextureAtlas("textures/atlas.png");
+    loadTextureAtlas("textures/blocks.png");
+    loadTextureUIAtlas("textures/ui.png");
     initCrosshair();
     initBorderMesh();
 
@@ -300,6 +299,7 @@ void Renderer::renderCrosshair(float aspectRatio) {
 
 
 void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio) {
+    if (!hotbarOpen) return;
     RaycastResult hit = raycast(&world, camera.getPositionDouble(), camera.getFront(), 6.0f);
     if (!hit.hit || !hit.hitChunk) return;
 
@@ -342,7 +342,7 @@ void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio
     glDepthMask(GL_TRUE);
     glDisable(GL_POLYGON_OFFSET_LINE);
 
-    glLineWidth(1.0f);
+    glLineWidth(2.0f);
     glEnable(GL_CULL_FACE);
     glUseProgram(0);
 }
@@ -366,6 +366,30 @@ void Renderer::loadTextureAtlas(const std::string& path) {
 
     glGenTextures(1, &textureAtlas);
     glBindTexture(GL_TEXTURE_2D, textureAtlas);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    stbi_image_free(data);
+}
+
+void Renderer::loadTextureUIAtlas(const std::string& path) {
+    int width, height, channels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
+    if (!data) {
+        std::cerr << "Failed to load texture atlas: " << path << std::endl;
+        return;
+    }
+
+    glGenTextures(1, &uiAtlas);
+    glBindTexture(GL_TEXTURE_2D, uiAtlas);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);

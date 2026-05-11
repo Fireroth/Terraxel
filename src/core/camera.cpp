@@ -17,7 +17,7 @@ glm::mat4 Camera::getViewMatrix() const {
     return glm::lookAt(glm::vec3(0.0f), front, up);
 }
 
-void Camera::processKeyboard(const char *direction, float deltaTime, float speedMultiplier) {
+void Camera::processKeyboard(const char *direction, float deltaTime, float speedMultiplier, bool ignoreAirControl) {
     float acceleration = movementSpeed * speedMultiplier * 11.0f;
     glm::vec3 accel(0.0f);
 
@@ -34,7 +34,7 @@ void Camera::processKeyboard(const char *direction, float deltaTime, float speed
      else if (direction[0] == 'D')  // DOWN
         accel -= worldUp * acceleration;
 
-    applyAcceleration(accel, deltaTime);
+    applyAcceleration(accel, deltaTime, ignoreAirControl);
 }
 
 void Camera::processMouseMovement(float xOffset, float yOffset) {
@@ -262,7 +262,7 @@ void Camera::stepVelocity(float deltaTime, World* world) {
 
     // drag
     glm::dvec3 horizVel = glm::dvec3(velocity.x, 0.0, velocity.z);
-    float drag = 9.0f;
+    float drag = grounded ? 9.0f : 9.0f * airDragFactor;
     horizVel -= horizVel * glm::min(static_cast<double>(drag * deltaTime), 1.0);
     if (glm::length(horizVel) < 0.01) horizVel = glm::dvec3(0.0);
     velocity.x = horizVel.x;
@@ -279,10 +279,17 @@ void Camera::updateVelocityFlight(float deltaTime) {
         velocity = glm::dvec3(0.0);
 }
 
-void Camera::applyAcceleration(const glm::vec3& acceleration, float deltaTime) {
-    //glm::vec3 horizAccel = glm::vec3(acceleration.x, 0.0f, acceleration.z);
-    //velocity += horizAccel * deltaTime;
-    velocity += glm::dvec3(acceleration) * static_cast<double>(deltaTime);
+void Camera::applyAcceleration(const glm::vec3& acceleration, float deltaTime, bool ignoreAirControl) {
+    glm::dvec3 accel = glm::dvec3(acceleration) * static_cast<double>(deltaTime);
+    if (!grounded && !ignoreAirControl) {
+        double factor = static_cast<double>(airControlFactor);
+        if (velocity.y > 0.0) {
+            factor *= static_cast<double>(airJumpBoostFactor);
+        }
+        accel.x *= factor;
+        accel.z *= factor;
+    }
+    velocity += accel;
 }
 
 void Camera::jump() {
@@ -302,4 +309,17 @@ void Camera::setPosition(const glm::dvec3& pos) {
     position = glm::dvec3(pos);
     velocity = glm::dvec3(0.0);
     grounded = false;
+}
+
+void Camera::setRotation(float newYaw, float newPitch) {
+    yaw = newYaw;
+    pitch = newPitch;
+
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
+
+    if (yaw > 180.0f) yaw = -180.0f;
+    if (yaw < -180.0f) yaw = 180.0f;
+
+    updateCameraVectors();
 }

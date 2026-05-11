@@ -4,18 +4,8 @@
 #include "world.hpp"
 #include "blockDB.hpp"
 #include "modelDB.hpp"
-
-struct RaycastResult {
-    bool hit = false;
-    glm::ivec3 hitBlockPos;
-    Chunk* hitChunk = nullptr;
-
-    bool hasPlacePos = false;
-    glm::ivec3 placeBlockPos;
-    Chunk* placeChunk = nullptr;
-
-    glm::ivec3 faceNormal = glm::ivec3(0);
-};
+#include "block_interaction.hpp"
+#include "../renderer/imguiOverlay.hpp"
 
 
 // Helper function to get Hitbox for a block model
@@ -173,6 +163,7 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
     if (action == 'b') {
         if (!hit.hit || !hit.hitChunk) return;
         hit.hitChunk->blocks[hit.hitBlockPos.x][hit.hitBlockPos.y][hit.hitBlockPos.z].type = 0;
+        hit.hitChunk->isModified = true;
         hit.hitChunk->buildMesh();
 
         chunkX = hit.hitChunk->chunkX;
@@ -181,9 +172,14 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
         z = hit.hitBlockPos.z;
     }
     else if (action == 'p') {
+        if (hit.hit) {
+            int placeY = hit.hitBlockPos.y + hit.faceNormal.y;
+            if (placeY < 0 || placeY >= Chunk::chunkHeight) {
+                showMessage("Cannot place block outside world bounds!", ImVec4(1.0f, 0.5f, 0.5f, 1.0f), 2.0f);
+                return;
+            }
+        }
         if (!hit.hasPlacePos || !hit.placeChunk) return;
-        // Prevent placement below bedrock or above chunk height
-        if (hit.placeBlockPos.y < 0 || hit.placeBlockPos.y >= Chunk::chunkHeight) return;
         auto& block = hit.placeChunk->blocks[hit.placeBlockPos.x][hit.placeBlockPos.y][hit.placeBlockPos.z];
         if (block.type != 0) return;
 
@@ -216,6 +212,7 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
         }
 
         block.type = blockType;
+        hit.placeChunk->isModified = true;
         hit.placeChunk->buildMesh();
 
         chunkX = hit.placeChunk->chunkX;
@@ -244,12 +241,6 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
 }
 
 // For imgui ----------------------------------------------------------------------------
-struct BlockInfo {
-    bool valid = false;
-    glm::ivec3 worldPos;
-    uint8_t type;
-};
-
 BlockInfo getLookedAtBlockInfo(World* world, const Camera& camera) {
     glm::dvec3 origin = camera.getPositionDouble();
     glm::vec3 dir = camera.getFront();

@@ -7,7 +7,7 @@ public:
     Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch);
 
     glm::mat4 getViewMatrix() const;
-    void processKeyboard(const char* direction, float deltaTime, float speedMultiplier = 1.0f);
+    void processKeyboard(const char* direction, float deltaTime, float speedMultiplier = 1.0f, bool ignoreAirControl = false);
     void processMouseMovement(float xOffset, float yOffset);
 
     glm::dvec3 getPositionDouble() const { return position; }
@@ -24,11 +24,12 @@ public:
     void updateVelocity(float deltaTime, class World* world = nullptr);
     void stepVelocity(float deltaTime, class World* world);
     void updateVelocityFlight(float deltaTime);
-    void applyAcceleration(const glm::vec3& acceleration, float deltaTime);
+    void applyAcceleration(const glm::vec3& acceleration, float deltaTime, bool ignoreAirControl = false);
     void jump();
     bool isGrounded() const { return grounded; }
 
     void setPosition(const glm::dvec3& pos);
+    void setRotation(float newYaw, float newPitch);
 
 private:
     void updateCameraVectors();
@@ -46,18 +47,21 @@ private:
     float mouseSensitivity;
 
     glm::dvec3 velocity = glm::dvec3(0.0);
-    bool grounded = false;
+    
+    const float gravity = -30.0f;
+    const float jumpPower = 8.73f;
+    const float playerHeight = 1.75f;
+    const float eyeHeight = 1.62f;
+    const float playerRadius = 0.3f;
+    const float stepHeight = 0.56f;
+    const float airControlFactor = 0.3f;
+    const float airDragFactor = 0.32f;
+    const float airJumpBoostFactor = 1.25f;
+    const float coyoteTime = 0.1f; // seconds to allow jump after walking off an edge
+    const float jumpBufferTime = 0.1f; // seconds to buffer a jump input
 
-    float gravity = -30.0f;
-    float jumpPower = 9.0f;
-    float playerHeight = 1.8f;
-    float eyeHeight = 1.67f;
-    float playerRadius = 0.3f;
-    float stepHeight = 0.51f;
-
-    float coyoteTime = 0.12f; // seconds we allow jump after walking off an edge
     float coyoteTimer = 0.0f;
-    float jumpBufferTime = 0.1f; // seconds to buffer a jump input
     float jumpBufferTimer = 0.0f;
     bool jumpBuffered = false;
+    bool grounded = false;
 };

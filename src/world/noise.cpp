@@ -1,11 +1,10 @@
 #include "noise.hpp"
-#include "../core/options.hpp"
+#include "../core/saveManager.hpp"
 
-// seedOffset is used to create different noise for features (no longer being used)
-ChunkNoises noiseInit(int seedOffset) {
+ChunkNoises noiseInit() {
     ChunkNoises noises;
 
-    int seed = getOptionInt("world_seed", 1234);
+    int seed = SaveManager::getActiveSeed();
 
     noises.biomeNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
     noises.biomeNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_CellValue);

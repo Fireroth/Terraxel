@@ -3,27 +3,230 @@
 #include <cmath>
 #include <deque>
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <nlohmannJSON/json.hpp>
 #include "world.hpp"
 #include "../core/options.hpp"
+#include "../core/saveManager.hpp"
 
 static std::deque<std::pair<int, int>> chunkLoadQueue;
+namespace fs = std::filesystem;
+using json = nlohmann::json;
+
+static std::string getChunkSavePath(int chunkX, int chunkZ) {
+    const WorldInfo* activeWorld = SaveManager::getActiveWorld();
+    if (!activeWorld) {
+        return "";
+    }
+    return activeWorld->savePath + "/chunks/" + std::to_string(chunkX) + "_" + std::to_string(chunkZ) + ".json";
+}
 
 World::World() {}
 
 World::~World() {
     for (auto& [coord, chunk] : chunks) {
+        saveChunkIfModified(chunk);
         delete chunk;
     }
     chunks.clear();
 }
 
+void World::reset() {
+    for (auto& [coord, chunk] : chunks) {
+        saveChunkIfModified(chunk);
+        delete chunk;
+    }
+    chunks.clear();
+    clearPendingBlockPlacements();
+    lastPlayerChunkX = INT32_MIN;
+    lastPlayerChunkZ = INT32_MIN;
+}
+
+bool World::loadChunkFromSave(Chunk* chunk) {
+    if (!chunk) {
+        return false;
+    }
+
+    const std::string path = getChunkSavePath(chunk->chunkX, chunk->chunkZ);
+    if (path.empty() || !fs::exists(path)) {
+        return false;
+    }
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    try {
+        json j;
+        file >> j;
+        const size_t expected = static_cast<size_t>(Chunk::chunkWidth) * Chunk::chunkHeight * Chunk::chunkDepth;
+        std::vector<uint8_t> decodedBlocks;
+        decodedBlocks.reserve(expected);
+
+        const std::string encoding = j.value("encoding", "");
+        if (encoding != "rlev1") {
+            return false;
+        }
+
+        const auto& runs = j.at("runs");
+        if (!runs.is_array()) {
+            return false;
+        }
+
+        for (const auto& run : runs) {
+            if (!run.is_array() || run.size() != 2) {
+                return false;
+            }
+            const size_t count = run[0].get<size_t>();
+            const uint8_t type = run[1].get<uint8_t>();
+            decodedBlocks.insert(decodedBlocks.end(), count, type);
+            if (decodedBlocks.size() > expected) {
+                return false;
+            }
+        }
+
+        if (decodedBlocks.size() != expected) {
+            return false;
+        }
+
+        size_t index = 0;
+        for (int y = 0; y < Chunk::chunkHeight; y++) {
+            for (int x = 0; x < Chunk::chunkWidth; x++) {
+                for (int z = 0; z < Chunk::chunkDepth; z++) {
+                    chunk->blocks[x][y][z].type = decodedBlocks[index++];
+                }
+            }
+        }
+
+        chunk->loadedFromSave = true;
+        chunk->isModified = false;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+void World::saveChunkIfModified(Chunk* chunk) {
+    if (!chunk || !chunk->isModified) {
+        return;
+    }
+
+    const std::string path = getChunkSavePath(chunk->chunkX, chunk->chunkZ);
+    if (path.empty()) {
+        return;
+    }
+
+    fs::create_directories(fs::path(path).parent_path());
+
+    json j;
+    j["chunkX"] = chunk->chunkX;
+    j["chunkZ"] = chunk->chunkZ;
+    j["encoding"] = "rlev1";
+    j["runs"] = json::array();
+
+    bool hasActiveRun = false;
+    uint8_t currentType = 0;
+    size_t runLength = 0;
+    auto flushRun = [&]() {
+        if (!hasActiveRun) {
+            return;
+        }
+        j["runs"].push_back(json::array({runLength, currentType}));
+    };
+
+    for (int y = 0; y < Chunk::chunkHeight; y++) {
+        for (int x = 0; x < Chunk::chunkWidth; x++) {
+            for (int z = 0; z < Chunk::chunkDepth; z++) {
+                const uint8_t type = chunk->blocks[x][y][z].type;
+                if (!hasActiveRun) {
+                    hasActiveRun = true;
+                    currentType = type;
+                    runLength = 1;
+                } else if (type == currentType) {
+                    runLength++;
+                } else {
+                    flushRun();
+                    currentType = type;
+                    runLength = 1;
+                }
+            }
+        }
+    }
+    flushRun();
+
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return;
+    }
+
+    file << j.dump();
+    chunk->isModified = false;
+}
+
+void World::saveAllModifiedChunks() {
+    for (auto& [coord, chunk] : chunks) {
+        saveChunkIfModified(chunk);
+    }
+}
+
+glm::dvec3 World::findSpawnPosition() {
+    generateChunks(2);
+
+    int spawnX = 0;
+    int spawnZ = 0;
+    int spawnY = 70; // fallback
+
+    for (int attempt = 0; attempt < 64; attempt++) {
+        int chunkX = static_cast<int>(std::floor((float)spawnX / Chunk::chunkWidth));
+        int chunkZ = static_cast<int>(std::floor((float)spawnZ / Chunk::chunkDepth));
+        Chunk* chunk = getChunk(chunkX, chunkZ);
+
+        if (!chunk) break;
+
+        int localX = ((spawnX % Chunk::chunkWidth) + Chunk::chunkWidth) % Chunk::chunkWidth;
+        int localZ = ((spawnZ % Chunk::chunkDepth) + Chunk::chunkDepth) % Chunk::chunkDepth;
+
+        // Scan from top down for first non-air block
+        int topY = -1;
+        for (int y = Chunk::chunkHeight - 1; y >= 0; y--) {
+            uint8_t type = chunk->blocks[localX][y][localZ].type;
+            if (type != 0) {
+                topY = y;
+                break;
+            }
+        }
+
+        if (topY < 0) break;
+
+        uint8_t topType = chunk->blocks[localX][topY][localZ].type;
+        const auto* blockInfo = BlockDB::getBlockInfo(topType);
+
+        if (blockInfo && blockInfo->liquid) {
+            spawnX++;
+            spawnZ++;
+            continue;
+        }
+
+        spawnY = topY + 1;
+        break;
+    }
+
+    return glm::dvec3(spawnX + 0.5, spawnY + 1.6, spawnZ + 0.5);
+}
+
 void World::generateChunks(int radius) {
+    generateChunks(radius, 0, 0);
+}
+
+void World::generateChunks(int radius, int originX, int originZ) {
     // Create chunks
     for (int x = -radius; x <= radius; x++) {
         for (int z = -radius; z <= radius; z++) {
-            std::pair<int, int> pos = {x, z};
+            std::pair<int, int> pos = {originX + x, originZ + z};
             if (chunks.find(pos) == chunks.end()) {
-                chunks[pos] = new Chunk(x, z, this);
+                chunks[pos] = new Chunk(pos.first, pos.second, this);
             }
         }
     }
@@ -48,6 +251,7 @@ void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bo
             int chunkOffsetX = iterator->first.first - playerChunkX;
             int chunkOffsetZ = iterator->first.second - playerChunkZ;
             if (std::abs(chunkOffsetX) > radius || std::abs(chunkOffsetZ) > radius) {
+                saveChunkIfModified(iterator->second);
                 delete iterator->second;
                 iterator = chunks.erase(iterator);
             } else {

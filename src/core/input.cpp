@@ -4,6 +4,7 @@
 #include "controls.hpp"
 #include "../world/block_interaction.hpp"
 #include "../world/world.hpp"
+#include "../renderer/imguiOverlay.hpp"
 
 static bool firstMouse = true;
 bool cursorCaptured = true;
@@ -12,6 +13,7 @@ bool debugOpen = false;
 bool pauseMenuOpen = false;
 bool consoleOpen = false;
 bool hotbarOpen = true;
+bool mainMenuOpen = true;
 static Camera* g_camera = nullptr;
 static World* g_world = nullptr;
 static float lastX;
@@ -38,6 +40,26 @@ void setSelectedBlockType(uint8_t type) {
 
 void setHotbarBlock(int index, uint8_t type) {
     hotbarBlocks[index] = type;
+}
+
+const std::array<uint8_t, 9>& getHotbarBlocks() {
+    return hotbarBlocks;
+}
+
+void setHotbarBlocks(const std::array<uint8_t, 9>& blocks) {
+    hotbarBlocks = blocks;
+    if (selectedHotbarIndex < 0 || selectedHotbarIndex >= static_cast<int>(hotbarBlocks.size())) {
+        selectedHotbarIndex = 0;
+    }
+    selectedBlockType = hotbarBlocks[selectedHotbarIndex];
+}
+
+bool getFlyMode() {
+    return flyMode;
+}
+
+void setFlyMode(bool enabled) {
+    flyMode = enabled;
 }
 
 // Mouse movement
@@ -139,6 +161,8 @@ float getSpeedMultiplier(GLFWwindow* window) {
 
 // Keyboard movement
 void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float speedMultiplier) {
+    if (mainMenuOpen) return;
+
     if (g_world)
         if (flyMode)
             camera.updateVelocityFlight(deltaTime);
@@ -196,19 +220,19 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
     if (!ingoreInput) { // True if console is opened
 
         if (glfwGetKey(window, g_controls.moveForward) == GLFW_PRESS)
-            camera.processKeyboard("FORWARD", deltaTime, speedMultiplier);
+            camera.processKeyboard("FORWARD", deltaTime, speedMultiplier, flyMode);
         if (glfwGetKey(window, g_controls.moveBackward) == GLFW_PRESS)
-            camera.processKeyboard("BACKWARD", deltaTime, speedMultiplier);
+            camera.processKeyboard("BACKWARD", deltaTime, speedMultiplier, flyMode);
         if (glfwGetKey(window, g_controls.moveLeft) == GLFW_PRESS)
-            camera.processKeyboard("LEFT", deltaTime, speedMultiplier);
+            camera.processKeyboard("LEFT", deltaTime, speedMultiplier, flyMode);
         if (glfwGetKey(window, g_controls.moveRight) == GLFW_PRESS)
-            camera.processKeyboard("RIGHT", deltaTime, speedMultiplier);
+            camera.processKeyboard("RIGHT", deltaTime, speedMultiplier, flyMode);
 
         if (flyMode) {
             if (glfwGetKey(window, g_controls.crouchDown) == GLFW_PRESS)
-                camera.processKeyboard("DOWN", deltaTime, speedMultiplier);
+                camera.processKeyboard("DOWN", deltaTime, speedMultiplier, flyMode);
             if (glfwGetKey(window, g_controls.jumpUp) == GLFW_PRESS)
-                camera.processKeyboard("UP", deltaTime, speedMultiplier);
+                camera.processKeyboard("UP", deltaTime, speedMultiplier, flyMode);
         } else {
             static bool spaceLast = false;
             bool spaceNow = glfwGetKey(window, g_controls.jumpUp) == GLFW_PRESS;
@@ -226,6 +250,7 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
         bool wireframePressedThisFrame = glfwGetKey(window, g_controls.toggleWireframe) == GLFW_PRESS;
         if (wireframePressedThisFrame && !wireframePressedLastFrame) {
             wireframeEnabled = !wireframeEnabled;
+            showMessage(wireframeEnabled ? "Wireframe mode enabled" : "Wireframe mode disabled", ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 2.0f);
             glPolygonMode(GL_FRONT_AND_BACK, wireframeEnabled ? GL_LINE : GL_FILL);
         }
         wireframePressedLastFrame = wireframePressedThisFrame;
@@ -235,6 +260,7 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
         bool flyModePressedThisFrame = glfwGetKey(window, g_controls.toggleFlyMode) == GLFW_PRESS;
         if (flyModePressedThisFrame && !flyModePressedLastFrame) {
             flyMode = !flyMode;
+            showMessage(flyMode ? "Fly mode enabled" : "Fly mode disabled", ImVec4(0.2f, 0.8f, 1.0f, 1.0f), 2.0f);
         }
         flyModePressedLastFrame = flyModePressedThisFrame;
 

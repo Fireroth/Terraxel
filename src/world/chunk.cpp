@@ -15,6 +15,10 @@ struct pendingBlock {
 };
 static std::map<std::pair<int, int>, std::vector<pendingBlock >> pendingBlockPlacements;
 
+void clearPendingBlockPlacements() {
+    pendingBlockPlacements.clear();
+}
+
 Chunk::Chunk(int x, int z, World* worldPtr) :
     chunkX(x), chunkZ(z), world(worldPtr), VAO(0), VBO(0), EBO(0), indexCount(0),
     crossVAO(0), crossVBO(0), crossEBO(0), crossIndexCount(0),
@@ -22,18 +26,24 @@ Chunk::Chunk(int x, int z, World* worldPtr) :
 
     noises = noiseInit();
     generateChunkTerrain(*this);
+    if (world) {
+        world->loadChunkFromSave(this);
+    }
 
     // Apply any pending block placements for this chunk
     auto key = std::make_pair(chunkX, chunkZ);
     auto iterator = pendingBlockPlacements.find(key);
     if (iterator != pendingBlockPlacements.end()) {
-        for (const auto& pb : iterator->second) {
-            if (pb.x >= 0 && pb.x < chunkWidth && pb.y >= 0 && pb.y < chunkHeight && pb.z >= 0 && pb.z < chunkDepth) {
-                blocks[pb.x][pb.y][pb.z].type = pb.type;
+        // Don't overwrite saved chunks
+        if (!loadedFromSave) {
+            for (const auto& pb : iterator->second) {
+                if (pb.x >= 0 && pb.x < chunkWidth && pb.y >= 0 && pb.y < chunkHeight && pb.z >= 0 && pb.z < chunkDepth) {
+                    blocks[pb.x][pb.y][pb.z].type = pb.type;
+                }
             }
+            buildMesh();
         }
         pendingBlockPlacements.erase(iterator);
-        buildMesh();
     }
 }
 
@@ -120,8 +130,11 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                     if (targetChunk &&
                         localX >= 0 && localX < chunkWidth &&
                         localZ >= 0 && localZ < chunkDepth) {
-                        targetChunk->blocks[localX][worldY][localZ].type = blockType;
-                        affectedChunks.insert(targetChunk);
+                        // Do not overwrite chunks that already have player modified state.
+                        if (!targetChunk->loadedFromSave && !targetChunk->isModified) {
+                            targetChunk->blocks[localX][worldY][localZ].type = blockType;
+                            affectedChunks.insert(targetChunk);
+                        }
                     } else {
                         // Chunk not loaded, defer placement
                         auto key = std::make_pair(targetChunkX, targetChunkZ);

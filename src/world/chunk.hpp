@@ -10,6 +10,8 @@
 
 class World;
 
+void clearPendingBlockPlacements();
+
 class Chunk {
 public:
     static const int chunkWidth = 16;
@@ -34,6 +36,8 @@ public:
     Block blocks[chunkWidth][chunkHeight][chunkDepth];
     int chunkX, chunkZ;
     int biomeIndex = 0;
+    bool isModified = false;
+    bool loadedFromSave = false;
 
 private:
     World* world;

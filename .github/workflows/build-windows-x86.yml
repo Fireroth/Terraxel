@@ -5,11 +5,11 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure CMake (Visual Studio 2022 Win32)
+      - name: Configure CMake (Visual Studio 2022 x86)
         run: |
           mkdir build
           cd build
@@ -21,6 +21,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MineCrap-windows-x86
-          path: bin/Release/**
+          name: Terraxel-windows-x86
+          path: bin/**
           retention-days: 90

@@ -12,6 +12,7 @@
         "renderFacesInBetween": false,
         "tabName": "Internal"
     },
+    
     "temp_stairs": {
         "id": 251,
         "textures": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
@@ -20,6 +21,17 @@
         "liquid": false,
         "name": "Temp stairs",
         "model": "stairs",
+        "renderFacesInBetween": false,
+        "tabName": "Internal"
+    },
+
+    "visual_indicator": {
+        "id": 252,
+        "textures": [[0,9],[0,9],[0,9],[0,9],[0,9],[0,9]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Visual Indicator",
+        "model": "cube",
         "renderFacesInBetween": false,
         "tabName": "Internal"
     }

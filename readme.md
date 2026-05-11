@@ -13,6 +13,7 @@ Terraxel (formerly MineCrap) is a somewhat simple voxel-based game written in C+
 -  Frustum Culling
 -  Player physics & collisions
 -  Giant world size
+-  Chunk saving
 
 ## Building from source
 Before building the project, ensure you have the following installed:

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(MineCrap)
+project(Terraxel)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -46,17 +46,18 @@ if(WIN32)
     list(APPEND RESOURCE_FILES "${CMAKE_SOURCE_DIR}/App.rc")
 endif()
 
-add_executable(MineCrap ${SRC_FILES} ${RESOURCE_FILES})
+add_executable(Terraxel ${SRC_FILES} ${RESOURCE_FILES})
 
-target_link_libraries(MineCrap glad glfw imgui)
+target_link_libraries(Terraxel glad glfw imgui)
 
 if (WIN32)
-    target_link_libraries(MineCrap winmm)
+    target_link_libraries(Terraxel winmm)
 endif()
 
 
 file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/textures/*
+    ${CMAKE_SOURCE_DIR}/saves/*
     ${CMAKE_SOURCE_DIR}/shaders/*
     ${CMAKE_SOURCE_DIR}/sounds/*
     ${CMAKE_SOURCE_DIR}/structures/*
@@ -76,6 +77,8 @@ add_custom_command(
 
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/textures ${OUTPUT_DIR}/textures
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/saves ${OUTPUT_DIR}/saves
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/shaders ${OUTPUT_DIR}/shaders
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -100,4 +103,4 @@ add_custom_command(
 )
 
 add_custom_target(copy_assets DEPENDS ${ASSET_STAMP})
-add_dependencies(MineCrap copy_assets)
+add_dependencies(Terraxel copy_assets)

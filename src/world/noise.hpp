@@ -12,4 +12,4 @@ struct ChunkNoises {
     FastNoiseLite randomNoise;
 };
 
-ChunkNoises noiseInit(int seedOffset = 0);
+ChunkNoises noiseInit();

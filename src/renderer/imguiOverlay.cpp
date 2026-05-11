@@ -1,6 +1,8 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <sstream>
+#include <random>
+#include <cmath>
 #include "../world/world.hpp"
 #include "../core/camera.hpp"
 #include "../world/blockDB.hpp"
@@ -10,16 +12,29 @@
 #include "../core/input.hpp"
 #include "../core/options.hpp"
 #include "../core/controls.hpp"
+#include "../core/saveManager.hpp"
 
 const float ImGuiOverlay::fpsRefreshInterval = 0.5f; // 500ms
 
 std::vector<const char*> ImGuiOverlay::blockItems;
 std::vector<uint8_t> ImGuiOverlay::blockIds;
 ImTextureID ImGuiOverlay::texAtlas;
+ImTextureID ImGuiOverlay::uiAtlas;
 
 static std::vector<std::string> consoleLog;
 static char inputBuffer[256] = "";
 static bool scrollToBottom = false;
+
+struct TemporaryMessage {
+    std::string text;
+    ImVec4 color;
+    float duration;
+    float elapsed;
+    static constexpr float FADE_TIME = 0.1f;
+};
+
+static TemporaryMessage g_toast;
+static bool g_toastActive = false;
 
 struct MenuLayout {
     ImVec2 winSize;
@@ -163,7 +178,7 @@ ImGuiOverlay::~ImGuiOverlay() {
     ImGui::DestroyContext();
 }
 
-bool ImGuiOverlay::init(GLFWwindow* window, GLuint textureAtlas) {
+bool ImGuiOverlay::init(GLFWwindow* window, GLuint textureAtlas, GLuint uiAtlasTexture) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -189,6 +204,7 @@ bool ImGuiOverlay::init(GLFWwindow* window, GLuint textureAtlas) {
     }
 
     texAtlas = (ImTextureID)(intptr_t)textureAtlas;
+    uiAtlas = (ImTextureID)(intptr_t)uiAtlasTexture;
 
     // Generate 3D block preview textures for inventory andhotbar
     BlockPreviewRenderer::init(textureAtlas);
@@ -213,8 +229,16 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // ---------------- Main menu screen ----------------
+    if (mainMenuOpen) {
+        renderMainMenu(camera, world, renderer);
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        return;
+    }
+
     // ---------------- Pause menu screen ----------------
-    if (pauseMenuOpen) {
+    if (pauseMenuOpen && !mainMenuOpen) {
         if (!prevPauseMenuOpen)
             pauseScreenPage = PauseMenuPage::Main;
 
@@ -249,7 +273,7 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
 
         switch (pauseScreenPage) {
             case PauseMenuPage::Main: {
-                float totalH = titleH + spacing + 3 * buttonSize.y + 2 * spacing;
+                float totalH = titleH + spacing + 4 * buttonSize.y + 3 * spacing;
                 MenuLayout layout(totalH, spacing);
 
                 drawMenuTitle(layout, "Game Paused");
@@ -263,7 +287,23 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
                 if (drawMenuButton(layout, "Settings", buttonSize))
                     pauseScreenPage = PauseMenuPage::Settings;
 
-                if (drawMenuButton(layout, "Quit", buttonSize))
+                if (drawMenuButton(layout, "Quit to Title", buttonSize)) {
+                    SaveManager::savePlayerState(
+                        camera.getPositionDouble(),
+                        camera.getYaw(),
+                        camera.getPitch(),
+                        getHotbarBlocks(),
+                        getFlyMode()
+                    );
+                    world->reset();
+                    SaveManager::clearActiveWorld();
+                    mainMenuOpen = true;
+                    pauseMenuOpen = false;
+                    cursorCaptured = false;
+                    glfwSetInputMode(glfwGetCurrentContext(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                }
+
+                if (drawMenuButton(layout, "Quit Game", buttonSize))
                     glfwSetWindowShouldClose(glfwGetCurrentContext(), true);
             } break;
 
@@ -491,6 +531,8 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
         ImGui::Separator();
         ImGui::Text("Input -> Selected: %s", BlockDB::getBlockInfo(selectedBlockType)->name.c_str());
         ImGui::Text("Input -> Selected ID: %d", selectedBlockType);
+        ImGui::Separator();
+        ImGui::Text("Message elapsed time: %.5f", g_toast.elapsed);
         
         ImGui::PopStyleColor(2);
         ImGui::End();
@@ -534,6 +576,9 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
 
         if (ImGui::BeginTabBar("InventoryTabs")) {
             for (const auto& tabName : tabOrder) {
+                if (tabName == "Internal" && !getOptionInt("show_internal_tab", 0)) {
+                    continue;
+                }
                 auto& indices = tabMap[tabName];
                 if (ImGui::BeginTabItem(tabName.c_str())) {
                     ImGui::Spacing();
@@ -581,7 +626,9 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
                         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.35f, 0.50f, 0.75f, 1.0f));
                         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.35f, 0.45f, 0.80f));
 
-                        if (ImGui::ImageButton(blockItems[i], texId, ImVec2(slotSize, slotSize), uv0, uv1)) {
+                        ImGui::ImageButton(blockItems[i], texId, ImVec2(slotSize, slotSize), uv0, uv1);
+                        
+                        if (ImGui::IsItemActivated()){
                             setHotbarBlock(selectedHotbarIndex, blockIds[i]);
                             setSelectedBlockType(blockIds[i]);
                         }
@@ -788,12 +835,15 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
                     consoleLog.push_back(msg);
                 } else if (input == "clear") {
                     consoleLog.clear();
+                } else if (input == "test") {
+                    showMessage("This is a test message!", ImVec4(0.8f, 0.6f, 0.2f, 1.0f), 3.0f);
                 } else if (input == "help") {
                     consoleLog.push_back("Commands:");
                     consoleLog.push_back("  say <message> - Print a message");
                     consoleLog.push_back("  clear - Clear the console window");
                     consoleLog.push_back("  help - Show this help page");
                     consoleLog.push_back("  tp <x> <y> <z> - Teleport to coordinates");
+                    consoleLog.push_back("  give <item_id> - Give yourself a block");
                     consoleLog.push_back("  edgelands - Teleport to the edge of the world");
                 } else if (input.rfind("tp", 0) == 0) {
                     std::istringstream ss(input);
@@ -841,6 +891,29 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
                 }*/ else if (input == "edgelands"){
                     camera.setPosition(glm::dvec3(2147483635.0, 100.0, 0));
                     consoleLog.push_back("Do not step on blocks right at the edge (game will crash)");
+                } else if (input.rfind("give ", 0) == 0) {
+                    std::istringstream ss(input);
+                    std::string cmd, itemIdStr;
+                    ss >> cmd >> itemIdStr;
+                    if (itemIdStr.empty()) {
+                        consoleLog.push_back("Invalid usage. Use: give <item_id>");
+                    } else {
+                        try {
+                            int itemId = std::stoi(itemIdStr);
+                            const auto* blockInfo = BlockDB::getBlockInfo(static_cast<uint8_t>(itemId));
+                            if (!blockInfo || itemId < 1 || itemId > 254) {
+                                consoleLog.push_back("Invalid item ID. Block ID must be between 1 and 254.");
+                            } else {
+                                setHotbarBlock(selectedHotbarIndex, static_cast<uint8_t>(itemId));
+                                setSelectedBlockType(static_cast<uint8_t>(itemId));
+                                char buf[128];
+                                snprintf(buf, sizeof(buf), "Given: %s (ID: %d)", blockInfo->name.c_str(), itemId);
+                                consoleLog.push_back(buf);
+                            }
+                        } catch (...) {
+                            consoleLog.push_back("Invalid item ID. Must be a number between 1 and 254.");
+                        }
+                    }
                 } else {
                     consoleLog.push_back("Unknown command. Type 'help' for a list of commands.");
                 }
@@ -855,6 +928,380 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
     }
     prevConsoleOpen = consoleOpen;
 
+    if (hotbarOpen && !pauseMenuOpen) renderMessage(deltaTime);
+
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void showMessage(const std::string& text, ImVec4 color, float duration) {
+    g_toast = { text, color, duration, 0.0f };
+    g_toastActive = true;
+}
+
+void ImGuiOverlay::renderMessage(float deltaTime) {
+    if (!g_toastActive)
+        return;
+
+    g_toast.elapsed += deltaTime;
+
+    if (g_toast.elapsed >= g_toast.duration) {
+        g_toastActive = false;
+        return;
+    }
+
+    float alpha = 1.0f;
+    const float ft = TemporaryMessage::FADE_TIME;
+
+    if (g_toast.elapsed < ft) {
+        // Fade in
+        alpha = g_toast.elapsed / ft;
+    } else if (g_toast.elapsed > g_toast.duration - ft) {
+        // Fade out
+        alpha = (g_toast.duration - g_toast.elapsed) / ft;
+    }
+
+    if (alpha < 0.0f) alpha = 0.0f;
+    if (alpha > 1.0f) alpha = 1.0f;
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 textSize = ImGui::CalcTextSize(g_toast.text.c_str());
+    const float padX = 5.0f;
+    const float padY = 5.0f;
+    const float winW = textSize.x + padX * 2.0f;
+    const float winH = textSize.y + padY * 2.0f;
+    const float bottomGap = 100.0f;
+
+    ImVec2 winPos(io.DisplaySize.x * 0.5f - winW * 0.5f, io.DisplaySize.y - winH - bottomGap);
+
+    ImGui::SetNextWindowPos(winPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(winW, winH), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.62f * alpha);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
+
+    ImGui::Begin("##toast",
+        nullptr,
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoInputs |
+        ImGuiWindowFlags_NoNav |
+        ImGuiWindowFlags_NoDecoration);
+
+    ImVec4 textCol = g_toast.color;
+    textCol.w *= alpha;
+    ImGui::PushStyleColor(ImGuiCol_Text, textCol);
+    ImGui::TextUnformatted(g_toast.text.c_str());
+    ImGui::PopStyleColor();
+
+    ImGui::End();
+    ImGui::PopStyleVar(3);
+}
+
+static int parseSeed(const char* seedBuf) {
+    std::string s(seedBuf);
+    if (s.empty()) {
+        std::random_device rd;
+        return static_cast<int>(rd());
+    }
+    try {
+        return std::stoi(s);
+    } catch (...) {
+        return static_cast<int>(std::hash<std::string>{}(s));
+    }
+}
+
+void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camera) {
+    SaveManager::setActiveWorld(info);
+    world->reset();
+
+    glm::dvec3 position;
+    float yaw = 0.0f;
+    float pitch = 0.0f;
+    std::array<uint8_t, 9> hotbar;
+    bool flyEnabled = false;
+
+    if (SaveManager::loadPlayerState(position, yaw, pitch, hotbar, flyEnabled)) {
+        int playerChunkX = static_cast<int>(std::floor(position.x / Chunk::chunkWidth));
+        int playerChunkZ = static_cast<int>(std::floor(position.z / Chunk::chunkDepth));
+        world->generateChunks(2, playerChunkX, playerChunkZ);
+        camera.setPosition(position);
+        camera.setRotation(yaw, pitch);
+        setHotbarBlocks(hotbar);
+        setFlyMode(flyEnabled);
+    } else {
+        setHotbarBlocks({1, 2, 3, 4, 5, 6, 7, 8, 14});
+        camera.setPosition(world->findSpawnPosition());
+        setFlyMode(false);
+    }
+
+    mainMenuOpen = false;
+    pauseMenuOpen = false;
+    cursorCaptured = true;
+    glfwSetInputMode(glfwGetCurrentContext(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* renderer) {
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(io.DisplaySize);
+
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.12f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+    ImGui::Begin("MainMenu",
+                nullptr,
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoBringToFrontOnFocus |
+                ImGuiWindowFlags_NoNavFocus);
+
+    pushMenuStyle();
+
+    const ImVec2 buttonSize(260, 45);
+    const float spacing = 16.0f;
+
+    switch (mainMenuPage) {
+        case MainMenuPage::WorldList: {
+            // Title
+            {
+                const ImVec2 titleSize(94.0f * 5, 15.0f * 5);
+                ImGui::SetCursorPos(ImVec2((io.DisplaySize.x - titleSize.x) * 0.5f, 30.0f));
+                ImGui::Image(uiAtlas, titleSize, ImVec2(0.0f, 1.0f), ImVec2(94.0f/256.0f, 1.0f - 15.0f/256.0f));
+            }
+
+            float listTop = 110.0f;
+            float listBottom = io.DisplaySize.y - 120.0f;
+            float listWidth = 560.0f;
+            float listX = (io.DisplaySize.x - listWidth) * 0.5f;
+
+            ImGui::SetCursorPos(ImVec2(listX, listTop));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+            ImGui::BeginChild("WorldList", ImVec2(listWidth, listBottom - listTop), true);
+
+            auto worlds = SaveManager::listWorlds();
+
+            if (worlds.empty()) {
+                ImGui::SetCursorPosY(ImGui::GetContentRegionAvail().y * 0.5f - 10.0f);
+                float textW = ImGui::CalcTextSize("No worlds yet. Create one!").x;
+                ImGui::SetCursorPosX((listWidth - textW) * 0.5f);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.65f, 1.0f));
+                ImGui::TextUnformatted("No worlds yet. Create one!");
+                ImGui::PopStyleColor();
+            } else {
+                for (auto& w : worlds) {
+                    ImGui::PushID(w.uuid.c_str());
+
+                    float entryHeight = 75.0f;
+                    float availWidth = ImGui::GetContentRegionAvail().x;
+
+                    ImVec2 panelPos = ImGui::GetCursorScreenPos();
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    dl->AddRectFilled(panelPos, ImVec2(panelPos.x + availWidth, panelPos.y + entryHeight), IM_COL32(30, 30, 40, 220), 4.0f);
+                    dl->AddRect(panelPos, ImVec2(panelPos.x + availWidth, panelPos.y + entryHeight), IM_COL32(80, 80, 100, 120), 4.0f);
+
+                    dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 8), IM_COL32(255, 255, 255, 230), w.name.c_str());
+
+                    char seedBuf[64];
+                    snprintf(seedBuf, sizeof(seedBuf), "Seed: %d", w.seed);
+                    dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 30), IM_COL32(180, 180, 190, 200), seedBuf);
+
+                    char dateBuf[64];
+                    snprintf(dateBuf, sizeof(dateBuf), "Created: %s", w.createdAt.c_str());
+                    dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 48), IM_COL32(140, 140, 150, 180), dateBuf);
+
+                    float btnW = 90.0f;
+                    float btnH = 30.0f;
+                    float btnGap = 5.0f;
+                    float btnsX = panelPos.x + availWidth - 2 * btnW - btnGap - 10.0f;
+                    float btnsY = panelPos.y + (entryHeight - (2 * btnH + btnGap)) * 0.5f;
+
+                    // Play button (green)
+                    ImGui::SetCursorScreenPos(ImVec2(btnsX, btnsY + (btnH + btnGap) * 0.5f));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.40f, 0.15f, 0.90f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.55f, 0.20f, 0.95f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.45f, 0.18f, 1.0f));
+                    if (ImGui::Button("Play", ImVec2(btnW, btnH))) {
+                        enterWorld(w, world, camera);
+                    }
+                    ImGui::PopStyleColor(3);
+
+                    // Edit button (yellow) - top
+                    ImGui::SetCursorScreenPos(ImVec2(btnsX + btnW + btnGap, btnsY));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.60f, 0.50f, 0.10f, 0.90f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.75f, 0.65f, 0.15f, 0.95f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.65f, 0.55f, 0.12f, 1.0f));
+                    if (ImGui::Button("Edit", ImVec2(btnW, btnH))) {
+                        editingWorldUUID = w.uuid;
+                        snprintf(editingWorldNameBuf, sizeof(editingWorldNameBuf), "%s", w.name.c_str());
+                        mainMenuPage = MainMenuPage::EditWorld;
+                        deleteConfirmUUID = "";
+                    }
+                    ImGui::PopStyleColor(3);
+
+                    // Delete button (red) - bottom
+                    ImGui::SetCursorScreenPos(ImVec2(btnsX + btnW + btnGap, btnsY + btnH + btnGap));
+                    bool isConfirming = (deleteConfirmUUID == w.uuid);
+                    if (isConfirming) {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.12f, 0.12f, 0.95f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.80f, 0.18f, 0.18f, 1.0f));
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.12f, 0.12f, 0.85f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.18f, 0.18f, 0.95f));
+                    }
+                    const char* delLabel = isConfirming ? "Sure?" : "Delete";
+                    if (ImGui::Button(delLabel, ImVec2(btnW, btnH))) {
+                        if (isConfirming) {
+                            SaveManager::deleteWorld(w.uuid);
+                            deleteConfirmUUID = "";
+                        } else {
+                            deleteConfirmUUID = w.uuid;
+                        }
+                    }
+                    ImGui::PopStyleColor(2);
+
+                    ImGui::SetCursorScreenPos(ImVec2(panelPos.x, panelPos.y + entryHeight));
+                    ImGui::Dummy(ImVec2(availWidth, 6.0f));
+
+                    ImGui::PopID();
+                }
+            }
+
+            ImGui::EndChild();
+            ImGui::PopStyleVar();
+
+            // Bottom buttons
+            float bottomY = io.DisplaySize.y - 100.0f;
+            float totalBtnWidth = buttonSize.x * 2 + spacing;
+            float btnStartX = (io.DisplaySize.x - totalBtnWidth) * 0.5f;
+
+            ImGui::SetCursorPos(ImVec2(btnStartX, bottomY));
+            if (ImGui::Button("Create New World", buttonSize)) {
+                mainMenuPage = MainMenuPage::CreateWorld;
+                snprintf(worldNameBuf, sizeof(worldNameBuf), "New World");
+                worldSeedBuf[0] = '\0';
+                deleteConfirmUUID = "";
+            }
+
+            ImGui::SetCursorPos(ImVec2(btnStartX + buttonSize.x + spacing, bottomY));
+            if (ImGui::Button("Quit Game", buttonSize)) {
+                glfwSetWindowShouldClose(glfwGetCurrentContext(), true);
+            }
+        } break;
+
+        case MainMenuPage::CreateWorld: {
+            float inputHeight = 40.0f;
+            float labelHeight = 20.0f;
+            float totalH = ImGui::GetTextLineHeightWithSpacing() + spacing
+                         + 2 * (labelHeight + inputHeight + spacing)
+                         + 2 * buttonSize.y + spacing;
+            MenuLayout layout(totalH, spacing);
+
+            drawMenuTitle(layout, "Create New World");
+
+            // World name label
+            float inputWidth = 300.0f;
+            layout.center(inputWidth);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.82f, 0.9f));
+            ImGui::TextUnformatted("World Name");
+            ImGui::PopStyleColor();
+            layout.advance(labelHeight);
+
+            // World name input
+            layout.center(inputWidth);
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+            ImGui::InputText("##WorldName", worldNameBuf, sizeof(worldNameBuf));
+            ImGui::PopStyleVar();
+            ImGui::PopItemWidth();
+            layout.advance(inputHeight);
+
+            // Seed label
+            layout.center(inputWidth);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.82f, 0.9f));
+            ImGui::TextUnformatted("Seed (empty = random)");
+            ImGui::PopStyleColor();
+            layout.advance(labelHeight);
+
+            // Seed input
+            layout.center(inputWidth);
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+            ImGui::InputText("##WorldSeed", worldSeedBuf, sizeof(worldSeedBuf));
+            ImGui::PopStyleVar();
+            ImGui::PopItemWidth();
+            layout.advance(inputHeight);
+
+            // Create & Play button
+            if (drawMenuButton(layout, "Create & Play", buttonSize)) {
+                std::string name(worldNameBuf);
+                if (name.empty()) name = "New World";
+                int seed = parseSeed(worldSeedBuf);
+                WorldInfo info = SaveManager::createWorld(name, seed);
+                enterWorld(info, world, camera);
+                mainMenuPage = MainMenuPage::WorldList;
+            }
+
+            // Back button
+            if (drawMenuButton(layout, "Back", buttonSize)) {
+                mainMenuPage = MainMenuPage::WorldList;
+            }
+        } break;
+
+        case MainMenuPage::EditWorld: {
+            float inputHeight = 40.0f;
+            float labelHeight = 20.0f;
+            float totalH = ImGui::GetTextLineHeightWithSpacing() + spacing + labelHeight + inputHeight + spacing + 2 * buttonSize.y + spacing;
+            MenuLayout layout(totalH, spacing);
+
+            drawMenuTitle(layout, "Edit World");
+
+            // World name label
+            float inputWidth = 300.0f;
+            layout.center(inputWidth);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.82f, 0.9f));
+            ImGui::TextUnformatted("World Name");
+            ImGui::PopStyleColor();
+            layout.advance(labelHeight);
+
+            // World name input
+            layout.center(inputWidth);
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+            ImGui::InputText("##EditWorldName", editingWorldNameBuf, sizeof(editingWorldNameBuf));
+            ImGui::PopStyleVar();
+            ImGui::PopItemWidth();
+            layout.advance(inputHeight);
+
+            // Save button
+            if (drawMenuButton(layout, "Save", buttonSize)) {
+                SaveManager::renameWorld(editingWorldUUID, editingWorldNameBuf);
+                editingWorldUUID = "";
+                mainMenuPage = MainMenuPage::WorldList;
+            }
+
+            // Back button
+            if (drawMenuButton(layout, "Back", buttonSize)) {
+                editingWorldUUID = "";
+                mainMenuPage = MainMenuPage::WorldList;
+            }
+        } break;
+    }
+
+    popMenuStyle();
+
+    ImGui::End();
+
+    ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor();
 }

@@ -17,21 +17,24 @@ extern bool pauseMenuOpen;
 extern bool cursorCaptured;
 extern bool consoleOpen;
 extern bool hotbarOpen;
+extern bool mainMenuOpen;
 
 extern int selectedHotbarIndex;
 extern std::array<uint8_t, 9> hotbarBlocks;
+void showMessage(const std::string& text, ImVec4 color, float duration);
 
 class ImGuiOverlay {
 public:
     ImGuiOverlay();
     ~ImGuiOverlay();
 
-    bool init(GLFWwindow* window, GLuint textureAtlas);
+    bool init(GLFWwindow* window, GLuint textureAtlas, GLuint uiAtlasTexture);
     void render(float deltaTime, Camera& camera, class World* world, Renderer* renderer);
 
     static std::vector<const char*> blockItems;
     static std::vector<uint8_t> blockIds;
     static ImTextureID texAtlas;
+    static ImTextureID uiAtlas;
 
     std::unordered_map<std::string, std::vector<size_t>> tabMap;
     std::vector<std::string> tabOrder;
@@ -43,15 +46,33 @@ public:
         ControlsCustomize
     };
 
+    enum class MainMenuPage {
+        WorldList,
+        CreateWorld,
+        EditWorld
+    };
+
     PauseMenuPage pauseScreenPage = PauseMenuPage::Main;
+    MainMenuPage mainMenuPage = MainMenuPage::WorldList;
     
     bool prevPauseMenuOpen = false;
     bool prevConsoleOpen = false;
     int consoleFocusDelayFrames = 0;
+
+    char worldNameBuf[64] = "New World";
+    char worldSeedBuf[32] = "";
+    std::string deleteConfirmUUID = "";
+
+    std::string editingWorldUUID = "";
+    char editingWorldNameBuf[64] = "";
 
 private:
     float fpsTimer;
     int frameCount;
     float fpsDisplay;
     static const float fpsRefreshInterval;
+
+    void renderMainMenu(Camera& camera, World* world, Renderer* renderer);
+    void enterWorld(const struct WorldInfo& info, World* world, Camera& camera);
+    void renderMessage(float deltaTime);
 };

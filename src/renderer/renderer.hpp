@@ -27,6 +27,7 @@ public:
     float fogStartDistance;
     glm::vec3 fogColor;
     GLuint textureAtlas;
+    GLuint uiAtlas;
 
 private:
     GLuint shaderProgram;
@@ -37,6 +38,7 @@ private:
     GLuint createShader(const char* source, GLenum shaderType);
     GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
     void loadTextureAtlas(const std::string& path);
+    void loadTextureUIAtlas(const std::string& path);
     void initCrosshair();
     void initBorderMesh();
 };

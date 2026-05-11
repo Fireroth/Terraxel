@@ -6,9 +6,9 @@
         "detailWeight": 0.1,
         "detail2Weight": 0.2,
         "power": 1.0,
-        "baseHeight": 36.0,
+        "baseHeight": 63.0,
         "heightMultiplier": 24.0,
-        "deepenBelowY": 37.0,
+        "deepenBelowY": 63.0,
         "deepenFactor": 0.5
     },
     "layers": [
@@ -28,7 +28,7 @@
         }
     ],
     "waterBlock": 9,
-    "waterLevel": 36,
+    "waterLevel": 63,
     "features": [
         {
             "type": "structure",

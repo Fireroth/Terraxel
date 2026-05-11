@@ -14,6 +14,7 @@
 #include "core/input.hpp"
 #include "core/options.hpp"
 #include "core/controls.hpp"
+#include "core/saveManager.hpp"
 #include "world/modelDB.hpp"
 #include "world/biomeDB.hpp"
 
@@ -47,7 +48,7 @@ int main() {
         0.0f                           // Pitch
     );
 
-    Window window(windowWidth, windowHeight, "MineCrap");
+    Window window(windowWidth, windowHeight, "Terraxel");
     window.init();
 
     window.setFramebufferResizeCallback([&aspectRatio](int w, int h, float ar) {
@@ -59,10 +60,14 @@ int main() {
 
     setupInputCallbacks(glfwWindow, &camera, &renderer.world);
 
+    // Start in main menu with cursor visible
+    glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    cursorCaptured = false;
+
     glfwSwapInterval(getOptionInt("vsync", 0));
     
     renderer.init();
-    ImGuiOverlay.init(glfwWindow, renderer.textureAtlas);
+    ImGuiOverlay.init(glfwWindow, renderer.textureAtlas, renderer.uiAtlas);
     
     // Main game loop
     while (!window.shouldClose()) {
@@ -72,9 +77,14 @@ int main() {
 
         processInput(glfwWindow, camera, deltaTime, getSpeedMultiplier(glfwWindow));
 
-        window.clear(0.6f, 1.0f, 1.0f, 1.0f); // Light blue background
-        renderer.renderWorld(camera, aspectRatio, deltaTime, currentFrame);
-        renderer.renderCrosshair(aspectRatio);
+        if (mainMenuOpen) {
+            window.clear(0.08f, 0.08f, 0.12f, 1.0f);
+        } else {
+            window.clear(0.6f, 1.0f, 1.0f, 1.0f);
+            renderer.renderWorld(camera, aspectRatio, deltaTime, currentFrame);
+            renderer.renderCrosshair(aspectRatio);
+        }
+
         ImGuiOverlay.render(deltaTime, camera, &renderer.world, &renderer);
 
         window.swapBuffers();
@@ -101,6 +111,14 @@ int main() {
     #ifdef _WIN32
         timeEndPeriod(1);
     #endif
+
+    SaveManager::savePlayerState(
+        camera.getPositionDouble(),
+        camera.getYaw(),
+        camera.getPitch(),
+        getHotbarBlocks(),
+        getFlyMode()
+    );
 
     return 0;
 }

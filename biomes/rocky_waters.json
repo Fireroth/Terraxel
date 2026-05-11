@@ -6,18 +6,18 @@
         "detailWeight": 1.0,
         "detail2Weight": 5.0,
         "power": 1.0,
-        "baseHeight": -7.0,
+        "baseHeight": 20.0,
         "heightMultiplier": 1.0,
-        "deepenBelowY": 35.0,
+        "deepenBelowY": 63.0,
         "deepenFactor": -0.55,
-        "flattenAboveY": 53.0
+        "flattenAboveY": 78.0
     },
     "layers": [
         {
             "block": 62,
             "depth": 1,
             "position": "top",
-            "aboveY": 35,
+            "aboveY": 62,
             "fallbackBlock": 4
         },
         {
@@ -26,7 +26,7 @@
         }
     ],
     "waterBlock": 9,
-    "waterLevel": 36,
+    "waterLevel": 63,
     "features": [
         {
             "type": "structure",
