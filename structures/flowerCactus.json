@@ -1,9 +1,12 @@
 {
   "name": "flowerCactus",
+  "defaultXOffset": 0,
+  "defaultYOffset": 0,
+  "defaultZOffset": 0,
   "layers": [
     [[57]],
     [[57]],
     [[57]],
-    [[1058]]
+    [[100058]]
   ]
 }

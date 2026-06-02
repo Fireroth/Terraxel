@@ -3,18 +3,18 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <cmath>
-#include <iostream>
 #include <set>
 #include "blockPreviewRenderer.hpp"
 #include "shader.hpp"
 #include "../world/blockDB.hpp"
 #include "../world/modelDB.hpp"
+#include "../core/logger.hpp"
 
 GLuint BlockPreviewRenderer::atlas = 0;
 GLuint BlockPreviewRenderer::shaderProgram = 0;
 GLuint BlockPreviewRenderer::fbo = 0;
 GLuint BlockPreviewRenderer::depthRbo = 0;
-std::unordered_map<uint8_t, GLuint> BlockPreviewRenderer::previewTextures;
+std::unordered_map<uint16_t, GLuint> BlockPreviewRenderer::previewTextures;
 
 static const int PREVIEW_SIZE = 64;
 
@@ -24,12 +24,13 @@ static const std::set<std::string> flatRenderModels = {
 };
 
 GLuint BlockPreviewRenderer::createPreviewShader() {
-    std::string vertSrc = loadShaderSource("shaders/vertex.glsl");
-    std::string fragSrc = loadShaderSource("shaders/fragment.glsl");
+    std::string vertSrc = loadShaderSource("shaders/preview_vertex.glsl");
+    std::string fragSrc = loadShaderSource("shaders/preview_fragment.glsl");
     return createShaderProgram(vertSrc.c_str(), fragSrc.c_str());
 }
 
 void BlockPreviewRenderer::init(GLuint textureAtlas) {
+    LOG_INFO("BlockPreviewRenderer: Initializing...");
     atlas = textureAtlas;
     shaderProgram = createPreviewShader();
 
@@ -45,7 +46,7 @@ void BlockPreviewRenderer::init(GLuint textureAtlas) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& vertices, std::vector<unsigned int>& indices) {
+void BlockPreviewRenderer::buildBlockMesh(uint16_t blockId, std::vector<float>& vertices, std::vector<unsigned int>& indices) {
     const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(blockId);
     if (!info) return;
 
@@ -64,10 +65,9 @@ void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& v
             if (face == 3 || face == 5 || face == 0 ) continue;
 
             std::string faceName = faceNames[face];
-            auto it = cuboid.faces.find(faceName);
-            if (it == cuboid.faces.end()) continue;
-            const auto& faceData = it->second;
-            if (faceData.uv.size() != 4) continue;
+            auto iterator = cuboid.faces.find(faceName);
+            if (iterator == cuboid.faces.end()) continue;
+            const auto& faceData = iterator->second;
 
             glm::vec3 faceVerts[4];
             switch (face) {
@@ -109,10 +109,11 @@ void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& v
                     break;
             }
 
+            size_t texIndex = model->planes.size() + cuboidIndex;
             glm::vec2 atlasOffset = info->textureCoords[face];
             if (!info->multiTextureCoords.empty()) {
-                if (cuboidIndex < info->multiTextureCoords.size()) {
-                    atlasOffset = info->multiTextureCoords[cuboidIndex][face];
+                if (texIndex < info->multiTextureCoords.size()) {
+                    atlasOffset = info->multiTextureCoords[texIndex][face];
                 } else {
                     atlasOffset = info->textureCoords[face];
                 }
@@ -120,7 +121,9 @@ void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& v
 
             for (int i = 0; i < 4; ++i) {
                 glm::vec3 pos = faceVerts[i];
-                glm::vec2 uv = (atlasOffset + glm::vec2(faceData.uv[i].first, faceData.uv[i].second)) / atlasSize;
+                float local_u = (i == 1 || i == 2) ? faceData.uvTo.x : faceData.uvFrom.x;
+                float local_v = (i == 2 || i == 3) ? faceData.uvTo.y : faceData.uvFrom.y;
+                glm::vec2 uv = (atlasOffset + glm::vec2(local_u, local_v)) / atlasSize;
                 vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, uv.x, uv.y, static_cast<float>(face)});
             }
 
@@ -135,9 +138,16 @@ void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& v
         if (plane.faces.empty()) continue;
 
         const auto& faceData = plane.faces.begin()->second;
-        if (faceData.uv.size() != 4) continue;
 
+        size_t texIndex = planeIndex;
         glm::vec2 atlasOffset = info->textureCoords[0];
+        if (!info->multiTextureCoords.empty()) {
+            if (texIndex < info->multiTextureCoords.size()) {
+                atlasOffset = info->multiTextureCoords[texIndex][0];
+            } else {
+                atlasOffset = info->textureCoords[0];
+            }
+        }
 
         float cz = (plane.from.z + plane.to.z) * 0.5f;
         glm::vec3 quadVerts[4];
@@ -169,7 +179,9 @@ void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& v
                 else if (plane.positionDirection == 'y') pos += glm::vec3(0.0f, plane.positionOffset, 0.0f);
                 else if (plane.positionDirection == 'z') pos += glm::vec3(0.0f, 0.0f, plane.positionOffset);
             }
-            glm::vec2 uv = (atlasOffset + glm::vec2(faceData.uv[i].first, faceData.uv[i].second)) / atlasSize;
+            float local_u = (i == 1 || i == 2) ? faceData.uvTo.x : faceData.uvFrom.x;
+            float local_v = (i == 2 || i == 3) ? faceData.uvTo.y : faceData.uvFrom.y;
+            glm::vec2 uv = (atlasOffset + glm::vec2(local_u, local_v)) / atlasSize;
             vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, uv.x, uv.y, 0.0f});
         }
 
@@ -179,6 +191,11 @@ void BlockPreviewRenderer::buildBlockMesh(uint8_t blockId, std::vector<float>& v
 }
 
 void BlockPreviewRenderer::generatePreviews() {
+    for (auto& [id, tex] : previewTextures) {
+        glDeleteTextures(1, &tex);
+    }
+    previewTextures.clear();
+
     GLint prevViewport[4];
     glGetIntegerv(GL_VIEWPORT, prevViewport);
     GLint prevFbo;
@@ -212,7 +229,8 @@ void BlockPreviewRenderer::generatePreviews() {
 
     glm::mat4 model = glm::mat4(1.0f);
 
-    for (uint8_t id = 1; id <= 254; id++) {
+    for (uint16_t id : BlockDB::getRegisteredBlockIDs()) {
+        if (id == 0) continue;
         const auto* blockInfo = BlockDB::getBlockInfo(id);
         if (!blockInfo) continue;
 
@@ -308,9 +326,9 @@ void BlockPreviewRenderer::generatePreviews() {
     //glClearColor(0.6f, 1.0f, 1.0f, 1.0f); // Restore default clear color
 }
 
-GLuint BlockPreviewRenderer::getPreviewTexture(uint8_t blockId) {
-    auto it = previewTextures.find(blockId);
-    if (it != previewTextures.end()) return it->second;
+GLuint BlockPreviewRenderer::getPreviewTexture(uint16_t blockId) {
+    auto iterator = previewTextures.find(blockId);
+    if (iterator != previewTextures.end()) return iterator->second;
     return 0;
 }
 

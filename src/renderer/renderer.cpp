@@ -1,8 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
-#include <iostream>
 #include <glm/gtc/type_ptr.hpp>
+#include <vector>
 #include "renderer.hpp"
 #include "shader.hpp"
 #include "../core/camera.hpp"
@@ -10,11 +10,21 @@
 #include "../core/input.hpp"
 #include "imguiOverlay.hpp"
 #include "../world/block_interaction.hpp"
+#include "../core/logger.hpp"
 
-Renderer::Renderer() : shaderProgram(0), textureAtlas(0), crosshairVAO(0), crosshairVBO(0), borderVAO(0), borderVBO(0), borderShaderProgram(0) {}
+
+Renderer::Renderer()
+    : shaderProgram(0), textureAtlas(0), textureAtlas2D(0),
+      crosshairVAO(0), crosshairVBO(0), borderVAO(0), borderVBO(0), borderShaderProgram(0),
+      fbo(0), fboColorTex(0), fboDepthTex(0), fboWidth(0), fboHeight(0),
+      quadVAO(0), quadVBO(0), postProcessShaderProgram(0),
+      uPostProcessTextureLoc(-1), uPostProcessEffectTypeLoc(-1), uPostProcessTimeLoc(-1),
+      uPostProcessDepthTextureLoc(-1), uPostProcessInvProjLoc(-1),
+      uPostProcessFogEnabledLoc(-1), uPostProcessNormalFogStartLoc(-1) {}
 
 Renderer::~Renderer() {
     glDeleteTextures(1, &textureAtlas);
+    glDeleteTextures(1, &textureAtlas2D);
     glDeleteProgram(shaderProgram);
 
     glDeleteVertexArrays(1, &crosshairVAO);
@@ -24,9 +34,23 @@ Renderer::~Renderer() {
     glDeleteVertexArrays(1, &borderVAO);
     glDeleteBuffers(1, &borderVBO);
     glDeleteProgram(borderShaderProgram);
+
+    if (fbo != 0) {
+        glDeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &fboColorTex);
+        glDeleteTextures(1, &fboDepthTex);
+    }
+    if (quadVAO != 0) {
+        glDeleteVertexArrays(1, &quadVAO);
+        glDeleteBuffers(1, &quadVBO);
+    }
+    if (postProcessShaderProgram != 0) {
+        glDeleteProgram(postProcessShaderProgram);
+    }
 }
 
 void Renderer::init() {
+    LOG_INFO("Renderer: Initializing...");
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -34,6 +58,7 @@ void Renderer::init() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glLineWidth(2.0f);
 
+    LOG_INFO("Renderer: Loading and compiling shaders");
     std::string vertexSource = loadShaderSource("shaders/vertex.glsl");
     std::string fragmentSource = loadShaderSource("shaders/fragment.glsl");
     shaderProgram = createShaderProgram(vertexSource.c_str(), fragmentSource.c_str());
@@ -42,9 +67,9 @@ void Renderer::init() {
     std::string crossFragmentSource = loadShaderSource("shaders/cross_fragment.glsl");
     crossShaderProgram = createShaderProgram(crossVertexSource.c_str(), crossFragmentSource.c_str());
 
-    std::string liquidVertexSource = loadShaderSource("shaders/liquid_vertex.glsl");
-    std::string liquidFragmentSource = loadShaderSource("shaders/liquid_fragment.glsl");
-    liquidShaderProgram = createShaderProgram(liquidVertexSource.c_str(), liquidFragmentSource.c_str());
+    std::string translucentVertexSource = loadShaderSource("shaders/translucent_vertex.glsl");
+    std::string translucentFragmentSource = loadShaderSource("shaders/translucent_fragment.glsl");
+    translucentShaderProgram = createShaderProgram(translucentVertexSource.c_str(), translucentFragmentSource.c_str());
     
     std::string crosshairVertexSource = loadShaderSource("shaders/crosshair_vertex.glsl");
     std::string crosshairFragmentSource = loadShaderSource("shaders/crosshair_fragment.glsl");
@@ -54,26 +79,23 @@ void Renderer::init() {
     std::string borderFragmentSource = loadShaderSource("shaders/border_fragment.glsl");
     borderShaderProgram = createShaderProgram(borderVertexSource.c_str(), borderFragmentSource.c_str());
 
+    std::string postProcessVertexSource = loadShaderSource("shaders/postprocess_vertex.glsl");
+    std::string postProcessFragmentSource = loadShaderSource("shaders/postprocess_fragment.glsl");
+    postProcessShaderProgram = createShaderProgram(postProcessVertexSource.c_str(), postProcessFragmentSource.c_str());
+
+
     uCrosshairAspectLoc = glGetUniformLocation(crosshairShaderProgram, "aspectRatio");
 
     uCrossModelLoc = glGetUniformLocation(crossShaderProgram, "model");
     uCrossViewLoc = glGetUniformLocation(crossShaderProgram, "view");
     uCrossProjLoc = glGetUniformLocation(crossShaderProgram, "projection");
     uCrossAtlasLoc = glGetUniformLocation(crossShaderProgram, "atlas");
-    uCrossFogDensityLoc = glGetUniformLocation(crossShaderProgram, "fogDensity");
-    uCrossFogStartLoc = glGetUniformLocation(crossShaderProgram, "fogStartDistance");
-    uCrossFogColorLoc = glGetUniformLocation(crossShaderProgram, "fogColor");
-    uCrossCamPosLoc = glGetUniformLocation(crossShaderProgram, "cameraPos");
 
-    uLiquidModelLoc = glGetUniformLocation(liquidShaderProgram, "model");
-    uLiquidViewLoc = glGetUniformLocation(liquidShaderProgram, "view");
-    uLiquidProjLoc = glGetUniformLocation(liquidShaderProgram, "projection");
-    uLiquidAtlasLoc = glGetUniformLocation(liquidShaderProgram, "atlas");
-    uLiquidTimeLoc = glGetUniformLocation(liquidShaderProgram, "time");
-    uLiquidFogDensityLoc = glGetUniformLocation(liquidShaderProgram, "fogDensity");
-    uLiquidFogStartLoc = glGetUniformLocation(liquidShaderProgram, "fogStartDistance");
-    uLiquidFogColorLoc = glGetUniformLocation(liquidShaderProgram, "fogColor");
-    uLiquidCamPosLoc = glGetUniformLocation(liquidShaderProgram, "cameraPos");
+    uTranslucentModelLoc = glGetUniformLocation(translucentShaderProgram, "model");
+    uTranslucentViewLoc = glGetUniformLocation(translucentShaderProgram, "view");
+    uTranslucentProjLoc = glGetUniformLocation(translucentShaderProgram, "projection");
+    uTranslucentAtlasLoc = glGetUniformLocation(translucentShaderProgram, "atlas");
+    uTranslucentTimeLoc = glGetUniformLocation(translucentShaderProgram, "time");
 
     uBorderModelLoc = glGetUniformLocation(borderShaderProgram, "model");
     uBorderViewLoc = glGetUniformLocation(borderShaderProgram, "view");
@@ -83,17 +105,26 @@ void Renderer::init() {
     uViewLoc = glGetUniformLocation(shaderProgram, "view");
     uProjLoc = glGetUniformLocation(shaderProgram, "projection");
     uAtlasLoc = glGetUniformLocation(shaderProgram, "atlas");
-    uFogDensityLoc = glGetUniformLocation(shaderProgram, "fogDensity");
-    uFogStartLoc = glGetUniformLocation(shaderProgram, "fogStartDistance");
-    uFogColorLoc = glGetUniformLocation(shaderProgram, "fogColor");
-    uCamPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
 
+    uPostProcessTextureLoc = glGetUniformLocation(postProcessShaderProgram, "screenTexture");
+    uPostProcessEffectTypeLoc = glGetUniformLocation(postProcessShaderProgram, "effectType");
+    uPostProcessTimeLoc = glGetUniformLocation(postProcessShaderProgram, "time");
+    uPostProcessDepthTextureLoc = glGetUniformLocation(postProcessShaderProgram, "depthTexture");
+    uPostProcessInvProjLoc = glGetUniformLocation(postProcessShaderProgram, "invProjection");
+    uPostProcessFogEnabledLoc = glGetUniformLocation(postProcessShaderProgram, "fogEnabled");
+    uPostProcessNormalFogStartLoc = glGetUniformLocation(postProcessShaderProgram, "normalFogStartDistance");
+
+    LOG_INFO("Renderer: Loading texture assets");
     loadTextureAtlas("textures/blocks.png");
+    loadTextureAtlas2D("textures/blocks.png");
     loadTextureUIAtlas("textures/ui.png");
+
+    LOG_INFO("Renderer: Finishing initialization");
     initCrosshair();
     initBorderMesh();
+    initPostProcessQuad();
 
-    currentFov = getOptionFloat("fov", 60.0f);
+    currentFov = getOptionFloat("fov", 70.0f);
 
     fogEnabled = getOptionInt("fog", 1);
     fogDensity = 0.30f;
@@ -160,18 +191,80 @@ void Renderer::initBorderMesh() {
     glEnableVertexAttribArray(0);
 
     glBindVertexArray(0);
+}
 
+void Renderer::initPostProcessQuad() {
+    float quadVertices[] = {
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+
+    glBindVertexArray(quadVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    glBindVertexArray(0);
 }
 
 void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaTime, float currentFrame) {
     glEnable(GL_DEPTH_TEST);
-    int renderDist = getOptionInt("render_distance", 7) + 1; // +1 to account for invisible "mesh helper" chunk
+
+    GLFWwindow* contextWindow = glfwGetCurrentContext();
+    int width = 0, height = 0;
+    if (contextWindow) {
+        glfwGetFramebufferSize(contextWindow, &width, &height);
+    }
+    if (width <= 0) width = 1280;
+    if (height <= 0) height = 720;
+    updateFBO(width, height);
+
+    // Check camera eye block for liquid effects
+    uint16_t eyeBlock = camera.getEyeBlock(&world);
+    int effectType = 0;
+    const BlockDB::BlockInfo* eyeBlockInfo = BlockDB::getBlockInfo(eyeBlock);
+    if (eyeBlockInfo && eyeBlockInfo->liquid) {
+        effectType = eyeBlock;
+    }
+
     fogStartDistance = ((getOptionFloat("render_distance", 7) + 1) * 16) - 20;
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, width, height);
+    glPolygonMode(GL_FRONT_AND_BACK, getWireframeEnabled() ? GL_LINE : GL_FILL);
+    glClearColor(fogColor.r, fogColor.g, fogColor.b, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    // Check if mipmap options changed
+    int currentMipmapOption = getOptionInt("use_mipmaps", 1);
+    int currentMipmapLevels = getOptionInt("mipmap_levels", 4);
+    float currentLodBias = getOptionFloat("lod_bias", -0.2f);
+    if (currentMipmapOption != lastMipmapOption || currentMipmapLevels != lastMipmapLevels || currentLodBias != lastLodBias) {
+        lastMipmapOption = currentMipmapOption;
+        lastMipmapLevels = currentMipmapLevels;
+        lastLodBias = currentLodBias;
+        reloadTextureAtlases();
+    }
+    
+    int renderDist = getOptionInt("render_distance", 7) + 1; // +1 to account for invisible "mesh helper" chunk
     world.updateChunksAroundPlayer(camera.getPositionDouble(), renderDist);
 
     GLFWwindow* getCurrentGLFWwindow();
     GLFWwindow* window = getCurrentGLFWwindow();
-    float baseFov = getOptionFloat("fov", 60.0f);
+    float baseFov = getOptionFloat("fov", 70.0f);
     
     float getSpeedMultiplier(GLFWwindow* window);
     bool sprintState = window && getSpeedMultiplier(window) > 2.0f;
@@ -202,26 +295,13 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
 
     glUseProgram(shaderProgram);
     glEnable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
     
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, &view[0][0]);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, &projection[0][0]);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureAtlas);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uAtlasLoc, 0);
-
-    if (uCamPosLoc != -1) {
-        glUniform3fv(uCamPosLoc, 1, glm::value_ptr(glm::vec3(0.0f)));
-    }
-
-    if (fogEnabled) {
-        glUniform1f(uFogDensityLoc, fogDensity);
-        glUniform1f(uFogStartLoc, fogStartDistance);
-        glUniform3fv(uFogColorLoc, 1, glm::value_ptr(fogColor));
-    } else {
-        glUniform1f(uFogDensityLoc, 0.0f); // Disable fog
-    }
 
     world.render(camera, uModelLoc, frustum);
 
@@ -234,54 +314,68 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glUniformMatrix4fv(uCrossProjLoc, 1, GL_FALSE, &projection[0][0]);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureAtlas);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uCrossAtlasLoc, 0);
-
-    if (uCrossCamPosLoc != -1) {
-        glUniform3fv(uCrossCamPosLoc, 1, glm::value_ptr(glm::vec3(0.0f)));
-    }
-
-    if (fogEnabled) {
-        glUniform1f(uCrossFogDensityLoc, fogDensity);
-        glUniform1f(uCrossFogStartLoc, fogStartDistance);
-        glUniform3fv(uCrossFogColorLoc, 1, glm::value_ptr(fogColor));
-    } else {
-        glUniform1f(uCrossFogDensityLoc, 0.0f); // Disable fog
-    }
     
     world.renderCross(camera, uCrossModelLoc, frustum);
 
-    // -------------------------------- Render liquid --------------------------------
+    // -------------------------------- Render translucent & liquid --------------------------------
 
-    glUseProgram(liquidShaderProgram);
+    glEnable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
 
-    glUniformMatrix4fv(uLiquidViewLoc, 1, GL_FALSE, &view[0][0]);
-    glUniformMatrix4fv(uLiquidProjLoc, 1, GL_FALSE, &projection[0][0]);
+    glUseProgram(translucentShaderProgram);
+
+    glUniformMatrix4fv(uTranslucentViewLoc, 1, GL_FALSE, &view[0][0]);
+    glUniformMatrix4fv(uTranslucentProjLoc, 1, GL_FALSE, &projection[0][0]);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureAtlas);
-    glUniform1i(uLiquidAtlasLoc, 0);
-    glUniform1f(uLiquidTimeLoc, currentFrame);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
+    glUniform1i(uTranslucentAtlasLoc, 0);
+    glUniform1f(uTranslucentTimeLoc, currentFrame);
 
-    if (uLiquidCamPosLoc != -1) {
-        glUniform3fv(uLiquidCamPosLoc, 1, glm::value_ptr(glm::vec3(0.0f)));
-    }
-
-    if (fogEnabled) {
-        glUniform1f(uLiquidFogDensityLoc, fogDensity);
-        glUniform1f(uLiquidFogStartLoc, fogStartDistance);
-        glUniform3fv(uLiquidFogColorLoc, 1, glm::value_ptr(fogColor));
-    } else {
-        glUniform1f(uLiquidFogDensityLoc, 0.0f); // Disable fog
-    }
-
-    world.renderLiquid(camera, uLiquidModelLoc, frustum);
+    world.renderTranslucent(camera, uTranslucentModelLoc, frustum);
 
     // -------------------- Render selected block border --------------------
     glEnable(GL_DEPTH_TEST);
     renderSelectedBlockBorder(camera, aspectRatio);
 
     glDisable(GL_BLEND);
+
+    // -------------------- Render post-processed quad --------------------
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, width, height);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glDisable(GL_DEPTH_TEST);
+    glUseProgram(postProcessShaderProgram);
+    glUniform1i(uPostProcessEffectTypeLoc, effectType);
+    glUniform1f(uPostProcessTimeLoc, currentFrame);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, fboColorTex);
+    glUniform1i(uPostProcessTextureLoc, 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, fboDepthTex);
+    glUniform1i(uPostProcessDepthTextureLoc, 1);
+
+    if (uPostProcessInvProjLoc != -1) {
+        glm::mat4 invProj = glm::inverse(projection);
+        glUniformMatrix4fv(uPostProcessInvProjLoc, 1, GL_FALSE, glm::value_ptr(invProj));
+    }
+    if (uPostProcessFogEnabledLoc != -1) {
+        glUniform1i(uPostProcessFogEnabledLoc, fogEnabled ? 1 : 0);
+    }
+    if (uPostProcessNormalFogStartLoc != -1) {
+        glUniform1f(uPostProcessNormalFogStartLoc, fogStartDistance);
+    }
+
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    glEnable(GL_DEPTH_TEST);
 }
 
 void Renderer::renderCrosshair(float aspectRatio) {
@@ -347,6 +441,51 @@ void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio
     glUseProgram(0);
 }
 
+void Renderer::updateFBO(int width, int height) {
+    if (fboWidth == width && fboHeight == height && fbo != 0) {
+        return;
+    }
+
+    fboWidth = width;
+    fboHeight = height;
+
+    if (fbo != 0) {
+        glDeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &fboColorTex);
+        glDeleteTextures(1, &fboDepthTex);
+        fbo = 0;
+        fboColorTex = 0;
+        fboDepthTex = 0;
+    }
+
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    glGenTextures(1, &fboColorTex);
+    glBindTexture(GL_TEXTURE_2D, fboColorTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboColorTex, 0);
+
+    glGenTextures(1, &fboDepthTex);
+    glBindTexture(GL_TEXTURE_2D, fboDepthTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fboDepthTex, 0);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        LOG_ERROR("Renderer::updateFBO: Framebuffer is not complete!");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 GLuint Renderer::createShader(const char *source, GLenum shaderType) {
     return ::createShader(source, shaderType);
 }
@@ -360,15 +499,108 @@ void Renderer::loadTextureAtlas(const std::string& path) {
     stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
     if (!data) {
-        std::cerr << "Failed to load texture atlas: " << path << std::endl;
+        LOG_ERROR("Renderer: Failed to load texture atlas: ", path);
         return;
     }
 
+    auto bleedTransparent = [&](unsigned char* pixels, int w, int h) {
+        std::vector<unsigned char> copy(w * h * 4);
+        memcpy(copy.data(), pixels, w * h * 4);
+
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                int i = (y * w + x) * 4;
+                unsigned char a = copy[i + 3];
+                if (a == 0) {
+                    int rsum = 0, gsum = 0, bsum = 0, count = 0;
+                    for (int oy = -1; oy <= 1; ++oy) {
+                        int ny = y + oy;
+                        if (ny < 0 || ny >= h) continue;
+                        for (int ox = -1; ox <= 1; ++ox) {
+                            int nx = x + ox;
+                            if (nx < 0 || nx >= w) continue;
+                            int ni = (ny * w + nx) * 4;
+                            if (copy[ni + 3] > 0) {
+                                rsum += copy[ni + 0];
+                                gsum += copy[ni + 1];
+                                bsum += copy[ni + 2];
+                                ++count;
+                            }
+                        }
+                    }
+                    if (count > 0) {
+                        pixels[i + 0] = static_cast<unsigned char>(rsum / count);
+                        pixels[i + 1] = static_cast<unsigned char>(gsum / count);
+                        pixels[i + 2] = static_cast<unsigned char>(bsum / count);
+                        // leave alpha at 0
+                    }
+                }
+            }
+        }
+    };
+
+    int tile_w = width / 16;
+    int tile_h = height / 16;
+
     glGenTextures(1, &textureAtlas);
-    glBindTexture(GL_TEXTURE_2D, textureAtlas);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
+
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, tile_w, tile_h, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    std::vector<unsigned char> tileData(tile_w * tile_h * 4);
+    for (int row = 0; row < 16; ++row) {
+        for (int col = 0; col < 16; ++col) {
+            for (int y = 0; y < tile_h; ++y) {
+                int srcY = row * tile_h + y;
+                int srcX = col * tile_w;
+                memcpy(&tileData[y * tile_w * 4], &data[(srcY * width + srcX) * 4], tile_w * 4);
+            }
+            bleedTransparent(tileData.data(), tile_w, tile_h);
+            int layer = row * 16 + col;
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, tile_w, tile_h, 1, GL_RGBA, GL_UNSIGNED_BYTE, tileData.data());
+        }
+    }
+
+    int maxMipLevel = getOptionInt("mipmap_levels", 4);
+    float lodBias = getOptionFloat("lod_bias", -0.2f);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, maxMipLevel);
+    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_LOD_BIAS, lodBias);
+    
+    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+
+    int mipmapOption = getOptionInt("use_mipmaps", 1);
+    if (mipmapOption) {
+        if (mipmapOption == 1) {
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST); // Nearest
+        } else if (mipmapOption == 2) {
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST); // Bilinear
+        } else if (mipmapOption == 3) {
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Trilinear
+        }
+    } else {
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    }
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    stbi_image_free(data);
+}
+
+void Renderer::loadTextureAtlas2D(const std::string& path) {
+    int width, height, channels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
+    if (!data) {
+        LOG_ERROR("Renderer: Failed to load texture atlas 2D: ", path);
+        return;
+    }
+
+    glGenTextures(1, &textureAtlas2D);
+    glBindTexture(GL_TEXTURE_2D, textureAtlas2D);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -384,7 +616,7 @@ void Renderer::loadTextureUIAtlas(const std::string& path) {
     stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
     if (!data) {
-        std::cerr << "Failed to load texture atlas: " << path << std::endl;
+        LOG_ERROR("Renderer: Failed to load texture UI atlas: ", path);
         return;
     }
 
@@ -401,4 +633,19 @@ void Renderer::loadTextureUIAtlas(const std::string& path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     stbi_image_free(data);
+}
+
+void Renderer::reloadTextureAtlases() {
+    if (textureAtlas != 0) {
+        glDeleteTextures(1, &textureAtlas);
+        textureAtlas = 0;
+    }
+    if (textureAtlas2D != 0) {
+        glDeleteTextures(1, &textureAtlas2D);
+        textureAtlas2D = 0;
+    }
+
+    loadTextureAtlas("textures/blocks.png");
+    loadTextureAtlas2D("textures/blocks.png");
+    LOG_INFO("Renderer: Texture atlases reloaded");
 }

@@ -1,7 +1,9 @@
 #include <glad/glad.h>
 #include <array>
+#include <imgui.h>
 #include "input.hpp"
 #include "controls.hpp"
+#include "window.hpp"
 #include "../world/block_interaction.hpp"
 #include "../world/world.hpp"
 #include "../renderer/imguiOverlay.hpp"
@@ -18,35 +20,35 @@ static Camera* g_camera = nullptr;
 static World* g_world = nullptr;
 static float lastX;
 static float lastY;
-static uint8_t selectedBlockType = 1; // Default to grass
+static uint16_t selectedBlockType = 1; // Default to grass
 bool flyMode = false;
 bool wireframeEnabled = false;
 bool ingoreInput = false;
 bool zoomedIn = false;
 int selectedHotbarIndex = 0;
-std::array<uint8_t, 9> hotbarBlocks = {1, 2, 3, 4, 5, 6, 7, 8, 14};
+std::array<uint16_t, 9> hotbarBlocks = {1, 2, 3, 4, 5, 14, 7, 8, 16};
 
 bool getZoomState(GLFWwindow*) {
     return zoomedIn;
 }
 
-uint8_t getSelectedBlockType() {
+uint16_t getSelectedBlockType() {
     return selectedBlockType;
 }
 
-void setSelectedBlockType(uint8_t type) {
+void setSelectedBlockType(uint16_t type) {
     selectedBlockType = type;
 }
 
-void setHotbarBlock(int index, uint8_t type) {
+void setHotbarBlock(int index, uint16_t type) {
     hotbarBlocks[index] = type;
 }
 
-const std::array<uint8_t, 9>& getHotbarBlocks() {
+const std::array<uint16_t, 9>& getHotbarBlocks() {
     return hotbarBlocks;
 }
 
-void setHotbarBlocks(const std::array<uint8_t, 9>& blocks) {
+void setHotbarBlocks(const std::array<uint16_t, 9>& blocks) {
     hotbarBlocks = blocks;
     if (selectedHotbarIndex < 0 || selectedHotbarIndex >= static_cast<int>(hotbarBlocks.size())) {
         selectedHotbarIndex = 0;
@@ -62,6 +64,11 @@ void setFlyMode(bool enabled) {
     flyMode = enabled;
 }
 
+bool getWireframeEnabled() {
+    return wireframeEnabled;
+}
+
+
 // Mouse movement
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (!cursorCaptured) return;
@@ -76,21 +83,17 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     float xOffset = static_cast<float>(xpos) - lastX;
     float yOffset = lastY - static_cast<float>(ypos);
 
+    lastX = static_cast<float>(xpos);
+    lastY = static_cast<float>(ypos);
+
     if (g_camera)
         g_camera->processMouseMovement(xOffset, yOffset);
-    
-    // Keep cursor centered on screen
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
-    double centerX = width / 2.0;
-    double centerY = height / 2.0;
-    glfwSetCursorPos(window, centerX, centerY);
-    lastX = static_cast<float>(centerX);
-    lastY = static_cast<float>(centerY);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    if (pauseMenuOpen || inventoryOpen) return;
+    if (pauseMenuOpen) return;
+    if (consoleOpen && ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse) return;
+    if (inventoryOpen && ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse) return;
     const int hotbarSize = 9;
 
     if (yoffset < 0) {
@@ -161,6 +164,16 @@ float getSpeedMultiplier(GLFWwindow* window) {
 
 // Keyboard movement
 void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float speedMultiplier) {
+    static bool fullscreenPressedLastFrame = false;
+    bool fullscreenPressedThisFrame = glfwGetKey(window, g_controls.toggleFullscreen) == GLFW_PRESS;
+    if (fullscreenPressedThisFrame && !fullscreenPressedLastFrame) {
+        Window* windowObj = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (windowObj) {
+            windowObj->toggleFullscreen();
+        }
+    }
+    fullscreenPressedLastFrame = fullscreenPressedThisFrame;
+
     if (mainMenuOpen) return;
 
     if (g_world)
@@ -171,13 +184,12 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
     else
         camera.updateVelocity(deltaTime);
 
-    static int width, height;
-    glfwGetWindowSize(window, &width, &height);
-
     static bool escPressedLastFrame = false;
     bool escPressedThisFrame = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
 
     if (escPressedThisFrame && !escPressedLastFrame) {
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
         glfwSetCursorPos(window, width / 2.0, height / 2.0);
         if (inventoryOpen) {
             inventoryOpen = !inventoryOpen;
@@ -236,8 +248,21 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
         } else {
             static bool spaceLast = false;
             bool spaceNow = glfwGetKey(window, g_controls.jumpUp) == GLFW_PRESS;
-            if (spaceNow && !spaceLast && g_camera) {
-                g_camera->jump();
+            if (camera.isInLiquidCached()) {
+                if (spaceNow) {
+                    float verticalSpeedMultiplier = speedMultiplier;
+                    if (glfwGetKey(window, g_controls.sprint) == GLFW_PRESS) {
+                        verticalSpeedMultiplier *= 1.5f;
+                    }
+                    camera.processKeyboard("UP", deltaTime, verticalSpeedMultiplier);
+                }
+                if (glfwGetKey(window, g_controls.crouchDown) == GLFW_PRESS) {
+                    camera.processKeyboard("DOWN", deltaTime, speedMultiplier);
+                }
+            } else {
+                if (spaceNow && !spaceLast) {
+                    camera.jump();
+                }
             }
             spaceLast = spaceNow;
         }
@@ -251,7 +276,6 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
         if (wireframePressedThisFrame && !wireframePressedLastFrame) {
             wireframeEnabled = !wireframeEnabled;
             showMessage(wireframeEnabled ? "Wireframe mode enabled" : "Wireframe mode disabled", ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 2.0f);
-            glPolygonMode(GL_FRONT_AND_BACK, wireframeEnabled ? GL_LINE : GL_FILL);
         }
         wireframePressedLastFrame = wireframePressedThisFrame;
 

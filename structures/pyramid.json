@@ -1,5 +1,8 @@
 {
   "name": "pyramid",
+  "defaultXOffset": 8,
+  "defaultYOffset": -1,
+  "defaultZOffset": 8,
   "layers": [
     [
       [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50],

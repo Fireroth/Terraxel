@@ -10,8 +10,8 @@ public:
     void processKeyboard(const char* direction, float deltaTime, float speedMultiplier = 1.0f, bool ignoreAirControl = false);
     void processMouseMovement(float xOffset, float yOffset);
 
-    glm::dvec3 getPositionDouble() const { return position; }
-    glm::vec3 getPosition() const { return glm::vec3(position); }
+    glm::dvec3 getPositionDouble() const { return position + glm::dvec3(0.0, stepViewOffset, 0.0); }
+    glm::vec3 getPosition() const { return glm::vec3(position) + glm::vec3(0.0f, static_cast<float>(stepViewOffset), 0.0f); }
     glm::vec3 getFront() const { return front; }
     glm::vec3 getUp() const { return up; }
     glm::dvec3 getVelocity() const { return velocity; }
@@ -27,6 +27,10 @@ public:
     void applyAcceleration(const glm::vec3& acceleration, float deltaTime, bool ignoreAirControl = false);
     void jump();
     bool isGrounded() const { return grounded; }
+    bool isInLiquidCached() const { return inLiquid; }
+    float getLiquidDragCached() const { return liquidDrag; }
+    bool isInLiquid(class World* world, float& outDrag) const;
+    uint16_t getEyeBlock(class World* world) const;
 
     void setPosition(const glm::dvec3& pos);
     void setRotation(float newYaw, float newPitch);
@@ -57,11 +61,15 @@ private:
     const float airControlFactor = 0.3f;
     const float airDragFactor = 0.32f;
     const float airJumpBoostFactor = 1.25f;
-    const float coyoteTime = 0.1f; // seconds to allow jump after walking off an edge
+    const float coyoteTime = 0.05f; // seconds to allow jump after walking off an edge
     const float jumpBufferTime = 0.1f; // seconds to buffer a jump input
+    const float stepViewOffsetSpeed = 35.0f;
 
     float coyoteTimer = 0.0f;
     float jumpBufferTimer = 0.0f;
+    double stepViewOffset = 0.0;
     bool jumpBuffered = false;
     bool grounded = false;
+    bool inLiquid = false;
+    float liquidDrag = 0.0f;
 };

@@ -93,6 +93,7 @@
         "textures": [[0,13],[0,13],[0,13],[0,13],[0,13],[0,13]],
         "transparent": true,
         "liquid": true,
+        "drag": 3.0,
         "name": "Water",
         "model": "liquid",
         "renderFacesInBetween": false,
@@ -104,6 +105,7 @@
         "textures": [[1,13],[1,13],[1,13],[1,13],[1,13],[1,13]],
         "transparent": true,
         "liquid": true,
+        "drag": 10.0,
         "name": "Lava",
         "model": "liquid",
         "renderFacesInBetween": false,
@@ -454,7 +456,7 @@
     "yellow_maple_leaves:fast": {
         "id": 37,
         "textures": [[5,10],[5,10],[5,10],[5,10],[5,10],[5,10]],
-        "transparent": true,
+        "transparent": false,
         "liquid": false,
         "name": "Yellow Maple Leaves",
         "model": "cube",
@@ -728,7 +730,7 @@
 
     "grassy_stone": {
         "id": 62,
-        "textures": [[10,14],[10,14],[10,14],[10,14],[10,15],[10,14]],
+        "textures": [[10,14],[10,14],[10,14],[10,14],[10,15],[3,15]],
         "transparent": false,
         "liquid": false,
         "name": "Grassy Stone",
@@ -819,6 +821,7 @@
         "textures": [[11,13],[11,13],[11,13],[11,13],[11,13],[11,13]],
         "transparent": true,
         "liquid": true,
+        "drag": 3.0,
         "name": "Warm Water",
         "model": "liquid",
         "renderFacesInBetween": false,
@@ -1382,6 +1385,198 @@
         "liquid": false,
         "name": "Black Wool Carpet",
         "model": "carpet",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "white_stained_glass": {
+        "id": 121,
+        "textures": [[0,6],[0,6],[0,6],[0,6],[0,6],[0,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "White Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "red_stained_glass": {
+        "id": 122,
+        "textures": [[1,6],[1,6],[1,6],[1,6],[1,6],[1,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Red Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "orange_stained_glass": {
+        "id": 123,
+        "textures": [[2,6],[2,6],[2,6],[2,6],[2,6],[2,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Orange Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "pink_stained_glass": {
+        "id": 124,
+        "textures": [[3,6],[3,6],[3,6],[3,6],[3,6],[3,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Pink Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "yellow_stained_glass": {
+        "id": 125,
+        "textures": [[4,6],[4,6],[4,6],[4,6],[4,6],[4,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Yellow Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "lime_stained_glass": {
+        "id": 126,
+        "textures": [[5,6],[5,6],[5,6],[5,6],[5,6],[5,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Lime Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "green_stained_glass": {
+        "id": 127,
+        "textures": [[6,6],[6,6],[6,6],[6,6],[6,6],[6,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Green Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "light_blue_stained_glass": {
+        "id": 128,
+        "textures": [[7,6],[7,6],[7,6],[7,6],[7,6],[7,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Light Blue Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "cyan_stained_glass": {
+        "id": 129,
+        "textures": [[8,6],[8,6],[8,6],[8,6],[8,6],[8,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Cyan Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "blue_stained_glass": {
+        "id": 130,
+        "textures": [[9,6],[9,6],[9,6],[9,6],[9,6],[9,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Blue Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "magenta_stained_glass": {
+        "id": 131,
+        "textures": [[10,6],[10,6],[10,6],[10,6],[10,6],[10,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Magenta Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "purple_stained_glass": {
+        "id": 132,
+        "textures": [[11,6],[11,6],[11,6],[11,6],[11,6],[11,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Purple Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "brown_stained_glass": {
+        "id": 133,
+        "textures": [[12,6],[12,6],[12,6],[12,6],[12,6],[12,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Brown Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "dark_grey_stained_glass": {
+        "id": 134,
+        "textures": [[13,6],[13,6],[13,6],[13,6],[13,6],[13,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Dark Gray Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "light_grey_stained_glass": {
+        "id": 135,
+        "textures": [[14,6],[14,6],[14,6],[14,6],[14,6],[14,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Light Gray Stained Glass",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Colors"
+    },
+
+    "black_stained_glass": {
+        "id": 136,
+        "textures": [[15,6],[15,6],[15,6],[15,6],[15,6],[15,6]],
+        "transparent": true,
+        "translucent": true,
+        "liquid": false,
+        "name": "Black Stained Glass",
+        "model": "cube",
         "renderFacesInBetween": false,
         "tabName": "Colors"
     }

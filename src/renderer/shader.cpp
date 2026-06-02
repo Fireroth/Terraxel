@@ -1,12 +1,13 @@
-#include <iostream>
 #include <fstream>
 #include <sstream>
 #include "shader.hpp"
+#include "../core/logger.hpp"
 
 std::string loadShaderSource(const char* filepath) {
+    LOG_DEBUG("Shader: Loading shader from source: ", filepath);
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open shader file: " << filepath << std::endl;
+        LOG_ERROR("Shader: Failed to open shader file: ", filepath);
         return "";
     }
     std::stringstream buffer;
@@ -24,7 +25,7 @@ GLuint createShader(const char* source, GLenum shaderType) {
     if (!success) {
         char infoLog[512];
         glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        std::cerr << "Shader Compilation Error: " << infoLog << std::endl;
+        LOG_ERROR("Shader: Shader Compilation Error: ", infoLog);
     }
 
     return shader;
@@ -44,7 +45,7 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
     if (!success) {
         char infoLog[512];
         glGetProgramInfoLog(program, 512, nullptr, infoLog);
-        std::cerr << "Program Linking Error: " << infoLog << std::endl;
+        LOG_ERROR("Shader: Program Linking Error: ", infoLog);
     }
 
     glDeleteShader(vertexShader);

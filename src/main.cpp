@@ -17,11 +17,26 @@
 #include "core/saveManager.hpp"
 #include "world/modelDB.hpp"
 #include "world/biomeDB.hpp"
+#include "world/structureDB.hpp"
+#include "core/logger.hpp"
 
 GLFWwindow* g_currentGLFWwindow = nullptr;
 GLFWwindow* getCurrentGLFWwindow() { return g_currentGLFWwindow; }
+const char* banner = R"(Welcome to Terraxel!
+ _____                            _ 
+|_   _|                          | |
+  | | ___ _ __ _ __ __ ___  _____| |
+  | |/ _ \ '__| '__/ _` \ \/ / _ \ |
+  | |  __/ |  | | | (_| |>  <  __/ |
+  \_/\___|_|  |_|  \__,_/_/\_\___|_|
+)";
 
 int main() {
+    LOG_INFO(banner);
+
+    loadOptionsFromFile("options.txt");
+    loadControlsFromFile("controls.txt");
+
     int windowWidth = getOptionInt("window_width", 1280);
     int windowHeight = getOptionInt("window_height", 720);
     float aspectRatio = static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
@@ -39,7 +54,7 @@ int main() {
     BlockDB::init();
     BiomeDB::init();
     ModelDB::init();
-    loadControlsFromFile("controls.txt");
+    StructureDB::init();
     
     Camera camera(
         glm::vec3(0.5f, 70.0f, 0.5f),  // Position
@@ -64,12 +79,13 @@ int main() {
     glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     cursorCaptured = false;
 
-    glfwSwapInterval(getOptionInt("vsync", 0));
+    glfwSwapInterval(getOptionInt("vsync", 1));
     
     renderer.init();
-    ImGuiOverlay.init(glfwWindow, renderer.textureAtlas, renderer.uiAtlas);
+    ImGuiOverlay.init(glfwWindow, renderer.textureAtlas2D, renderer.uiAtlas);
     
     // Main game loop
+    LOG_INFO("Main: Initialization complete, entering game loop");
     while (!window.shouldClose()) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -80,7 +96,6 @@ int main() {
         if (mainMenuOpen) {
             window.clear(0.08f, 0.08f, 0.12f, 1.0f);
         } else {
-            window.clear(0.6f, 1.0f, 1.0f, 1.0f);
             renderer.renderWorld(camera, aspectRatio, deltaTime, currentFrame);
             renderer.renderCrosshair(aspectRatio);
         }
@@ -120,5 +135,6 @@ int main() {
         getFlyMode()
     );
 
+    LOG_INFO("Main: Exiting game");
     return 0;
 }

@@ -1,22 +1,23 @@
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <nlohmannJSON/json.hpp>
 #include "blockDB.hpp"
 #include "../core/options.hpp"
+#include "../core/logger.hpp"
 
-std::unordered_map<uint8_t, BlockDB::BlockInfo> BlockDB::blockData;
+std::unordered_map<uint16_t, BlockDB::BlockInfo> BlockDB::blockData;
+const BlockDB::BlockInfo* BlockDB::blockDataArray[65536] = {nullptr};
+std::vector<uint16_t> BlockDB::registeredBlockIDs;
+namespace fs = std::filesystem;
 
 void BlockDB::init() {
+    LOG_INFO("BlockDB: Initializing...");
     blockData.clear();
 
-    namespace fs = std::filesystem;
     fs::path blocksDir = fs::current_path() / "blocks";
-
-    if (!fs::exists(blocksDir) || !fs::is_directory(blocksDir)) {
-        std::cerr << "BlockDB::init: could not find 'blocks' directory at "
-                  << blocksDir << std::endl;
-        return;
+    bool hasBlocksDir = fs::exists(blocksDir) && fs::is_directory(blocksDir);
+    if (!hasBlocksDir) {
+        LOG_ERROR("BlockDB: could not find 'blocks' directory at ", blocksDir);
     }
 
     // Temp entries to pick fast/slow variant
@@ -29,13 +30,14 @@ void BlockDB::init() {
 
     std::vector<TempEntry> tempEntries;
 
-    for (auto &entry : fs::directory_iterator(blocksDir)) {
-        if (!entry.is_regular_file() || entry.path().extension() != ".json")
-            continue;
+    if (hasBlocksDir) {
+        for (auto &entry : fs::directory_iterator(blocksDir)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".json")
+                continue;
 
-        std::ifstream in(entry.path());
+            std::ifstream in(entry.path());
         if (!in.is_open()) {
-            std::cerr << "BlockDB::init: failed to open " << entry.path() << std::endl;
+            LOG_ERROR("BlockDB: failed to open ", entry.path());
             continue;
         }
 
@@ -43,13 +45,14 @@ void BlockDB::init() {
             nlohmann::json j;
             in >> j;
 
+            int blocksLoaded = 0;
             for (auto it = j.begin(); it != j.end(); it++) {
                 const std::string blockKey = it.key();
                 const auto &obj = it.value();
 
                 if (!obj.contains("id")) continue;
                 int id = obj["id"].get<int>();
-                if (id < 0 || id > 255) continue;
+                if (id < 0 || id > 65535) continue;
 
                 BlockInfo info;
                 for (int t = 0; t < 6; t++)
@@ -61,7 +64,7 @@ void BlockDB::init() {
                     if (!obj.contains(key) || !obj[key].is_array()) break;
 
                     std::array<glm::vec2,6> setArr;
-                    for (int i = 0; i < 6; i++) setArr[i] = glm::vec2(0.0f);
+                    for (int i = 0; i < 6; i++) setArr[i] = glm::vec2(4.0f, 9.0f);
 
                     int idx = 0;
                     for (const auto &tex : obj[key]) {
@@ -86,7 +89,9 @@ void BlockDB::init() {
                 }
 
                 info.transparent = obj.value("transparent", false);
+                info.translucent = obj.value("translucent", false);
                 info.liquid = obj.value("liquid", false);
+                info.drag = obj.value("drag", info.liquid ? 5.0f : 0.0f);
                 info.name = obj.value("name", blockKey);
                 info.modelName = obj.value("model", std::string("cube"));
                 info.renderFacesInBetween = obj.value("renderFacesInBetween", false);
@@ -100,13 +105,16 @@ void BlockDB::init() {
                 }
 
                 tempEntries.push_back({baseName, variant, id, info});
+                blocksLoaded++;
             }
 
+            LOG_INFO("BlockDB: found ", blocksLoaded, " blocks in ", entry.path().filename().string());
+
         } catch (std::exception &e) {
-            std::cerr << "BlockDB::init: JSON parse error in "
-                      << entry.path() << ": " << e.what() << std::endl;
+            LOG_ERROR("BlockDB: JSON parse error in ", entry.path(), ": ", e.what());
             continue;
         }
+    }
     }
 
     bool fasterTrees = (getOptionInt("faster_trees", 0) != 0);
@@ -132,14 +140,46 @@ void BlockDB::init() {
         if (!chosen)
             chosen = &vec[0];
 
-        blockData[(uint8_t)chosen->id] = chosen->info;
+        blockData[(uint16_t)chosen->id] = chosen->info;
     }
+
+    BlockInfo fallbackBlock;
+    for (int t = 0; t < 6; t++) {
+        fallbackBlock.textureCoords[t] = glm::vec2(4.0f, 9.0f);
+    }
+    fallbackBlock.transparent = false;
+    fallbackBlock.translucent = false;
+    fallbackBlock.liquid = false;
+    fallbackBlock.name = "Fallback Block";
+    fallbackBlock.modelName = "cube";
+    fallbackBlock.drag = 0.0f;
+    fallbackBlock.renderFacesInBetween = false;
+    fallbackBlock.tabName = "Internal";
+
+    blockData[65000] = fallbackBlock;
+
+    registeredBlockIDs.clear();
+    for (int i = 0; i < 65536; i++) {
+        auto iterator = blockData.find(static_cast<uint16_t>(i));
+        if (iterator != blockData.end()) {
+            blockDataArray[i] = &iterator->second;
+            registeredBlockIDs.push_back(static_cast<uint16_t>(i));
+        } else {
+            blockDataArray[i] = nullptr;
+        }
+    }
+
+    LOG_INFO("BlockDB: loaded ", blockData.size(), " blocks");
 }
 
-const BlockDB::BlockInfo* BlockDB::getBlockInfo(const uint8_t& blockName) {
-    auto iterator = blockData.find(blockName);
-    if (iterator != blockData.end()) {
-        return &iterator->second;
+const BlockDB::BlockInfo* BlockDB::getBlockInfo(const uint16_t& blockName) {
+    const BlockInfo* info = blockDataArray[blockName];
+    if (!info) {
+        return blockDataArray[65000];
     }
-    return nullptr;
+    return info;
+}
+
+const std::vector<uint16_t>& BlockDB::getRegisteredBlockIDs() {
+    return registeredBlockIDs;
 }

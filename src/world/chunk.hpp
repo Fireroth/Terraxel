@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include <vector>
 #include <glad/glad.h>
 #include "blockDB.hpp"
@@ -21,7 +22,7 @@ public:
     ChunkNoises noises;
 
     struct Block {
-        uint8_t type;
+        uint16_t type;
     };
 
     Chunk(int x, int z, World* worldPtr);
@@ -30,8 +31,8 @@ public:
     void buildMesh();
     void render(const Camera& camera, GLint uModelLoc);
     void renderCross(const Camera& camera, GLint uModelLoc);
-    void renderLiquid(const Camera& camera, GLint uLiquidModelLoc);
-    void placeStructure(const Structure& structure, int baseX, int baseY, int baseZ);
+    void renderTranslucent(const Camera& camera, GLint uModelLoc);
+    void placeStructure(const Structure& structure, int baseX, int baseY, int baseZ, bool forced = false);
 
     Block blocks[chunkWidth][chunkHeight][chunkDepth];
     int chunkX, chunkZ;
@@ -44,15 +45,23 @@ private:
 
     GLuint VAO, VBO, EBO;
     GLuint crossVAO, crossVBO, crossEBO;
-    GLuint liquidVAO, liquidVBO, liquidEBO;
+    GLuint translucentVAO, translucentVBO, translucentEBO;
     GLsizei indexCount;
     GLsizei crossIndexCount;
-    GLsizei liquidIndexCount;
+    GLsizei translucentIndexCount;
 
-    std::vector<float> liquidVertexDataCPU;
-    std::vector<unsigned int> liquidIndexDataCPU;
+    std::vector<glm::vec3> translucentFaceCentroids;
+    std::vector<unsigned int> translucentIndexDataCPU;
 
-    void addFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, const BlockDB::BlockInfo* blockInfo, unsigned int& indexOffset);
+    bool translucentNeedsSort;
+    glm::vec3 lastSortCamPosLocal;
 
-    bool isBlockVisible(int x, int y, int z, int face) const;
+    void addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset);
+    void addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO);
+
+    bool isBlockVisible(int x, int y, int z, int face, bool fasterTrees, const BlockDB::BlockInfo* thisInfo) const;
+    bool isOpaque(int x, int y, int z) const;
+    float calculateVertexAO(int x, int y, int z, int face, const glm::vec3& cornerPos, bool useAO, bool isLiquid) const;
+
+    Chunk* neighborCache[3][3] = {{nullptr}};
 };

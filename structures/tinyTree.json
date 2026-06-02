@@ -1,5 +1,8 @@
 {
   "name": "tinyTree",
+  "defaultXOffset": 1,
+  "defaultYOffset": 0,
+  "defaultZOffset": 1,
   "layers": [
     [
       [0, 0, 0],

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 
 struct BiomeTerrainParams {
     float heightScale = 1.0f;
@@ -30,11 +31,11 @@ struct BiomeFeature {
     std::string structure; // for type "structure"
     int block = 0; // for type "block"
     float threshold = 0.99f;
-    int xOffset = 0;
-    int zOffset = 0;
+    std::optional<int> xOffset;
+    std::optional<int> yOffset;
+    std::optional<int> zOffset;
     int allowedBlock = 1;
     int seedOffset = 0;
-    int yOffset = 0;
 };
 
 struct BiomeData {

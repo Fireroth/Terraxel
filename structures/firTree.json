@@ -1,5 +1,8 @@
 {
   "name": "firTree",
+  "defaultXOffset": 4,
+  "defaultYOffset": 0,
+  "defaultZOffset": 4,
   "layers": [
     [
       [0, 0, 0, 0, 0, 0, 0, 0, 0],

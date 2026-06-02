@@ -20,12 +20,18 @@ public:
 
     float getAspectRatio() const;
     void setFramebufferResizeCallback(std::function<void(int, int, float)> callback);
+    void toggleFullscreen();
 
 private:
     int width;
     int height;
     const char* title;
     GLFWwindow* window;
+
+    int windowedX;
+    int windowedY;
+    int windowedWidth;
+    int windowedHeight;
 
     float aspectRatio = 1.0f;
     std::function<void(int, int, float)> framebufferResizeCallback;

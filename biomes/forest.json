@@ -3,10 +3,10 @@
     "id": "forest",
     "terrain": {
         "heightScale": 1.0,
-        "detailWeight": 0.4,
+        "detailWeight": 0.7,
         "detail2Weight": 0.2,
         "power": 1.3,
-        "baseHeight": 57.0,
+        "baseHeight": 55.0,
         "heightMultiplier": 24.0,
         "deepenBelowY": 63.0,
         "deepenFactor": 0.5

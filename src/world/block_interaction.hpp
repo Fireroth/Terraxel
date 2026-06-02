@@ -24,12 +24,12 @@ struct RaycastResult {
 glm::ivec3 getAABBHitNormal(const glm::dvec3& hitPoint, const glm::dvec3& boxMin, const glm::dvec3& boxMax);
 int worldToChunkCoord(int x, int chunkSize);
 RaycastResult raycast(World* world, const glm::dvec3& origin, const glm::vec3& dir, float maxDistance);
-void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uint8_t blockType);
+void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uint16_t blockType);
 
 struct BlockInfo {
     bool valid = false;
     glm::ivec3 worldPos;
-    uint8_t type;
+    uint16_t type;
 };
 
 BlockInfo getLookedAtBlockInfo(World* world, const Camera& camera);

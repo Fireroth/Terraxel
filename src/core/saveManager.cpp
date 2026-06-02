@@ -5,9 +5,9 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include <iostream>
 #include <algorithm>
 #include "saveManager.hpp"
+#include "logger.hpp"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -34,7 +34,12 @@ std::string SaveManager::generateUUID() {
 std::string SaveManager::getCurrentTimestamp() {
     auto now = std::chrono::system_clock::now();
     auto time_t_val = std::chrono::system_clock::to_time_t(now);
-    std::tm tm = *std::localtime(&time_t_val);
+    std::tm tm{};
+    #ifdef _WIN32
+        localtime_s(&tm, &time_t_val);
+    #else
+        localtime_r(&time_t_val, &tm);
+    #endif
 
     std::ostringstream oss;
     oss << std::put_time(&tm, "%b %d, %Y at %H:%M");
@@ -67,7 +72,8 @@ std::vector<WorldInfo> SaveManager::listWorlds() {
             info.savePath = entry.path().string();
 
             worlds.push_back(info);
-        } catch (...) {
+        } catch (std::exception& e) {
+            LOG_ERROR("SaveManager: Error parsing world info for ", entry.path().string(), ": ", e.what());
             continue;
         }
     }
@@ -99,6 +105,7 @@ WorldInfo SaveManager::createWorld(const std::string& name, int seed) {
 
     std::ofstream file(info.savePath + "/world.json");
     file << j.dump(4);
+    LOG_INFO("SaveManager: Created world '", info.name, "' with UUID ", info.uuid, " at ", info.createdAt);
 
     return info;
 }
@@ -107,8 +114,10 @@ bool SaveManager::deleteWorld(const std::string& uuid) {
     std::string path = SAVES_DIR + "/" + uuid;
     if (fs::exists(path)) {
         fs::remove_all(path);
+        LOG_INFO("SaveManager: Deleted world '", uuid, "'");
         return true;
     }
+    LOG_WARN("SaveManager: World '", uuid, "' not found");
     return false;
 }
 
@@ -128,7 +137,8 @@ bool SaveManager::renameWorld(const std::string& uuid, const std::string& newNam
         outFile << j.dump(4);
         outFile.close();
         return true;
-    } catch (...) {
+    } catch (std::exception& e) {
+        LOG_ERROR("SaveManager: Error renaming world: ", e.what());
         return false;
     }
 }
@@ -152,7 +162,7 @@ void SaveManager::clearActiveWorld() {
     hasActiveWorld = false;
 }
 
-bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint8_t, 9>& hotbar, bool flyEnabled) {
+bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled) {
     if (!hasActiveWorld) {
         return false;
     }
@@ -175,13 +185,16 @@ bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float p
             return false;
         }
         file << j.dump(4);
+        LOG_DEBUG("Player state: ", j.dump());
+        LOG_INFO("SaveManager: Saved player state at ", playerPath);
         return true;
-    } catch (...) {
+    } catch (std::exception& e) {
+        LOG_ERROR("SaveManager: Error saving player state: ", e.what());
         return false;
     }
 }
 
-bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint8_t, 9>& hotbar, bool& flyEnabled) {
+bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled) {
     if (!hasActiveWorld) {
         return false;
     }
@@ -217,11 +230,12 @@ bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch
         pitch = j.at("pitch").get<float>();
         flyEnabled = j.at("flyEnabled").get<bool>();
         for (size_t i = 0; i < hotbar.size(); i++) {
-            hotbar[i] = hotbarJson[i].get<uint8_t>();
+            hotbar[i] = hotbarJson[i].get<uint16_t>();
         }
 
         return true;
-    } catch (...) {
+    } catch (std::exception& e) {
+        LOG_ERROR("SaveManager: Error loading player state: ", e.what());
         return false;
     }
 }

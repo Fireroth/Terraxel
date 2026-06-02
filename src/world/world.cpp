@@ -1,5 +1,4 @@
 #include <glm/gtc/matrix_access.hpp>
-#include <iostream>
 #include <cmath>
 #include <deque>
 #include <algorithm>
@@ -9,6 +8,7 @@
 #include "world.hpp"
 #include "../core/options.hpp"
 #include "../core/saveManager.hpp"
+#include "../core/logger.hpp"
 
 static std::deque<std::pair<int, int>> chunkLoadQueue;
 namespace fs = std::filesystem;
@@ -43,6 +43,7 @@ void World::reset() {
     lastPlayerChunkZ = INT32_MIN;
 }
 
+
 bool World::loadChunkFromSave(Chunk* chunk) {
     if (!chunk) {
         return false;
@@ -55,6 +56,8 @@ bool World::loadChunkFromSave(Chunk* chunk) {
 
     std::ifstream file(path);
     if (!file.is_open()) {
+        LOG_WARN("World: Failed to open chunk save file: ", path);
+        LOG_WARN("World: The chunk ", chunk->chunkX, ", ", chunk->chunkZ, " will be regenerated");
         return false;
     }
 
@@ -62,32 +65,41 @@ bool World::loadChunkFromSave(Chunk* chunk) {
         json j;
         file >> j;
         const size_t expected = static_cast<size_t>(Chunk::chunkWidth) * Chunk::chunkHeight * Chunk::chunkDepth;
-        std::vector<uint8_t> decodedBlocks;
+        std::vector<uint16_t> decodedBlocks;
         decodedBlocks.reserve(expected);
 
         const std::string encoding = j.value("encoding", "");
         if (encoding != "rlev1") {
+            LOG_WARN("World: Chunk save uses unsupported encoding (", encoding, ")");
+            LOG_WARN("World: The chunk ", chunk->chunkX, ", ", chunk->chunkZ, " will be regenerated");
             return false;
         }
 
         const auto& runs = j.at("runs");
         if (!runs.is_array()) {
+            LOG_WARN("World: Chunk save is corrupted (invalid runs)");
+            LOG_WARN("World: The chunk ", chunk->chunkX, ", ", chunk->chunkZ, " will be regenerated");
             return false;
         }
 
         for (const auto& run : runs) {
             if (!run.is_array() || run.size() != 2) {
+                LOG_WARN("World: Chunk save is corrupted");
+                LOG_WARN("World: The chunk ", chunk->chunkX, ", ", chunk->chunkZ, " will be regenerated");
                 return false;
             }
             const size_t count = run[0].get<size_t>();
-            const uint8_t type = run[1].get<uint8_t>();
+            const uint16_t type = run[1].get<uint16_t>();
             decodedBlocks.insert(decodedBlocks.end(), count, type);
-            if (decodedBlocks.size() > expected) {
-                return false;
-            }
         }
 
         if (decodedBlocks.size() != expected) {
+            if (decodedBlocks.size() > expected) {
+                LOG_WARN("World: Chunk save contains excessive data");
+            } else if (decodedBlocks.size() < expected) {
+                LOG_WARN("World: Chunk save contains insufficient data");
+            }
+            LOG_WARN("World: The chunk ", chunk->chunkX, ", ", chunk->chunkZ, " will be regenerated");
             return false;
         }
 
@@ -103,7 +115,8 @@ bool World::loadChunkFromSave(Chunk* chunk) {
         chunk->loadedFromSave = true;
         chunk->isModified = false;
         return true;
-    } catch (...) {
+    } catch (std::exception& e) {
+        LOG_ERROR("World: Error loading chunk from save: ", e.what());
         return false;
     }
 }
@@ -127,7 +140,7 @@ void World::saveChunkIfModified(Chunk* chunk) {
     j["runs"] = json::array();
 
     bool hasActiveRun = false;
-    uint8_t currentType = 0;
+    uint16_t currentType = 0;
     size_t runLength = 0;
     auto flushRun = [&]() {
         if (!hasActiveRun) {
@@ -139,7 +152,7 @@ void World::saveChunkIfModified(Chunk* chunk) {
     for (int y = 0; y < Chunk::chunkHeight; y++) {
         for (int x = 0; x < Chunk::chunkWidth; x++) {
             for (int z = 0; z < Chunk::chunkDepth; z++) {
-                const uint8_t type = chunk->blocks[x][y][z].type;
+                const uint16_t type = chunk->blocks[x][y][z].type;
                 if (!hasActiveRun) {
                     hasActiveRun = true;
                     currentType = type;
@@ -191,7 +204,7 @@ glm::dvec3 World::findSpawnPosition() {
         // Scan from top down for first non-air block
         int topY = -1;
         for (int y = Chunk::chunkHeight - 1; y >= 0; y--) {
-            uint8_t type = chunk->blocks[localX][y][localZ].type;
+            uint16_t type = chunk->blocks[localX][y][localZ].type;
             if (type != 0) {
                 topY = y;
                 break;
@@ -200,7 +213,7 @@ glm::dvec3 World::findSpawnPosition() {
 
         if (topY < 0) break;
 
-        uint8_t topType = chunk->blocks[localX][topY][localZ].type;
+        uint16_t topType = chunk->blocks[localX][topY][localZ].type;
         const auto* blockInfo = BlockDB::getBlockInfo(topType);
 
         if (blockInfo && blockInfo->liquid) {
@@ -283,18 +296,19 @@ void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bo
         }
     }
 
-    static int chunksToLoadPerFrame = getOptionInt("chunks_to_load_per_frame", 1);
+    int chunksToLoadPerFrame = getOptionInt("chunks_to_load_per_frame", 1);
     for (int i = 0; i < chunksToLoadPerFrame && !chunkLoadQueue.empty(); i++) {
         auto pos = chunkLoadQueue.front();
         chunkLoadQueue.pop_front();
         Chunk* newChunk = new Chunk(pos.first, pos.second, this);
         chunks[pos] = newChunk;
         newChunk->buildMesh();
-        static const int neighborChunkOffsetX[4] = {-1, 1, 0, 0};
-        static const int neighborChunkOffsetZ[4] = {0, 0, -1, 1};
-        for (int i = 0; i < 4; i++) {
-            auto neighbor = getChunk(pos.first + neighborChunkOffsetX[i], pos.second + neighborChunkOffsetZ[i]);
-            if (neighbor) neighbor->buildMesh();  
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                auto neighbor = getChunk(pos.first + dx, pos.second + dz);
+                if (neighbor) neighbor->buildMesh();
+            }
         }
     }
 }
@@ -349,7 +363,8 @@ void World::renderCross(const Camera& camera, GLint uCrossModelLoc, const Frustu
             chunk->renderCross(camera, uCrossModelLoc);
     }
 }
-void World::renderLiquid(const Camera& camera, GLint uLiquidModelLoc, const Frustum& frustum) {
+
+void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frustum& frustum) {
     std::vector<std::pair<float, Chunk*>> visible;
     visible.reserve(chunks.size());
 
@@ -372,7 +387,7 @@ void World::renderLiquid(const Camera& camera, GLint uLiquidModelLoc, const Frus
     });
 
     for (auto& p : visible) {
-        p.second->renderLiquid(camera, uLiquidModelLoc);
+        p.second->renderTranslucent(camera, uModelLoc);
     }
 }
 

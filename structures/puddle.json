@@ -1,5 +1,8 @@
 {
   "name": "puddle",
+  "defaultXOffset": 4,
+  "defaultYOffset": -4,
+  "defaultZOffset": 3,
   "layers": [
     [
       [0, 0, 0, 0, 0, 0, 0, 0, 0],

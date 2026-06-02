@@ -4,13 +4,14 @@ Terraxel (formerly MineCrap) is a somewhat simple voxel-based game written in C+
 
 ## Features
 -  Face Culling
+-  Frustum Culling
+-  Mipmaps
 -  Chunk based world generation
 -  Block placing and breaking
 -  Procedural terrain generation
 -  Biomes
 -  Multiple block models
 -  Transparent and translucent blocks
--  Frustum Culling
 -  Player physics & collisions
 -  Giant world size
 -  Chunk saving
@@ -60,7 +61,7 @@ cmake --build build -j$(nproc)
 - [glm](https://github.com/g-truc/glm) – OpenGL math library
 - [stb_image](https://github.com/nothings/stb) – Image loading  
 - [ImGUI](https://github.com/ocornut/imgui) – GUI system
-- [FastNoiseLite](https://github.com/Auburn/FastNoiseLite) – Noise generator (for terrain)
+- [FastNoiseLite](https://github.com/Auburn/FastNoiseLite) – Noise generator
 - [nlohmann/json](https://github.com/nlohmann/json) – JSON library
 
 ---

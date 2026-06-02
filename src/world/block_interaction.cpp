@@ -9,7 +9,7 @@
 
 
 // Helper function to get Hitbox for a block model
-bool getModelHitBoxes(uint8_t blockId, std::vector<std::pair<glm::vec3, glm::vec3>>& outBoxes) {
+bool getModelHitBoxes(uint16_t blockId, std::vector<std::pair<glm::vec3, glm::vec3>>& outBoxes) {
     const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(blockId);
     if (!info) return false;
 
@@ -82,7 +82,7 @@ RaycastResult raycast(World* world, const glm::dvec3& origin, const glm::vec3& d
             if (localX >= 0 && localX < Chunk::chunkWidth &&
                 localY >= 0 && localY < Chunk::chunkHeight &&
                 localZ >= 0 && localZ < Chunk::chunkDepth) {
-                uint8_t type = chunk->blocks[localX][localY][localZ].type;
+                uint16_t type = chunk->blocks[localX][localY][localZ].type;
                 if (type != 0) {
                     std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
                     getModelHitBoxes(type, boxes);
@@ -151,7 +151,7 @@ RaycastResult raycast(World* world, const glm::dvec3& origin, const glm::vec3& d
     return result;
 }
 
-void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uint8_t blockType) {
+void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uint16_t blockType) {
     glm::dvec3 origin = camera.getPositionDouble();
     glm::vec3 dir = camera.getFront();
 
@@ -236,6 +236,24 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
     }
     if (z == Chunk::chunkDepth - 1) {
         Chunk* neighbor = world->getChunk(chunkX, chunkZ + 1);
+        if (neighbor) neighbor->buildMesh();
+    }
+
+    // Rebuild diagonal neighbor chunks for AO at corners
+    if (x == 0 && z == 0) {
+        Chunk* neighbor = world->getChunk(chunkX - 1, chunkZ - 1);
+        if (neighbor) neighbor->buildMesh();
+    }
+    if (x == Chunk::chunkWidth - 1 && z == 0) {
+        Chunk* neighbor = world->getChunk(chunkX + 1, chunkZ - 1);
+        if (neighbor) neighbor->buildMesh();
+    }
+    if (x == 0 && z == Chunk::chunkDepth - 1) {
+        Chunk* neighbor = world->getChunk(chunkX - 1, chunkZ + 1);
+        if (neighbor) neighbor->buildMesh();
+    }
+    if (x == Chunk::chunkWidth - 1 && z == Chunk::chunkDepth - 1) {
+        Chunk* neighbor = world->getChunk(chunkX + 1, chunkZ + 1);
         if (neighbor) neighbor->buildMesh();
     }
 }

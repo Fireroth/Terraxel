@@ -1,5 +1,8 @@
 {
   "name": "palmTree",
+  "defaultXOffset": 5,
+  "defaultYOffset": 0,
+  "defaultZOffset": 5,
   "layers": [
     [
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

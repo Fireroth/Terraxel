@@ -1,9 +1,9 @@
-#include "controls.hpp"
 #include <GLFW/glfw3.h>
 #include <fstream>
 #include <sstream>
 #include <map>
-#include <iostream>
+#include "../core/logger.hpp"
+#include "controls.hpp"
 
 ControlsConfig g_controls;
 static bool loaded = false;
@@ -217,6 +217,7 @@ void initializeDefaultControls() {
     g_controls.zoom = GLFW_KEY_C;
     g_controls.toggleHotbar = GLFW_KEY_F1;
     g_controls.toggleDebug = GLFW_KEY_F3;
+    g_controls.toggleFullscreen = GLFW_KEY_F11;
 }
 
 std::string getKeyName(int keyCode) {
@@ -242,11 +243,12 @@ void loadControlsFromFile(const std::string& filename) {
     
     std::ifstream file(filename);
     if (!file.is_open()) {
-        std::cout << "Controls file not found, using defaults." << std::endl;
+        LOG_WARN("Controls: Controls file not found, using defaults.");
         loaded = true;
         return;
     }
 
+    int loadedCount = 0;
     std::string line;
     while (std::getline(file, line)) {
         if (line.empty() || line[0] == '#') continue;
@@ -263,6 +265,7 @@ void loadControlsFromFile(const std::string& filename) {
             int keyCode = getKeyCodeFromName(keyName);
             if (keyCode == -999) continue; // Skip invalid keys
             
+            bool matched = true;
             if (action == "moveForward") g_controls.moveForward = keyCode;
             else if (action == "moveBackward") g_controls.moveBackward = keyCode;
             else if (action == "moveLeft") g_controls.moveLeft = keyCode;
@@ -276,10 +279,18 @@ void loadControlsFromFile(const std::string& filename) {
             else if (action == "openConsole") g_controls.openConsole = keyCode;
             else if (action == "toggleHotbar") g_controls.toggleHotbar = keyCode;
             else if (action == "toggleDebug") g_controls.toggleDebug = keyCode;
+            else if (action == "toggleFullscreen") g_controls.toggleFullscreen = keyCode;
             else if (action == "zoom") g_controls.zoom = keyCode;
+            else matched = false;
+
+            if (matched) {
+                loadedCount++;
+            }
+            LOG_DEBUG("Controls: Loaded value: ", action, " = ", keyName);
         }
     }
-    
+    LOG_INFO("Controls: Loaded ", loadedCount, " values from ", filename);
+
     file.close();
     loaded = true;
 }
@@ -287,7 +298,7 @@ void loadControlsFromFile(const std::string& filename) {
 void saveControlsToFile(const std::string& filename) {
     std::ofstream file(filename, std::ios::trunc);
     if (!file.is_open()) {
-        std::cerr << "Failed to open " << filename << " for writing." << std::endl;
+        LOG_ERROR("Controls: Failed to open ", filename, " for writing.");
         return;
     }
 
@@ -304,10 +315,11 @@ void saveControlsToFile(const std::string& filename) {
     file << "openConsole=" << getKeyName(g_controls.openConsole) << "\n";
     file << "toggleHotbar=" << getKeyName(g_controls.toggleHotbar) << "\n";
     file << "toggleDebug=" << getKeyName(g_controls.toggleDebug) << "\n";
+    file << "toggleFullscreen=" << getKeyName(g_controls.toggleFullscreen) << "\n";
     file << "zoom=" << getKeyName(g_controls.zoom) << "\n";
 
-
     file.close();
+    LOG_INFO("Controls: Saved controls to file: ", filename);
     
     loaded = false;
     loadControlsFromFile(filename);

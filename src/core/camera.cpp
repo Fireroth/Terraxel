@@ -5,9 +5,10 @@
 #include "../world/chunk.hpp"
 #include "../world/blockDB.hpp"
 #include "../world/modelDB.hpp"
+#include "../core/options.hpp"
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
-    : position(glm::dvec3(position)), worldUp(up), yaw(yaw), pitch(pitch), movementSpeed(2.5f), mouseSensitivity(0.1f) {
+    : position(glm::dvec3(position)), worldUp(up), yaw(yaw), pitch(pitch), movementSpeed(2.5f), stepViewOffset(0.0) {
     updateCameraVectors();
 }
 
@@ -38,8 +39,8 @@ void Camera::processKeyboard(const char *direction, float deltaTime, float speed
 }
 
 void Camera::processMouseMovement(float xOffset, float yOffset) {
-    xOffset *= mouseSensitivity;
-    yOffset *= mouseSensitivity;
+    xOffset *= getOptionInt("mouse_sensitivity", 10) / 100.0f;
+    yOffset *= getOptionInt("mouse_sensitivity", 10) / 100.0f;
 
     yaw += xOffset;
     pitch += yOffset;
@@ -64,7 +65,7 @@ void Camera::updateCameraVectors() {
     up = glm::normalize(glm::cross(right, front));
 }
 
-static void getBlockAABBs(uint8_t blockId, std::vector<std::pair<glm::vec3, glm::vec3>>& outBoxes) {
+static void getBlockAABBs(uint16_t blockId, std::vector<std::pair<glm::vec3, glm::vec3>>& outBoxes) {
     const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(blockId);
     if (!info) {
         outBoxes.push_back({glm::vec3(0.0f), glm::vec3(1.0f)});
@@ -89,6 +90,49 @@ static bool aabbOverlapStrict(const glm::dvec3& amin, const glm::dvec3& amax, co
            (amin.z < bmax.z - COLLISION_EPS && amax.z > bmin.z + COLLISION_EPS);
 }
 
+bool Camera::isInLiquid(World* world, float& outDrag) const {
+    if (!world) return false;
+    double feetY = position.y - eyeHeight;
+    double shrinkRadius = playerRadius * 0.8;
+    glm::dvec3 aabbMin(position.x - shrinkRadius, feetY, position.z - shrinkRadius);
+    glm::dvec3 aabbMax(position.x + shrinkRadius, feetY + playerHeight * 0.9, position.z + shrinkRadius);
+
+    bool foundLiquid = false;
+    float maxDrag = 0.0f;
+
+    for (int blockX = static_cast<int>(std::floor(aabbMin.x)); blockX <= static_cast<int>(std::floor(aabbMax.x)); ++blockX) {
+        for (int blockZ = static_cast<int>(std::floor(aabbMin.z)); blockZ <= static_cast<int>(std::floor(aabbMax.z)); ++blockZ) {
+            int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
+            int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
+            Chunk* chunk = world->getChunk(chunkX, chunkZ);
+            if (!chunk) continue;
+
+            for (int blockY = std::max(0, static_cast<int>(std::floor(aabbMin.y)));
+                 blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(aabbMax.y)));
+                 ++blockY) {
+                int localX = blockX - chunkX * Chunk::chunkWidth;
+                int localY = blockY;
+                int localZ = blockZ - chunkZ * Chunk::chunkDepth;
+                if (localX < 0 || localX >= Chunk::chunkWidth ||
+                    localY < 0 || localY >= Chunk::chunkHeight ||
+                    localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+
+                uint16_t type = chunk->blocks[localX][localY][localZ].type;
+                if (type == 0) continue;
+                const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+                if (info && info->liquid) {
+                    foundLiquid = true;
+                    if (info->drag > maxDrag) {
+                        maxDrag = info->drag;
+                    }
+                }
+            }
+        }
+    }
+    outDrag = maxDrag;
+    return foundLiquid;
+}
+
 void Camera::updateVelocity(float deltaTime, World* world) {
     // Fix deltaTime spikes (resizing/moving the window)
     if (deltaTime > 0.05f) deltaTime = 0.05f;
@@ -100,6 +144,14 @@ void Camera::updateVelocity(float deltaTime, World* world) {
 
     for (int i = 0; i < numSteps; ++i) {
         stepVelocity(subDelta, world);
+    }
+
+    // Smoothly decay the camera step view offset
+    if (std::abs(stepViewOffset) > 0.0001) {
+        stepViewOffset *= std::exp(-stepViewOffsetSpeed * static_cast<double>(deltaTime));
+        if (std::abs(stepViewOffset) < 0.0001) {
+            stepViewOffset = 0.0;
+        }
     }
 }
 
@@ -118,12 +170,19 @@ void Camera::stepVelocity(float deltaTime, World* world) {
         coyoteTimer = coyoteTime;
     }
 
-    velocity.y += gravity * deltaTime;
+    inLiquid = world ? isInLiquid(world, liquidDrag) : false;
+
+    if (inLiquid) {
+        velocity.y += (gravity * 0.15f) * deltaTime;
+    } else {
+        velocity.y += gravity * deltaTime;
+    }
+
     glm::dvec3 proposedPos = position;
     glm::dvec3 horizMove = glm::dvec3(velocity.x, 0.0, velocity.z) * static_cast<double>(deltaTime);
     double feetY_current = position.y - eyeHeight;
 
-    auto isBlockSolid = [&](uint8_t type) -> bool {
+    auto isBlockSolid = [&](uint16_t type) -> bool {
         if (type == 0) return false;
         const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
         if (!info) return true;
@@ -149,7 +208,7 @@ void Camera::stepVelocity(float deltaTime, World* world) {
                         localY < 0 || localY >= Chunk::chunkHeight ||
                         localZ < 0 || localZ >= Chunk::chunkDepth) continue;
 
-                    uint8_t type = chunk->blocks[localX][localY][localZ].type;
+                    uint16_t type = chunk->blocks[localX][localY][localZ].type;
                     if (!isBlockSolid(type)) continue;
 
                     std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
@@ -183,7 +242,7 @@ void Camera::stepVelocity(float deltaTime, World* world) {
 
         // step up check
         double stepDiff = blockTop - feetY_current;
-        if (grounded && stepDiff > -0.01 - COLLISION_EPS && stepDiff <= stepHeight + COLLISION_EPS) {
+        if (grounded && !inLiquid && stepDiff > -0.01 - COLLISION_EPS && stepDiff <= stepHeight + COLLISION_EPS) {
             glm::dvec3 steppedPos = tryPos;
             steppedPos.y = blockTop + eyeHeight;
             double steppedFeetY = steppedPos.y - eyeHeight;
@@ -208,16 +267,25 @@ void Camera::stepVelocity(float deltaTime, World* world) {
 
         // full X+Z
         if (tryMoveOrStep(position + horizMove, stepPos)) {
+            if (stepPos.y > position.y) {
+                stepViewOffset -= (stepPos.y - position.y);
+            }
             proposedPos = stepPos;
         }
         // X only
         else if (tryMoveOrStep(position + glm::dvec3(horizMove.x, 0.0, 0.0), stepPos)) {
+            if (stepPos.y > position.y) {
+                stepViewOffset -= (stepPos.y - position.y);
+            }
             proposedPos.x = stepPos.x;
             proposedPos.y = stepPos.y;
             velocity.z = 0.0;
         }
         // Z only
         else if (tryMoveOrStep(position + glm::dvec3(0.0, 0.0, horizMove.z), stepPos)) {
+            if (stepPos.y > position.y) {
+                stepViewOffset -= (stepPos.y - position.y);
+            }
             proposedPos.z = stepPos.z;
             proposedPos.y = stepPos.y;
             velocity.x = 0.0;
@@ -249,7 +317,7 @@ void Camera::stepVelocity(float deltaTime, World* world) {
         proposedPos.y += velocity.y * deltaTime;
     }
 
-    if (jumpBuffered && (grounded || coyoteTimer > 0.0f)) {
+    if (!inLiquid && jumpBuffered && (grounded || coyoteTimer > 0.0f)) {
         velocity.y = jumpPower;
         grounded = false;
         jumpBuffered = false;
@@ -261,16 +329,24 @@ void Camera::stepVelocity(float deltaTime, World* world) {
     position = proposedPos;
 
     // drag
-    glm::dvec3 horizVel = glm::dvec3(velocity.x, 0.0, velocity.z);
-    float drag = grounded ? 9.0f : 9.0f * airDragFactor;
-    horizVel -= horizVel * glm::min(static_cast<double>(drag * deltaTime), 1.0);
-    if (glm::length(horizVel) < 0.01) horizVel = glm::dvec3(0.0);
-    velocity.x = horizVel.x;
-    velocity.z = horizVel.z;
+    if (inLiquid) {
+        velocity -= velocity * glm::min(static_cast<double>(liquidDrag * deltaTime), 1.0);
+        if (glm::length(velocity) < 0.01) velocity = glm::dvec3(0.0);
+    } else {
+        glm::dvec3 horizVel = glm::dvec3(velocity.x, 0.0, velocity.z);
+        float drag = grounded ? 9.0f : 9.0f * airDragFactor;
+        horizVel -= horizVel * glm::min(static_cast<double>(drag * deltaTime), 1.0);
+        if (glm::length(horizVel) < 0.01) horizVel = glm::dvec3(0.0);
+        velocity.x = horizVel.x;
+        velocity.z = horizVel.z;
+    }
 }
 
 void Camera::updateVelocityFlight(float deltaTime) {
     position += velocity * static_cast<double>(deltaTime);
+
+    inLiquid = false;
+    liquidDrag = 0.0f;
 
     float drag = 9.0f;
     velocity -= velocity * glm::min(static_cast<double>(drag * deltaTime), 1.0);
@@ -281,7 +357,12 @@ void Camera::updateVelocityFlight(float deltaTime) {
 
 void Camera::applyAcceleration(const glm::vec3& acceleration, float deltaTime, bool ignoreAirControl) {
     glm::dvec3 accel = glm::dvec3(acceleration) * static_cast<double>(deltaTime);
-    if (!grounded && !ignoreAirControl) {
+    if (inLiquid && !ignoreAirControl) {
+        double factor = 0.25f;
+        accel.x *= factor;
+        accel.z *= factor;
+        accel.y *= factor;
+    } else if (!grounded && !ignoreAirControl) {
         double factor = static_cast<double>(airControlFactor);
         if (velocity.y > 0.0) {
             factor *= static_cast<double>(airJumpBoostFactor);
@@ -293,6 +374,8 @@ void Camera::applyAcceleration(const glm::vec3& acceleration, float deltaTime, b
 }
 
 void Camera::jump() {
+    if (inLiquid) return;
+
     jumpBuffered = true;
     jumpBufferTimer = jumpBufferTime;
 
@@ -309,6 +392,7 @@ void Camera::setPosition(const glm::dvec3& pos) {
     position = glm::dvec3(pos);
     velocity = glm::dvec3(0.0);
     grounded = false;
+    stepViewOffset = 0.0;
 }
 
 void Camera::setRotation(float newYaw, float newPitch) {
@@ -323,3 +407,29 @@ void Camera::setRotation(float newYaw, float newPitch) {
 
     updateCameraVectors();
 }
+
+uint16_t Camera::getEyeBlock(class World* world) const {
+    if (!world) return 0;
+    glm::dvec3 eyePos = getPositionDouble();
+    int blockX = static_cast<int>(std::floor(eyePos.x));
+    int blockY = static_cast<int>(std::floor(eyePos.y));
+    int blockZ = static_cast<int>(std::floor(eyePos.z));
+
+    if (blockY < 0 || blockY >= Chunk::chunkHeight) return 0;
+
+    int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
+    int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
+    Chunk* chunk = world->getChunk(chunkX, chunkZ);
+    if (!chunk) return 0;
+
+    int localX = blockX - chunkX * Chunk::chunkWidth;
+    int localY = blockY;
+    int localZ = blockZ - chunkZ * Chunk::chunkDepth;
+
+    if (localX < 0 || localX >= Chunk::chunkWidth ||
+        localY < 0 || localY >= Chunk::chunkHeight ||
+        localZ < 0 || localZ >= Chunk::chunkDepth) return 0;
+
+    return chunk->blocks[localX][localY][localZ].type;
+}
+

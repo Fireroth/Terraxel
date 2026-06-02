@@ -1,6 +1,6 @@
 {
     "model_test_block": {
-        "id": 250,
+        "id": 65001,
         "textures": [[1,14],[1,14],[1,14],[1,14],[1,14],[1,14]],
         "textures2": [[2,14],[2,14],[2,14],[2,14],[2,14],[2,14]],
         "textures3": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
@@ -14,7 +14,7 @@
     },
     
     "temp_stairs": {
-        "id": 251,
+        "id": 65002,
         "textures": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
         "textures2": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
         "transparent": false,
@@ -26,12 +26,30 @@
     },
 
     "visual_indicator": {
-        "id": 252,
+        "id": 65003,
         "textures": [[0,9],[0,9],[0,9],[0,9],[0,9],[0,9]],
         "transparent": false,
         "liquid": false,
         "name": "Visual Indicator",
         "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Internal"
+    },
+
+    "combined_model": {
+        "id": 65004,
+        "textures": [[9,14]],
+        "textures2": [[9,14]],
+        "textures3": [[9,14]],
+        "textures4": [[9,14]],
+        "textures5": [[9,14]],
+        "textures6": [[9,14]],
+        "textures7": [[0,15],[0,15],[0,15],[0,15],[2,15],[1,15]],
+        "textures8": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Combined Model Test",
+        "model": "testModel2",
         "renderFacesInBetween": false,
         "tabName": "Internal"
     }

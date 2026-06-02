@@ -11,7 +11,7 @@ uniform sampler2DArray atlas;
 void main() {
     vec4 texColor = texture(atlas, TexCoord);
 
-    if (texColor.a < 0.3)
+    if (texColor.a == 0.0)
         discard;
 
     float brightness = 1.0;

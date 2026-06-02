@@ -17,7 +17,9 @@ struct ControlsConfig {
     int zoom;
     int toggleHotbar;
     int toggleDebug;
+    int toggleFullscreen;
 };
+
 
 extern ControlsConfig g_controls;
 

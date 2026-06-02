@@ -6,7 +6,8 @@
 #include <vector>
 
 struct Face {
-    std::vector<std::pair<float, float>> uv;
+    glm::vec2 uvFrom;
+    glm::vec2 uvTo;
 };
 
 struct Cuboid {
