@@ -502,7 +502,7 @@ void Console::init() {
                     if (s.empty()) return false;
                     try {
                         size_t idx = 0;
-                        [[unused]] float val = std::stof(s, &idx);
+                        [[maybe_unused]] float val = std::stof(s, &idx);
                         return idx == s.size();
                     } catch (...) {
                         return false;
