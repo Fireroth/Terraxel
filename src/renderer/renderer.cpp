@@ -20,10 +20,15 @@ Renderer::Renderer()
       quadVAO(0), quadVBO(0), postProcessShaderProgram(0),
       uPostProcessTextureLoc(-1), uPostProcessEffectTypeLoc(-1), uPostProcessTimeLoc(-1),
       uPostProcessDepthTextureLoc(-1), uPostProcessInvProjLoc(-1),
-      uPostProcessFogEnabledLoc(-1), uPostProcessNormalFogStartLoc(-1) {}
+      uPostProcessFogEnabledLoc(-1), uPostProcessNormalFogStartLoc(-1),
+      uOpaqueFogEnabledLoc(-1), uOpaqueFogDensityLoc(-1), uOpaqueFogStartLoc(-1), uOpaqueFogColorLoc(-1),
+      uCrossFogEnabledLoc(-1), uCrossFogDensityLoc(-1), uCrossFogStartLoc(-1), uCrossFogColorLoc(-1),
+      uTranslucentFogEnabledLoc(-1), uTranslucentFogDensityLoc(-1), uTranslucentFogStartLoc(-1), uTranslucentFogColorLoc(-1) {}
 
 Renderer::~Renderer() {
+    LOG_INFO("Renderer: Cleaning up...");
     glDeleteTextures(1, &textureAtlas);
+    glDeleteTextures(1, &uiAtlas);
     glDeleteTextures(1, &textureAtlas2D);
     glDeleteProgram(shaderProgram);
 
@@ -105,6 +110,21 @@ void Renderer::init() {
     uViewLoc = glGetUniformLocation(shaderProgram, "view");
     uProjLoc = glGetUniformLocation(shaderProgram, "projection");
     uAtlasLoc = glGetUniformLocation(shaderProgram, "atlas");
+
+    uOpaqueFogEnabledLoc = glGetUniformLocation(shaderProgram, "fogEnabled");
+    uOpaqueFogDensityLoc = glGetUniformLocation(shaderProgram, "fogDensity");
+    uOpaqueFogStartLoc = glGetUniformLocation(shaderProgram, "fogStartDistance");
+    uOpaqueFogColorLoc = glGetUniformLocation(shaderProgram, "fogColor");
+
+    uCrossFogEnabledLoc = glGetUniformLocation(crossShaderProgram, "fogEnabled");
+    uCrossFogDensityLoc = glGetUniformLocation(crossShaderProgram, "fogDensity");
+    uCrossFogStartLoc = glGetUniformLocation(crossShaderProgram, "fogStartDistance");
+    uCrossFogColorLoc = glGetUniformLocation(crossShaderProgram, "fogColor");
+
+    uTranslucentFogEnabledLoc = glGetUniformLocation(translucentShaderProgram, "fogEnabled");
+    uTranslucentFogDensityLoc = glGetUniformLocation(translucentShaderProgram, "fogDensity");
+    uTranslucentFogStartLoc = glGetUniformLocation(translucentShaderProgram, "fogStartDistance");
+    uTranslucentFogColorLoc = glGetUniformLocation(translucentShaderProgram, "fogColor");
 
     uPostProcessTextureLoc = glGetUniformLocation(postProcessShaderProgram, "screenTexture");
     uPostProcessEffectTypeLoc = glGetUniformLocation(postProcessShaderProgram, "effectType");
@@ -303,6 +323,19 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uAtlasLoc, 0);
 
+    if (uOpaqueFogEnabledLoc != -1) {
+        glUniform1i(uOpaqueFogEnabledLoc, fogEnabled ? 1 : 0);
+    }
+    if (uOpaqueFogDensityLoc != -1) {
+        glUniform1f(uOpaqueFogDensityLoc, fogDensity);
+    }
+    if (uOpaqueFogStartLoc != -1) {
+        glUniform1f(uOpaqueFogStartLoc, fogStartDistance);
+    }
+    if (uOpaqueFogColorLoc != -1) {
+        glUniform3fv(uOpaqueFogColorLoc, 1, &fogColor[0]);
+    }
+
     world.render(camera, uModelLoc, frustum);
 
     // -------------------------------- Render cross --------------------------------
@@ -317,6 +350,19 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uCrossAtlasLoc, 0);
     
+    if (uCrossFogEnabledLoc != -1) {
+        glUniform1i(uCrossFogEnabledLoc, fogEnabled ? 1 : 0);
+    }
+    if (uCrossFogDensityLoc != -1) {
+        glUniform1f(uCrossFogDensityLoc, fogDensity);
+    }
+    if (uCrossFogStartLoc != -1) {
+        glUniform1f(uCrossFogStartLoc, fogStartDistance);
+    }
+    if (uCrossFogColorLoc != -1) {
+        glUniform3fv(uCrossFogColorLoc, 1, &fogColor[0]);
+    }
+
     world.renderCross(camera, uCrossModelLoc, frustum);
 
     // -------------------------------- Render translucent & liquid --------------------------------
@@ -333,6 +379,19 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uTranslucentAtlasLoc, 0);
     glUniform1f(uTranslucentTimeLoc, currentFrame);
+
+    if (uTranslucentFogEnabledLoc != -1) {
+        glUniform1i(uTranslucentFogEnabledLoc, fogEnabled ? 1 : 0);
+    }
+    if (uTranslucentFogDensityLoc != -1) {
+        glUniform1f(uTranslucentFogDensityLoc, fogDensity);
+    }
+    if (uTranslucentFogStartLoc != -1) {
+        glUniform1f(uTranslucentFogStartLoc, fogStartDistance);
+    }
+    if (uTranslucentFogColorLoc != -1) {
+        glUniform3fv(uTranslucentFogColorLoc, 1, &fogColor[0]);
+    }
 
     world.renderTranslucent(camera, uTranslucentModelLoc, frustum);
 

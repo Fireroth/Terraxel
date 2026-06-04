@@ -143,13 +143,7 @@ void main() {
     }
     //---------------------------------------------------------------------------------
     else {
-        activeFogColor         = vec3(0.6, 1.0, 1.0);
-        activeFogDensity       = fogEnabled ? 0.30 : 0.0;
-        activeFogStartDistance = normalFogStartDistance;
-
         vec4 color = texture(screenTexture, uv);
-        vec3 finalColor = applyFog(color.rgb, uv, activeFogColor, activeFogDensity, activeFogStartDistance);
-
-        FragColor = vec4(finalColor, color.a);
+        FragColor = color;
     }
 }

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <glad/glad.h>
 #include "renderer/imguiOverlay.hpp"
+#include "renderer/blockPreviewRenderer.hpp"
 #include "core/window.hpp"
 #include "renderer/renderer.hpp"
 #include "core/camera.hpp"
@@ -134,6 +135,8 @@ int main() {
         getHotbarBlocks(),
         getFlyMode()
     );
+
+    BlockPreviewRenderer::cleanup();
 
     LOG_INFO("Main: Exiting game");
     return 0;

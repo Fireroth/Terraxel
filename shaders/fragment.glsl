@@ -8,6 +8,19 @@ out vec4 FragColor;
 
 uniform sampler2DArray atlas;
 
+uniform bool fogEnabled;
+uniform float fogDensity;
+uniform float fogStartDistance;
+uniform vec3 fogColor;
+
+vec3 applyFog(vec3 color) {
+    if (!fogEnabled) return color;
+    float distance = length(WorldPos);
+    float adjustedDistance = max(0.0, distance - fogStartDistance);
+    float fogFactor = exp(-fogDensity * adjustedDistance);
+    return mix(fogColor, color, fogFactor);
+}
+
 void main() {
     vec4 texColor = texture(atlas, TexCoord);
 
@@ -30,5 +43,8 @@ void main() {
     float aoFactor = 0.45 + 0.55 * (AO / 3.0);
     brightness *= aoFactor;
 
-    FragColor = vec4(texColor.rgb * brightness, texColor.a);
+    vec3 finalColor = texColor.rgb * brightness;
+    finalColor = applyFog(finalColor);
+
+    FragColor = vec4(finalColor, texColor.a);
 }

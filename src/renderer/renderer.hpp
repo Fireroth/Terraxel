@@ -10,6 +10,9 @@ public:
     GLint uTranslucentModelLoc, uTranslucentViewLoc, uTranslucentProjLoc, uTranslucentAtlasLoc;
     GLint uBorderModelLoc, uBorderViewLoc, uBorderProjLoc;
     GLint uTranslucentTimeLoc, uCrossTimeLoc, uTimeLoc;
+    GLint uOpaqueFogEnabledLoc, uOpaqueFogDensityLoc, uOpaqueFogStartLoc, uOpaqueFogColorLoc;
+    GLint uCrossFogEnabledLoc, uCrossFogDensityLoc, uCrossFogStartLoc, uCrossFogColorLoc;
+    GLint uTranslucentFogEnabledLoc, uTranslucentFogDensityLoc, uTranslucentFogStartLoc, uTranslucentFogColorLoc;
     Renderer();
     ~Renderer();
 

@@ -333,6 +333,7 @@ GLuint BlockPreviewRenderer::getPreviewTexture(uint16_t blockId) {
 }
 
 void BlockPreviewRenderer::cleanup() {
+    LOG_INFO("BlockPreviewRenderer: Cleaning up...");
     for (auto& [id, tex] : previewTextures) {
         glDeleteTextures(1, &tex);
     }
