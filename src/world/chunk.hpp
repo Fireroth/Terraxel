@@ -3,15 +3,27 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <glad/glad.h>
+#include <atomic>
+#include <mutex>
 #include "blockDB.hpp"
 #include "../core/camera.hpp"
-#include "world.hpp"
 #include "structureDB.hpp"
 #include "noise.hpp"
 
 class World;
 
 void clearPendingBlockPlacements();
+
+struct ChunkMeshData {
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+    std::vector<float> crossVertices;
+    std::vector<unsigned int> crossIndices;
+    std::vector<float> translucentVertices;
+    std::vector<unsigned int> translucentIndices;
+    std::vector<glm::vec3> translucentFaceCentroids;
+    bool hasData = false;
+};
 
 class Chunk {
 public:
@@ -29,16 +41,24 @@ public:
     ~Chunk();
 
     void buildMesh();
+    void computeMesh();
+    void uploadMesh();
     void render(const Camera& camera, GLint uModelLoc);
     void renderCross(const Camera& camera, GLint uModelLoc);
     void renderTranslucent(const Camera& camera, GLint uModelLoc);
     void placeStructure(const Structure& structure, int baseX, int baseY, int baseZ, bool forced = false);
+    void applyPendingBlockPlacements();
 
     Block blocks[chunkWidth][chunkHeight][chunkDepth];
     int chunkX, chunkZ;
     int biomeIndex = 0;
     bool isModified = false;
     bool loadedFromSave = false;
+
+    std::atomic<int> refCount{0};
+    std::atomic<bool> isMeshing{false};
+    ChunkMeshData pendingMeshData;
+    std::mutex meshMutex;
 
 private:
     World* world;

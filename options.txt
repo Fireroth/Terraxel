@@ -1,11 +1,11 @@
 window_width=1280
 window_height=720
 fullscreen=0
-render_distance=7
+render_distance=10
 fov=70.0
 vsync=1
 fog=1
-chunks_to_load_per_frame=1
+chunks_to_load_per_frame=5
 hide_console=1
 faster_trees=0
 max_fps=60

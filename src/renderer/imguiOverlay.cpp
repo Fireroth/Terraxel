@@ -550,9 +550,9 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             layout.customXOffset = leftColumnX;
 
             int renderDistance = getOptionInt("render_distance", 7);
-            if (drawMenuSliderInt(layout, "Render Distance", "##RenderDistance", &renderDistance, 1, 32)) {
+            if (drawMenuSliderInt(layout, "Render Distance", "##RenderDistance", &renderDistance, 1, 64)) {
                 setOption("render_distance", static_cast<float>(renderDistance));
-                world->updateChunksAroundPlayer(camera.getPosition(), renderDistance, true);
+                world->updateChunksAroundPlayer(camera.getPosition(), renderDistance + 1, true);
             }
 
             int chunks_to_load_per_frame = getOptionInt("chunks_to_load_per_frame", 1);
@@ -575,10 +575,10 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             bool fasterTreesEnabled = getOptionInt("faster_trees", 0) != 0;
             if (drawMenuToggle(layout, "Faster Trees", &fasterTreesEnabled, ImVec2(300, buttonSize.y))) {
                 setOption("faster_trees", static_cast<float>(fasterTreesEnabled ? 1 : 0));
+                world->reset();
                 BlockDB::init();
                 updateBlockDBItems();
                 BlockPreviewRenderer::generatePreviews();
-                world->reset();
             }
 
             bool aoEnabled = getOptionInt("ambient_occlusion", 1) != 0;
@@ -804,6 +804,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
     ImGui::Text("Pos: %.2f / %.2f / %.2f", feetPos.x-0.5, feetPos.y, feetPos.z-0.5);
     ImGui::Text("Delta Time: %.2f ms", deltaTime*1000);
     ImGui::Text("Chunk: %d, %d", chunkX, chunkZ);
+    ImGui::Text("Message elapsed time: %.5f", g_toast.elapsed);
     ImGui::Separator();
     ImGui::Text("Camera -> Yaw: %.2f", camYaw);
     ImGui::Text("Camera -> Pitch: %.2f", camPitch);
@@ -816,6 +817,9 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
     ImGui::Text("Camera -> In Liquid: %s", inLiquid ? "True" : "False");
     ImGui::Text("Camera -> Eye Block: %d", eyeBlock);
     ImGui::Separator();
+    ImGui::Text("Input -> Selected: %s", BlockDB::getBlockInfo(selectedBlockType)->name.c_str());
+    ImGui::Text("Input -> Selected ID: %d", selectedBlockType);
+    ImGui::Separator();
     if (blockInfo.valid) {
         const auto* info = BlockDB::getBlockInfo(blockInfo.type);
         ImGui::Text("Block -> name: %s", info->name.c_str());
@@ -826,23 +830,12 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
         ImGui::Text("Block -> renderFacesInBetween: %s", info->renderFacesInBetween ? "True" : "False");
         ImGui::Text("Block -> model name: %s", info->modelName.c_str());
         ImGui::Text("Block -> drag: %.1f", info->drag);
+        ImGui::Text("Block -> light emission: %i", info->lightEmission);
 
     } else {
         ImGui::Text("Block -> name: Air");
         ImGui::Text("Block -> ID: 0");
-        ImGui::Text("Block -> position: undefined");
-        ImGui::Text("Block -> transparent: undefined");
-        ImGui::Text("Block -> translucent: undefined");
-        ImGui::Text("Block -> renderFacesInBetween: undefined");
-        ImGui::Text("Block -> model name: undefined");
-        ImGui::Text("Block -> drag: undefined");
     }
-    ImGui::Separator();
-    ImGui::Text("Input -> Selected: %s", BlockDB::getBlockInfo(selectedBlockType)->name.c_str());
-    ImGui::Text("Input -> Selected ID: %d", selectedBlockType);
-    ImGui::Separator();
-    ImGui::Text("Message elapsed time: %.5f", g_toast.elapsed);
-    
     ImGui::PopStyleColor(2);
     ImGui::End();
 }

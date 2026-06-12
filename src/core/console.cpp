@@ -179,23 +179,11 @@ void Console::init() {
 
                     chunk->blocks[localX][localY][localZ].type = 3; // stone
                     chunk->isModified = true;
-                    chunk->buildMesh();
-
-                    if (localX == 0) {
-                        Chunk* neighbor = world->getChunk(chunkX - 1, chunkZ);
-                        if (neighbor) neighbor->buildMesh();
-                    }
-                    if (localX == Chunk::chunkWidth - 1) {
-                        Chunk* neighbor = world->getChunk(chunkX + 1, chunkZ);
-                        if (neighbor) neighbor->buildMesh();
-                    }
-                    if (localZ == 0) {
-                        Chunk* neighbor = world->getChunk(chunkX, chunkZ - 1);
-                        if (neighbor) neighbor->buildMesh();
-                    }
-                    if (localZ == Chunk::chunkDepth - 1) {
-                        Chunk* neighbor = world->getChunk(chunkX, chunkZ + 1);
-                        if (neighbor) neighbor->buildMesh();
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        for (int dz = -1; dz <= 1; ++dz) {
+                            Chunk* neighbor = world->getChunk(chunkX + dx, chunkZ + dz);
+                            if (neighbor) world->queueMeshComputation(neighbor->chunkX, neighbor->chunkZ);
+                        }
                     }
 
                     write("Placed stone anchor block.");
@@ -442,27 +430,23 @@ void Console::init() {
                         chunk->isModified = true;
                         chunksToRebuild.insert(chunk);
 
-                        if (borderXMin) {
-                            Chunk* n = world->getChunk(chunkX - 1, chunkZ);
-                            if (n) chunksToRebuild.insert(n);
-                        }
-                        if (borderXMax) {
-                            Chunk* n = world->getChunk(chunkX + 1, chunkZ);
-                            if (n) chunksToRebuild.insert(n);
-                        }
-                        if (borderZMin) {
-                            Chunk* n = world->getChunk(chunkX, chunkZ - 1);
-                            if (n) chunksToRebuild.insert(n);
-                        }
-                        if (borderZMax) {
-                            Chunk* n = world->getChunk(chunkX, chunkZ + 1);
-                            if (n) chunksToRebuild.insert(n);
+                }
+                }
+
+                std::set<Chunk*> allChunksToRebuild;
+                for (Chunk* c : chunksToRebuild) {
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        for (int dz = -1; dz <= 1; ++dz) {
+                            Chunk* neighbor = world->getChunk(c->chunkX + dx, c->chunkZ + dz);
+                            if (neighbor) {
+                                allChunksToRebuild.insert(neighbor);
+                            }
                         }
                     }
                 }
 
-                for (Chunk* c : chunksToRebuild) {
-                    c->buildMesh();
+                for (Chunk* c : allChunksToRebuild) {
+                    world->queueMeshComputation(c->chunkX, c->chunkZ);
                 }
 
                 char buf[128];

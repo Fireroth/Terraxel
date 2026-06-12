@@ -22,25 +22,73 @@ static std::string getChunkSavePath(int chunkX, int chunkZ) {
     return activeWorld->savePath + "/chunks/" + std::to_string(chunkX) + "_" + std::to_string(chunkZ) + ".json";
 }
 
-World::World() {}
+World::World() {
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    if (numThreads < 1) numThreads = 1;
+    else if (numThreads > 1) numThreads -= 1;
+    LOG_INFO("World: Initializing ThreadPool with ", numThreads, " worker threads.");
+    threadPool = std::make_unique<ThreadPool>(numThreads);
+}
 
 World::~World() {
+    LOG_INFO("World: Shutting down ThreadPool...");
+    threadPool.reset();
+
     for (auto& [coord, chunk] : chunks) {
         saveChunkIfModified(chunk);
         delete chunk;
     }
     chunks.clear();
+
+    for (Chunk* chunk : pendingDeletion) {
+        delete chunk;
+    }
+    pendingDeletion.clear();
 }
 
 void World::reset() {
+    LOG_INFO("World: Resetting world and ThreadPool...");
+    if (threadPool) {
+        threadPool->shutdown();
+    }
+    threadPool.reset();
+
     for (auto& [coord, chunk] : chunks) {
         saveChunkIfModified(chunk);
         delete chunk;
     }
     chunks.clear();
+
+    {
+        std::lock_guard<std::mutex> lock(deletionMutex);
+        for (Chunk* chunk : pendingDeletion) {
+            delete chunk;
+        }
+        pendingDeletion.clear();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(uploadMutex);
+        chunksToUpload.clear();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(loadingMutex);
+        loadingChunks.clear();
+    }
+
+    chunkLoadQueue.clear();
+
     clearPendingBlockPlacements();
     lastPlayerChunkX = INT32_MIN;
     lastPlayerChunkZ = INT32_MIN;
+    lastRadius = -1;
+
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    if (numThreads < 1) numThreads = 1;
+    else if (numThreads > 1) numThreads -= 1;
+    LOG_INFO("World: Reinitializing ThreadPool with ", numThreads, " worker threads.");
+    threadPool = std::make_unique<ThreadPool>(numThreads);
 }
 
 
@@ -179,7 +227,15 @@ void World::saveChunkIfModified(Chunk* chunk) {
 }
 
 void World::saveAllModifiedChunks() {
-    for (auto& [coord, chunk] : chunks) {
+    std::vector<Chunk*> activeChunks;
+    {
+        std::shared_lock<std::shared_mutex> lock(chunksMutex);
+        activeChunks.reserve(chunks.size());
+        for (auto& [coord, chunk] : chunks) {
+            activeChunks.push_back(chunk);
+        }
+    }
+    for (Chunk* chunk : activeChunks) {
         saveChunkIfModified(chunk);
     }
 }
@@ -235,40 +291,75 @@ void World::generateChunks(int radius) {
 
 void World::generateChunks(int radius, int originX, int originZ) {
     // Create chunks
-    for (int x = -radius; x <= radius; x++) {
-        for (int z = -radius; z <= radius; z++) {
-            std::pair<int, int> pos = {originX + x, originZ + z};
-            if (chunks.find(pos) == chunks.end()) {
-                chunks[pos] = new Chunk(pos.first, pos.second, this);
+    std::vector<Chunk*> activeChunks;
+    std::vector<std::pair<int, int>> toCreate;
+    {
+        std::shared_lock<std::shared_mutex> lock(chunksMutex);
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                std::pair<int, int> pos = {originX + x, originZ + z};
+                if (chunks.find(pos) == chunks.end()) {
+                    toCreate.push_back(pos);
+                }
             }
         }
     }
 
+    for (const auto& pos : toCreate) {
+        Chunk* newChunk = new Chunk(pos.first, pos.second, this);
+        {
+            std::unique_lock<std::shared_mutex> lock(chunksMutex);
+            chunks[pos] = newChunk;
+        }
+        newChunk->applyPendingBlockPlacements();
+    }
+
+    {
+        std::shared_lock<std::shared_mutex> lock(chunksMutex);
+        activeChunks.reserve(chunks.size());
+        for (auto& [coord, chunk] : chunks) {
+            activeChunks.push_back(chunk);
+        }
+    }
+
     // Build meshes
-    for (auto& [coord, chunk] : chunks) {
+    for (Chunk* chunk : activeChunks) {
         chunk->buildMesh();
     }
 }
 
 void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bool force) {
+    uploadPendingChunkMeshes();
+    processPendingDeletions();
+
     int playerChunkX = static_cast<int>(std::floor(playerPos.x / Chunk::chunkWidth));
     int playerChunkZ = static_cast<int>(std::floor(playerPos.z / Chunk::chunkDepth));
 
-    // Only update if player moved to a new chunk
-    if (playerChunkX != lastPlayerChunkX || playerChunkZ != lastPlayerChunkZ || force) {
+    // Only update if player moved to a new chunk or radius changed
+    if (playerChunkX != lastPlayerChunkX || playerChunkZ != lastPlayerChunkZ || radius != lastRadius || force) {
         lastPlayerChunkX = playerChunkX;
         lastPlayerChunkZ = playerChunkZ;
+        lastRadius = radius;
 
         // Unload chunks outside radius
-        for (auto iterator = chunks.begin(); iterator != chunks.end();) {
-            int chunkOffsetX = iterator->first.first - playerChunkX;
-            int chunkOffsetZ = iterator->first.second - playerChunkZ;
-            if (std::abs(chunkOffsetX) > radius || std::abs(chunkOffsetZ) > radius) {
-                saveChunkIfModified(iterator->second);
-                delete iterator->second;
-                iterator = chunks.erase(iterator);
-            } else {
-                iterator++;
+        {
+            std::unique_lock<std::shared_mutex> lock(chunksMutex);
+            for (auto iterator = chunks.begin(); iterator != chunks.end();) {
+                int chunkOffsetX = iterator->first.first - playerChunkX;
+                int chunkOffsetZ = iterator->first.second - playerChunkZ;
+                if (std::abs(chunkOffsetX) > radius || std::abs(chunkOffsetZ) > radius) {
+                    saveChunkIfModified(iterator->second);
+                    Chunk* chunk = iterator->second;
+                    iterator = chunks.erase(iterator);
+                    if (chunk->refCount == 0) {
+                        delete chunk;
+                    } else {
+                        std::lock_guard<std::mutex> delLock(deletionMutex);
+                        pendingDeletion.push_back(chunk);
+                    }
+                } else {
+                    iterator++;
+                }
             }
         }
 
@@ -279,7 +370,20 @@ void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bo
                 int chunkX = playerChunkX + x;
                 int chunkZ = playerChunkZ + z;
                 std::pair<int, int> pos = {chunkX, chunkZ};
-                if (chunks.find(pos) == chunks.end()) {
+                
+                bool chunkExists = false;
+                {
+                    std::shared_lock<std::shared_mutex> lock(chunksMutex);
+                    chunkExists = (chunks.find(pos) != chunks.end());
+                }
+                
+                bool isLoading = false;
+                {
+                    std::lock_guard<std::mutex> lock(loadingMutex);
+                    isLoading = (loadingChunks.find(pos) != loadingChunks.end());
+                }
+
+                if (!chunkExists && !isLoading) {
                     positions.push_back(pos);
                 }
             }
@@ -300,15 +404,120 @@ void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bo
     for (int i = 0; i < chunksToLoadPerFrame && !chunkLoadQueue.empty(); i++) {
         auto pos = chunkLoadQueue.front();
         chunkLoadQueue.pop_front();
-        Chunk* newChunk = new Chunk(pos.first, pos.second, this);
-        chunks[pos] = newChunk;
-        newChunk->buildMesh();
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                if (dx == 0 && dz == 0) continue;
-                auto neighbor = getChunk(pos.first + dx, pos.second + dz);
-                if (neighbor) neighbor->buildMesh();
+        loadChunkAsync(pos.first, pos.second);
+    }
+}
+
+void World::loadChunkAsync(int x, int z) {
+    {
+        std::lock_guard<std::mutex> lock(loadingMutex);
+        if (loadingChunks.find({x, z}) != loadingChunks.end()) {
+            return;
+        }
+        loadingChunks.insert({x, z});
+    }
+
+    try {
+        threadPool->enqueue([this, x, z]() {
+            Chunk* newChunk = new Chunk(x, z, this);
+
+            newChunk->refCount++;
+
+            // Check if chunk is still within the active player chunk radius
+            int playerX = lastPlayerChunkX;
+            int playerZ = lastPlayerChunkZ;
+            int radius = lastRadius;
+            if (playerX != INT32_MIN && playerZ != INT32_MIN && radius != -1) {
+                int chunkOffsetX = x - playerX;
+                int chunkOffsetZ = z - playerZ;
+                if (std::abs(chunkOffsetX) > radius || std::abs(chunkOffsetZ) > radius) {
+                    delete newChunk;
+                    {
+                        std::lock_guard<std::mutex> lock(loadingMutex);
+                        loadingChunks.erase({x, z});
+                    }
+                    return;
+                }
             }
+
+            {
+                std::unique_lock<std::shared_mutex> lock(chunksMutex);
+                chunks[{x, z}] = newChunk;
+            }
+
+            newChunk->applyPendingBlockPlacements();
+
+            {
+                std::lock_guard<std::mutex> lock(loadingMutex);
+                loadingChunks.erase({x, z});
+            }
+
+            queueMeshComputation(x, z);
+            queueMeshComputation(x + 1, z);
+            queueMeshComputation(x - 1, z);
+            queueMeshComputation(x, z + 1);
+            queueMeshComputation(x, z - 1);
+
+            newChunk->refCount--;
+        });
+    } catch (const std::runtime_error&) {
+        std::lock_guard<std::mutex> lock(loadingMutex);
+        loadingChunks.erase({x, z});
+    }
+}
+
+void World::queueMeshComputation(int x, int z) {
+    std::shared_lock<std::shared_mutex> lock(chunksMutex);
+    auto it = chunks.find({x, z});
+    if (it != chunks.end()) {
+        Chunk* chunk = it->second;
+        bool expected = false;
+        if (chunk->isMeshing.compare_exchange_strong(expected, true)) {
+            chunk->refCount++;
+            try {
+                threadPool->enqueue([this, chunk]() {
+                    chunk->computeMesh();
+                    chunk->isMeshing = false;
+                    chunk->refCount--;
+                });
+            } catch (const std::runtime_error&) {
+                chunk->isMeshing = false;
+                chunk->refCount--;
+            }
+        }
+    }
+}
+
+void World::queueChunkMeshUpload(Chunk* chunk) {
+    std::lock_guard<std::mutex> lock(uploadMutex);
+    if (std::find(chunksToUpload.begin(), chunksToUpload.end(), chunk) == chunksToUpload.end()) {
+        chunk->refCount++;
+        chunksToUpload.push_back(chunk);
+    }
+}
+
+void World::uploadPendingChunkMeshes() {
+    std::vector<Chunk*> toUpload;
+    {
+        std::lock_guard<std::mutex> lock(uploadMutex);
+        toUpload = std::move(chunksToUpload);
+        chunksToUpload.clear();
+    }
+
+    for (Chunk* chunk : toUpload) {
+        chunk->uploadMesh();
+        chunk->refCount--;
+    }
+}
+
+void World::processPendingDeletions() {
+    std::lock_guard<std::mutex> lock(deletionMutex);
+    for (auto it = pendingDeletion.begin(); it != pendingDeletion.end(); ) {
+        if ((*it)->refCount == 0) {
+            delete *it;
+            it = pendingDeletion.erase(it);
+        } else {
+            it++;
         }
     }
 }
@@ -349,37 +558,58 @@ bool World::isChunkInFrustum(int chunkX, int chunkZ, const Frustum& frustum, con
 }
 
 void World::render(const Camera& camera, GLint uModelLoc, const Frustum& frustum) {
+    std::vector<Chunk*> activeChunks;
+    {
+        std::shared_lock<std::shared_mutex> lock(chunksMutex);
+        activeChunks.reserve(chunks.size());
+        for (auto& [coord, chunk] : chunks) {
+            activeChunks.push_back(chunk);
+        }
+    }
+
     glm::dvec3 camPos = camera.getPositionDouble();
-    for (auto& [coord, chunk] : chunks) {
-        if (isChunkInFrustum(coord.first, coord.second, frustum, camPos))
+    for (Chunk* chunk : activeChunks) {
+        if (isChunkInFrustum(chunk->chunkX, chunk->chunkZ, frustum, camPos))
             chunk->render(camera, uModelLoc);
     }
 }
 
 void World::renderCross(const Camera& camera, GLint uCrossModelLoc, const Frustum& frustum) {
+    std::vector<Chunk*> activeChunks;
+    {
+        std::shared_lock<std::shared_mutex> lock(chunksMutex);
+        activeChunks.reserve(chunks.size());
+        for (auto& [coord, chunk] : chunks) {
+            activeChunks.push_back(chunk);
+        }
+    }
+
     glm::dvec3 camPos = camera.getPositionDouble();
-    for (auto& [coord, chunk] : chunks) {
-        if (isChunkInFrustum(coord.first, coord.second, frustum, camPos))
+    for (Chunk* chunk : activeChunks) {
+        if (isChunkInFrustum(chunk->chunkX, chunk->chunkZ, frustum, camPos))
             chunk->renderCross(camera, uCrossModelLoc);
     }
 }
 
 void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frustum& frustum) {
     std::vector<std::pair<float, Chunk*>> visible;
-    visible.reserve(chunks.size());
+    {
+        std::shared_lock<std::shared_mutex> lock(chunksMutex);
+        visible.reserve(chunks.size());
 
-    glm::dvec3 camPos = camera.getPositionDouble();
-    for (auto& [coord, chunk] : chunks) {
-        if (!isChunkInFrustum(coord.first, coord.second, frustum, camPos))
-            continue;
+        glm::dvec3 camPos = camera.getPositionDouble();
+        for (auto& [coord, chunk] : chunks) {
+            if (!isChunkInFrustum(coord.first, coord.second, frustum, camPos))
+                continue;
 
-        float cx = (coord.first * Chunk::chunkWidth) + (Chunk::chunkWidth * 0.5f);
-        float cz = (coord.second * Chunk::chunkDepth) + (Chunk::chunkDepth * 0.5f);
-        float dx = static_cast<float>(camPos.x - cx);
-        float dy = static_cast<float>(camPos.y);
-        float dz = static_cast<float>(camPos.z - cz);
-        float dist2 = dx*dx + dy*dy + dz*dz;
-        visible.emplace_back(dist2, chunk);
+            float cx = (coord.first * Chunk::chunkWidth) + (Chunk::chunkWidth * 0.5f);
+            float cz = (coord.second * Chunk::chunkDepth) + (Chunk::chunkDepth * 0.5f);
+            float dx = static_cast<float>(camPos.x - cx);
+            float dy = static_cast<float>(camPos.y);
+            float dz = static_cast<float>(camPos.z - cz);
+            float dist2 = dx*dx + dy*dy + dz*dz;
+            visible.emplace_back(dist2, chunk);
+        }
     }
 
     std::sort(visible.begin(), visible.end(), [](const auto& A, const auto& B) {
@@ -392,6 +622,7 @@ void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frust
 }
 
 Chunk* World::getChunk(int x, int z) const {
+    std::shared_lock<std::shared_mutex> lock(chunksMutex);
     auto iterator = chunks.find({x, z});
     if (iterator != chunks.end())
         return iterator->second;

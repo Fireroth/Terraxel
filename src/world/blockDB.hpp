@@ -19,6 +19,7 @@ public:
         std::string modelName;
         bool renderFacesInBetween;
         std::string tabName;
+        uint8_t lightEmission;
     };
 
     static void init();

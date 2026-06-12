@@ -109,7 +109,8 @@
         "name": "Lava",
         "model": "liquid",
         "renderFacesInBetween": false,
-        "tabName": "Liquids"
+        "tabName": "Liquids",
+        "lightEmission": 15
     },
 
     "leaves:slow": {
@@ -1579,6 +1580,19 @@
         "model": "cube",
         "renderFacesInBetween": false,
         "tabName": "Colors"
+    },
+
+    "torch": {
+        "id": 137,
+        "textures": [[11,12],[11,12],[11,12],[11,12],[11,12],[11,12]],
+        "transparent": false,
+        "liquid": false,
+        "drag": 0.0,
+        "name": "Torch",
+        "model": "torch",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks",
+        "lightEmission": 15
     }
 
 }

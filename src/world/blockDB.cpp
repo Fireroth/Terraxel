@@ -96,6 +96,7 @@ void BlockDB::init() {
                 info.modelName = obj.value("model", std::string("cube"));
                 info.renderFacesInBetween = obj.value("renderFacesInBetween", false);
                 info.tabName = obj.value("tabName", std::string("Blocks"));
+                info.lightEmission = obj.value("lightEmission", 0);
 
                 std::string baseName = blockKey;
                 std::string variant;
@@ -155,6 +156,7 @@ void BlockDB::init() {
     fallbackBlock.drag = 0.0f;
     fallbackBlock.renderFacesInBetween = false;
     fallbackBlock.tabName = "Internal";
+    fallbackBlock.lightEmission = 0;
 
     blockData[65000] = fallbackBlock;
 

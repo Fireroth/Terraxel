@@ -1,8 +1,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <set>
+#include <map>
 #include <algorithm>
+#include <mutex>
 #include "chunk.hpp"
+#include "world.hpp"
 #include "../core/options.hpp"
 #include "noise.hpp"
 #include "chunkTerrain.hpp"
@@ -14,8 +17,10 @@ struct pendingBlock {
     uint16_t type;
 };
 static std::map<std::pair<int, int>, std::vector<pendingBlock >> pendingBlockPlacements;
+static std::mutex pendingPlacementsMutex;
 
 void clearPendingBlockPlacements() {
+    std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
     pendingBlockPlacements.clear();
 }
 
@@ -31,20 +36,7 @@ Chunk::Chunk(int x, int z, World* worldPtr) :
         world->loadChunkFromSave(this);
     }
 
-    // Apply any pending block placements for this chunk
-    auto key = std::make_pair(chunkX, chunkZ);
-    auto iterator = pendingBlockPlacements.find(key);
-    if (iterator != pendingBlockPlacements.end()) {
-        // Don't overwrite saved chunks
-        if (!loadedFromSave) {
-            for (const auto& pb : iterator->second) {
-                if (pb.x >= 0 && pb.x < chunkWidth && pb.y >= 0 && pb.y < chunkHeight && pb.z >= 0 && pb.z < chunkDepth) {
-                    blocks[pb.x][pb.y][pb.z].type = pb.type;
-                }
-            }
-        }
-        pendingBlockPlacements.erase(iterator);
-    }
+    applyPendingBlockPlacements();
 }
 
 Chunk::~Chunk() {
@@ -177,6 +169,7 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                         }
                     } else {
                         // Chunk not loaded, defer placement
+                        std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
                         auto key = std::make_pair(targetChunkX, targetChunkZ);
                         pendingBlockPlacements[key].push_back({localX, worldY, localZ, blockType});
                     }
@@ -188,10 +181,38 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
         for (Chunk* chunk : chunksToRebuild) {
             chunk->buildMesh();
         }
+    } else if (world) {
+        for (Chunk* chunk : chunksToRebuild) {
+            if (chunk != this) {
+                world->queueMeshComputation(chunk->chunkX, chunk->chunkZ);
+            }
+        }
+    }
+}
+
+void Chunk::applyPendingBlockPlacements() {
+    std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
+    auto key = std::make_pair(chunkX, chunkZ);
+    auto iterator = pendingBlockPlacements.find(key);
+    if (iterator != pendingBlockPlacements.end()) {
+        // Don't overwrite saved chunks
+        if (!loadedFromSave) {
+            for (const auto& pb : iterator->second) {
+                if (pb.x >= 0 && pb.x < chunkWidth && pb.y >= 0 && pb.y < chunkHeight && pb.z >= 0 && pb.z < chunkDepth) {
+                    blocks[pb.x][pb.y][pb.z].type = pb.type;
+                }
+            }
+        }
+        pendingBlockPlacements.erase(iterator);
     }
 }
 
 void Chunk::buildMesh() {
+    computeMesh();
+    uploadMesh();
+}
+
+void Chunk::computeMesh() {
     // Defer mesh generation if any neighbor chunk is missing
     for (int face = 0; face < 6; face++) {
         int neighborX = 0, neighborY = 0, neighborZ = 0;
@@ -222,12 +243,7 @@ void Chunk::buildMesh() {
     bool fasterTrees = (getOptionInt("faster_trees", 0) != 0);
     bool useAO = (getOptionInt("ambient_occlusion", 1) != 0);
 
-    std::vector<float> vertices;
-    std::vector<float> crossVertices;
-    std::vector<float> translucentVertices;
-    std::vector<unsigned int> indices;
-    std::vector<unsigned int> crossIndices;
-    std::vector<unsigned int> translucentIndices;
+    ChunkMeshData data;
     unsigned int indexOffset = 0;
     unsigned int crossIndexOffset = 0;
     unsigned int translucentIndexOffset = 0;
@@ -245,13 +261,13 @@ void Chunk::buildMesh() {
                 if (m) {
                     if (!m->planes.empty()) {
                         for (int planeIndex = 0; planeIndex < (int)m->planes.size(); planeIndex++) {
-                            addPlaneFace(crossVertices, crossIndices, x, y, z, planeIndex, info, crossIndexOffset);
+                            addPlaneFace(data.crossVertices, data.crossIndices, x, y, z, planeIndex, info, crossIndexOffset);
                         }
                     }
                     if (!m->cuboids.empty()) {
-                        auto& targetVerts = (info->liquid || info->translucent) ? translucentVertices : vertices;
-                        auto& targetIndices = (info->liquid || info->translucent) ? translucentIndices : indices;
-                        auto& targetOffset = (info->liquid || info->translucent) ? translucentIndexOffset : indexOffset;
+                        auto& targetVerts = (info->liquid || info->translucent) ? data.translucentVertices : data.vertices;
+                        auto& targetIndices = (info->liquid || info->translucent) ? data.translucentIndices : data.indices;
+                        unsigned int& targetOffset = (info->liquid || info->translucent) ? translucentIndexOffset : indexOffset;
                         for (int face = 0; face < 6; face++) {
                             if (isBlockVisible(x, y, z, face, fasterTrees, info)) {
                                 for (size_t cuboidIndex = 0; cuboidIndex < m->cuboids.size(); cuboidIndex++) {
@@ -265,9 +281,70 @@ void Chunk::buildMesh() {
         }
     }
 
-    indexCount = static_cast<GLsizei>(indices.size());
-    crossIndexCount = static_cast<GLsizei>(crossIndices.size());
-    translucentIndexCount = static_cast<GLsizei>(translucentIndices.size());
+    // Compute face centroids for sorting
+    data.translucentFaceCentroids.clear();
+    data.translucentFaceCentroids.reserve(data.translucentIndices.size() / 6);
+    const size_t stride = 9;
+    for (size_t i = 0; i + 5 < data.translucentIndices.size(); i += 6) {
+        unsigned int base = data.translucentIndices[i + 0];
+        for (size_t k = 1; k < 6; ++k) {
+            if (data.translucentIndices[i + k] < base) {
+                base = data.translucentIndices[i + k];
+            }
+        }
+        unsigned int ia = base;
+        unsigned int ib = base + 1;
+        unsigned int ic = base + 2;
+        unsigned int id = base + 3;
+
+        float ya = data.translucentVertices[ia * stride + 1];
+        float yb = data.translucentVertices[ib * stride + 1];
+        float yc = data.translucentVertices[ic * stride + 1];
+        float yd = data.translucentVertices[id * stride + 1];
+
+        if (data.translucentVertices[ia * stride + 7] > 0.5f) ya -= 0.18f;
+        if (data.translucentVertices[ib * stride + 7] > 0.5f) yb -= 0.18f;
+        if (data.translucentVertices[ic * stride + 7] > 0.5f) yc -= 0.18f;
+        if (data.translucentVertices[id * stride + 7] > 0.5f) yd -= 0.18f;
+
+        glm::vec3 a(data.translucentVertices[ia * stride + 0], ya, data.translucentVertices[ia * stride + 2]);
+        glm::vec3 b(data.translucentVertices[ib * stride + 0], yb, data.translucentVertices[ib * stride + 2]);
+        glm::vec3 c(data.translucentVertices[ic * stride + 0], yc, data.translucentVertices[ic * stride + 2]);
+        glm::vec3 d(data.translucentVertices[id * stride + 0], yd, data.translucentVertices[id * stride + 2]);
+
+        data.translucentFaceCentroids.push_back((a + b + c + d) / 4.0f);
+    }
+
+    // Clear neighbor cache
+    for (int dx = 0; dx < 3; dx++) {
+        for (int dz = 0; dz < 3; dz++) {
+            neighborCache[dx][dz] = nullptr;
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(meshMutex);
+        pendingMeshData = std::move(data);
+        pendingMeshData.hasData = true;
+    }
+
+    if (world) {
+        world->queueChunkMeshUpload(this);
+    }
+}
+
+void Chunk::uploadMesh() {
+    ChunkMeshData data;
+    {
+        std::lock_guard<std::mutex> lock(meshMutex);
+        if (!pendingMeshData.hasData) return;
+        data = std::move(pendingMeshData);
+        pendingMeshData.hasData = false;
+    }
+
+    indexCount = static_cast<GLsizei>(data.indices.size());
+    crossIndexCount = static_cast<GLsizei>(data.crossIndices.size());
+    translucentIndexCount = static_cast<GLsizei>(data.translucentIndices.size());
 
     if (VAO == 0) {
         glGenVertexArrays(1, &VAO);
@@ -277,10 +354,10 @@ void Chunk::buildMesh() {
         glBindVertexArray(VAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(float), data.vertices.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int), data.indices.data(), GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
@@ -296,12 +373,12 @@ void Chunk::buildMesh() {
         glBindVertexArray(VAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), nullptr, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
+        glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(float), nullptr, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, data.vertices.size() * sizeof(float), data.vertices.data());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), nullptr, GL_STATIC_DRAW);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.size() * sizeof(unsigned int), indices.data());
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int), nullptr, GL_STATIC_DRAW);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, data.indices.size() * sizeof(unsigned int), data.indices.data());
 
         glBindVertexArray(0);
     }
@@ -316,10 +393,10 @@ void Chunk::buildMesh() {
         glBindVertexArray(crossVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
-        glBufferData(GL_ARRAY_BUFFER, crossVertices.size() * sizeof(float), crossVertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, data.crossVertices.size() * sizeof(float), data.crossVertices.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, crossEBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, crossIndices.size() * sizeof(unsigned int), crossIndices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.crossIndices.size() * sizeof(unsigned int), data.crossIndices.data(), GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
@@ -331,12 +408,12 @@ void Chunk::buildMesh() {
         glBindVertexArray(crossVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
-        glBufferData(GL_ARRAY_BUFFER, crossVertices.size() * sizeof(float), nullptr, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, crossVertices.size() * sizeof(float), crossVertices.data());
+        glBufferData(GL_ARRAY_BUFFER, data.crossVertices.size() * sizeof(float), nullptr, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, data.crossVertices.size() * sizeof(float), data.crossVertices.data());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, crossEBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, crossIndices.size() * sizeof(unsigned int), nullptr, GL_STATIC_DRAW);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, crossIndices.size() * sizeof(unsigned int), crossIndices.data());
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.crossIndices.size() * sizeof(unsigned int), nullptr, GL_STATIC_DRAW);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, data.crossIndices.size() * sizeof(unsigned int), data.crossIndices.data());
 
         glBindVertexArray(0);
     }
@@ -351,10 +428,10 @@ void Chunk::buildMesh() {
         glBindVertexArray(translucentVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, translucentVBO);
-        glBufferData(GL_ARRAY_BUFFER, translucentVertices.size() * sizeof(float), translucentVertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, data.translucentVertices.size() * sizeof(float), data.translucentVertices.data(), GL_DYNAMIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, translucentIndices.size() * sizeof(unsigned int), translucentIndices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.translucentIndices.size() * sizeof(unsigned int), data.translucentIndices.data(), GL_DYNAMIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
@@ -372,60 +449,19 @@ void Chunk::buildMesh() {
         glBindVertexArray(translucentVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, translucentVBO);
-        glBufferData(GL_ARRAY_BUFFER, translucentVertices.size() * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, translucentVertices.size() * sizeof(float), translucentVertices.data());
+        glBufferData(GL_ARRAY_BUFFER, data.translucentVertices.size() * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, data.translucentVertices.size() * sizeof(float), data.translucentVertices.data());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, translucentIndices.size() * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, translucentIndices.size() * sizeof(unsigned int), translucentIndices.data());
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.translucentIndices.size() * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, data.translucentIndices.size() * sizeof(unsigned int), data.translucentIndices.data());
 
         glBindVertexArray(0);
     }
 
-    // Compute face centroids for sorting
-    translucentFaceCentroids.clear();
-    translucentFaceCentroids.reserve(translucentIndices.size() / 6);
-    const size_t stride = 9;
-    for (size_t i = 0; i + 5 < translucentIndices.size(); i += 6) {
-        unsigned int base = translucentIndices[i + 0];
-        for (size_t k = 1; k < 6; ++k) {
-            if (translucentIndices[i + k] < base) {
-                base = translucentIndices[i + k];
-            }
-        }
-        unsigned int ia = base;
-        unsigned int ib = base + 1;
-        unsigned int ic = base + 2;
-        unsigned int id = base + 3;
-
-        float ya = translucentVertices[ia * stride + 1];
-        float yb = translucentVertices[ib * stride + 1];
-        float yc = translucentVertices[ic * stride + 1];
-        float yd = translucentVertices[id * stride + 1];
-
-        if (translucentVertices[ia * stride + 7] > 0.5f) ya -= 0.18f;
-        if (translucentVertices[ib * stride + 7] > 0.5f) yb -= 0.18f;
-        if (translucentVertices[ic * stride + 7] > 0.5f) yc -= 0.18f;
-        if (translucentVertices[id * stride + 7] > 0.5f) yd -= 0.18f;
-
-        glm::vec3 a(translucentVertices[ia * stride + 0], ya, translucentVertices[ia * stride + 2]);
-        glm::vec3 b(translucentVertices[ib * stride + 0], yb, translucentVertices[ib * stride + 2]);
-        glm::vec3 c(translucentVertices[ic * stride + 0], yc, translucentVertices[ic * stride + 2]);
-        glm::vec3 d(translucentVertices[id * stride + 0], yd, translucentVertices[id * stride + 2]);
-
-        translucentFaceCentroids.push_back((a + b + c + d) / 4.0f);
-    }
-
-    // Store CPU side copies for sorting
-    translucentIndexDataCPU = std::move(translucentIndices);
+    translucentFaceCentroids = std::move(data.translucentFaceCentroids);
+    translucentIndexDataCPU = std::move(data.translucentIndices);
     translucentNeedsSort = true;
-
-    // Clear neighbor cache
-    for (int dx = 0; dx < 3; dx++) {
-        for (int dz = 0; dz < 3; dz++) {
-            neighborCache[dx][dz] = nullptr;
-        }
-    }
 }
 
 bool Chunk::isBlockVisible(int x, int y, int z, int face, bool fasterTrees, const BlockDB::BlockInfo* thisInfo) const {

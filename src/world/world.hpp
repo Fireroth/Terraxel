@@ -2,10 +2,13 @@
 
 #include <map>
 #include <vector>
+#include <set>
+#include <shared_mutex>
+#include <mutex>
+#include <memory>
 #include <glm/glm.hpp>
+#include "../core/threadPool.hpp"
 #include "chunk.hpp"
-
-class Chunk;
 
 struct Frustum {
     glm::vec4 planes[6];
@@ -31,11 +34,31 @@ public:
     void saveChunkIfModified(Chunk* chunk);
     void saveAllModifiedChunks();
 
+    void loadChunkAsync(int x, int z);
+    void queueMeshComputation(int x, int z);
+    void queueChunkMeshUpload(Chunk* chunk);
+    void uploadPendingChunkMeshes();
+    void processPendingDeletions();
+
     static Frustum extractFrustumPlanes(const glm::mat4& projView);
     static bool isChunkInFrustum(int chunkX, int chunkZ, const Frustum& frustum, const glm::dvec3& cameraPos);
+
+    mutable std::shared_mutex chunksMutex;
 
 private:
     std::map<std::pair<int, int>, Chunk*> chunks;
     int lastPlayerChunkX = INT32_MIN;
     int lastPlayerChunkZ = INT32_MIN;
+    int lastRadius = -1;
+
+    std::unique_ptr<ThreadPool> threadPool;
+
+    std::set<std::pair<int, int>> loadingChunks;
+    std::mutex loadingMutex;
+
+    std::vector<Chunk*> chunksToUpload;
+    std::mutex uploadMutex;
+
+    std::vector<Chunk*> pendingDeletion;
+    std::mutex deletionMutex;
 };
