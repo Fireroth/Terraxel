@@ -1,9 +1,157 @@
 #include <map>
 #include <cstdint>
+#include <random>
+#include <cmath>
+#include <algorithm>
 #include "structureDB.hpp"
 #include "noise.hpp"
 #include "chunkTerrain.hpp"
 #include "biomeDB.hpp"
+#include "../core/saveManager.hpp"
+
+void generateCaves(Chunk& chunk) {
+    constexpr float PI = 3.14159265358979f;
+    constexpr int SEARCH_RADIUS = 5;
+    constexpr float STEP_SIZE = 1.2f;
+    constexpr float CAVE_SPAWN_PROBABILITY = 0.15f;
+    constexpr int LAVA_LEVEL = 8;
+    constexpr int WATER_CHECK_RANGE = 4;
+
+    const int worldSeed = SaveManager::getActiveSeed();
+    const int chunkX = chunk.chunkX;
+    const int chunkZ = chunk.chunkZ;
+    const int chunkWidth = Chunk::chunkWidth;
+    const int chunkDepth = Chunk::chunkDepth;
+    const int chunkHeight = Chunk::chunkHeight;
+
+    const double chunkMinX = static_cast<double>(chunkX) * chunkWidth;
+    const double chunkMaxX = chunkMinX + chunkWidth;
+    const double chunkMinZ = static_cast<double>(chunkZ) * chunkDepth;
+    const double chunkMaxZ = chunkMinZ + chunkDepth;
+
+    std::uniform_real_distribution<float> spawnDist (0.0f,  1.0f);
+    std::uniform_real_distribution<float> posYDist  (15.0f, 60.0f);
+    std::uniform_real_distribution<float> lengthDist(40.0f, 80.0f);
+    std::uniform_real_distribution<float> angleDist (0.0f,  2.0f * PI);
+    std::uniform_real_distribution<float> pitchDist (-0.1f * PI, 0.1f * PI);
+    std::uniform_real_distribution<float> radiusDist(1.5f,  3.5f);
+    std::uniform_int_distribution<int> numWormsDist(1, 3);
+
+    for (int cx = chunkX - SEARCH_RADIUS; cx <= chunkX + SEARCH_RADIUS; ++cx) {
+        for (int cz = chunkZ - SEARCH_RADIUS; cz <= chunkZ + SEARCH_RADIUS; ++cz) {
+            const uint64_t chunkSeed = static_cast<uint64_t>(cx) * 341873128712ULL + static_cast<uint64_t>(cz) * 132897987541ULL + static_cast<uint64_t>(worldSeed);
+            std::mt19937 rng(chunkSeed);
+
+            if (spawnDist(rng) >= CAVE_SPAWN_PROBABILITY)
+                continue;
+
+            std::uniform_real_distribution<double> posXDist(static_cast<double>(cx) * chunkWidth, static_cast<double>(cx) * chunkWidth + chunkWidth - 1);
+            std::uniform_real_distribution<double> posZDist(static_cast<double>(cz) * chunkDepth, static_cast<double>(cz) * chunkDepth + chunkDepth - 1);
+            const int numWorms = numWormsDist(rng);
+
+            for (int i = 0; i < numWorms; ++i) {
+                double x = posXDist(rng);
+                double y = static_cast<double>(posYDist(rng));
+                double z = posZDist(rng);
+                const int steps = static_cast<int>(lengthDist(rng));
+                float yaw = angleDist(rng);
+                float pitch = pitchDist(rng);
+                const float baseRadius = radiusDist(rng);
+
+                for (int s = 0; s < steps; ++s) {
+                    const float nYaw   = chunk.noises.cavePathNoise.GetNoise(x, y, z);
+                    const float nPitch = chunk.noises.cavePathNoise.GetNoise(x + 31329.0, y + 31329.0, z + 31329.0);
+
+                    yaw  += nYaw * 0.35f;
+                    pitch = pitch * 0.7f + nPitch * 0.15f;
+
+                    const float nRadius     = chunk.noises.caveRadiusNoise.GetNoise(x, y, z);
+                    const float currentRadius = std::max(1.0f, baseRadius + nRadius * 1.5f);
+                    const float r2            = currentRadius * currentRadius;
+
+                    // Chunk AABB early exit
+                    if (x + currentRadius < chunkMinX || x - currentRadius >= chunkMaxX || z + currentRadius < chunkMinZ || z - currentRadius >= chunkMaxZ) 
+                        goto advance_worm;
+
+                    {
+                        const int txStart = chunkX * chunkWidth;
+                        const int tzStart = chunkZ * chunkDepth;
+                        const int minLocalX = std::max(0, static_cast<int>(std::floor(x - currentRadius)) - txStart);
+                        const int maxLocalX = std::min(chunkWidth - 1, static_cast<int>(std::floor(x + currentRadius)) - txStart);
+                        const int minLocalZ = std::max(0, static_cast<int>(std::floor(z - currentRadius)) - tzStart);
+                        const int maxLocalZ = std::min(chunkDepth - 1, static_cast<int>(std::floor(z + currentRadius)) - tzStart);
+                        const int minY = std::max(1, static_cast<int>(std::floor(y - currentRadius)));
+                        const int maxY = std::min(chunkHeight - 2, static_cast<int>(std::floor(y + currentRadius)));
+
+                        if (minLocalX <= maxLocalX && minLocalZ <= maxLocalZ) {
+                            for (int lx = minLocalX; lx <= maxLocalX; ++lx) {
+                                const double dx = static_cast<double>(txStart + lx) - x;
+                                const double dx2 = dx * dx;
+                                if (dx2 >= r2) continue; // entire column outside sphere
+
+                                for (int lz = minLocalZ; lz <= maxLocalZ; ++lz) {
+                                    const double dz = static_cast<double>(tzStart + lz) - z;
+                                    const double dz2 = dz * dz;
+                                    if (dx2 + dz2 >= r2) continue;
+
+                                    for (int wy = minY; wy <= maxY; ++wy) {
+                                        const double dy = static_cast<double>(wy) - y;
+                                        if (dx2 + dy * dy + dz2 >= r2) continue;
+
+                                        const uint16_t blockType = chunk.blocks[lx][wy][lz].type;
+
+                                        if (blockType == 0 || blockType == 6 || blockType == 9 || blockType == 10)
+                                            continue;
+
+                                        bool nearWater = false;
+
+                                        // Check Y axis
+                                        {
+                                            const int checkUp  = std::min(chunkHeight - 1, wy + WATER_CHECK_RANGE);
+                                            const int checkDn  = std::max(0, wy - WATER_CHECK_RANGE);
+                                            for (int cy = checkDn; cy <= checkUp && !nearWater; ++cy)
+                                                if (chunk.blocks[lx][cy][lz].type == 9)
+                                                    nearWater = true;
+                                        }
+
+                                        // Check X axis
+                                        if (!nearWater) {
+                                            const int checkXMin = std::max(0, lx - WATER_CHECK_RANGE);
+                                            const int checkXMax = std::min(chunkWidth-1, lx + WATER_CHECK_RANGE);
+                                            for (int cx2 = checkXMin; cx2 <= checkXMax && !nearWater; ++cx2)
+                                                if (chunk.blocks[cx2][wy][lz].type == 9)
+                                                    nearWater = true;
+                                        }
+
+                                        // Check Z axis
+                                        if (!nearWater) {
+                                            const int checkZMin = std::max(0, lz - WATER_CHECK_RANGE);
+                                            const int checkZMax = std::min(chunkDepth-1, lz + WATER_CHECK_RANGE);
+                                            for (int cz2 = checkZMin; cz2 <= checkZMax && !nearWater; ++cz2)
+                                                if (chunk.blocks[lx][wy][cz2].type == 9)
+                                                    nearWater = true;
+                                        }
+                                        if (nearWater) continue;
+
+                                        chunk.blocks[lx][wy][lz].type = (wy < LAVA_LEVEL) ? 10 : 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    advance_worm:
+                    x += std::cos(pitch) * std::sin(yaw) * STEP_SIZE;
+                    y += std::sin(pitch) * STEP_SIZE;
+                    z += std::cos(pitch) * std::cos(yaw) * STEP_SIZE;
+
+                    if (y < 5.0f || y > 85.0f)
+                        break;
+                }
+            }
+        }
+    }
+}
 
 // Helper function to get biome index based on noise value
 int getBiomeIndex(float b, int count) {
@@ -213,6 +361,8 @@ void generateChunkTerrain(Chunk& chunk) {
             }
         }
     }
+
+    generateCaves(chunk);
 
     // Biome specific features
     chunk.biomeIndex = mainBiomeIndex;

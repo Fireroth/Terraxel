@@ -463,12 +463,7 @@ void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio
     );
 
     glm::mat4 view = camera.getViewMatrix();
-    glm::mat4 projection = glm::perspective(
-        glm::radians(currentFov),
-        aspectRatio,
-        0.1f,
-        5000.0f
-    );
+    glm::mat4 projection = glm::perspective(glm::radians(currentFov), aspectRatio, 0.1f, 5000.0f);
 
     glUseProgram(borderShaderProgram);
 

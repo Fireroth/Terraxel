@@ -32,5 +32,13 @@ ChunkNoises noiseInit() {
     noises.randomNoise.SetFrequency(1.00f);
     noises.randomNoise.SetSeed(seed + 3);
 
+    noises.cavePathNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noises.cavePathNoise.SetFrequency(0.02f);
+    noises.cavePathNoise.SetSeed(seed + 100);
+
+    noises.caveRadiusNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noises.caveRadiusNoise.SetFrequency(0.05f);
+    noises.caveRadiusNoise.SetSeed(seed + 101);
+
     return noises;
 }

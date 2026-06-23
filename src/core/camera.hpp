@@ -54,7 +54,7 @@ private:
     
     const float gravity = -30.0f;
     const float jumpPower = 8.73f;
-    const float playerHeight = 1.75f;
+    const float playerHeight = 1.8f;
     const float eyeHeight = 1.62f;
     const float playerRadius = 0.3f;
     const float stepHeight = 0.56f;

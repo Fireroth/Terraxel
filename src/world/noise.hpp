@@ -10,6 +10,8 @@ struct ChunkNoises {
     FastNoiseLite featureNoise;
     FastNoiseLite biomeDistortNoise;
     FastNoiseLite randomNoise;
+    FastNoiseLite cavePathNoise;
+    FastNoiseLite caveRadiusNoise;
 };
 
 ChunkNoises noiseInit();
