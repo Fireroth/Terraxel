@@ -1593,6 +1593,72 @@
         "renderFacesInBetween": false,
         "tabName": "Blocks",
         "lightEmission": 15
+    },
+
+    "coal_ore": {
+        "id": 138,
+        "textures": [[5,9],[5,9],[5,9],[5,9],[5,9],[5,9]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Coal Ore",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "iron_ore": {
+        "id": 139,
+        "textures": [[6,9],[6,9],[6,9],[6,9],[6,9],[6,9]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Iron Ore",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "gold_ore": {
+        "id": 140,
+        "textures": [[7,9],[7,9],[7,9],[7,9],[7,9],[7,9]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Gold Ore",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "diamond_ore": {
+        "id": 141,
+        "textures": [[8,9],[8,9],[8,9],[8,9],[8,9],[8,9]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Diamond Ore",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "diorite": {
+        "id": 142,
+        "textures": [[12,15],[12,15],[12,15],[12,15],[12,15],[12,15]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Diorite",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "granite": {
+        "id": 143,
+        "textures": [[12,14],[12,14],[12,14],[12,14],[12,14],[12,14]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Granite",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
     }
 
 }

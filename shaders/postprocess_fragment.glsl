@@ -89,7 +89,7 @@ void main() {
     //---------------------------------------------------------------------------------
     else if (effectType == 10) {
         activeFogColor         = vec3(0.85, 0.18, 0.0);
-        activeFogDensity       = 0.5;
+        activeFogDensity       = 0.25;
         activeFogStartDistance = 0.0;
 
         // Blur and fog
