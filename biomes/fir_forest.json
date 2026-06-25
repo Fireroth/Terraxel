@@ -114,6 +114,78 @@
             "allowedBlock": 23,
             "seedOffset": 8,
             "yOffset": -1
+        },
+        {
+            "type": "ore",
+            "block": 138,
+            "threshold": 0.9,
+            "allowedBlock": 3,
+            "seedOffset": 9,
+            "minCount": 4,
+            "maxCount": 16,
+            "yMin": 5,
+            "yMax": 80,
+            "spread": 0.3
+        },
+        {
+            "type": "ore",
+            "block": 139,
+            "threshold": 0.92,
+            "allowedBlock": 3,
+            "seedOffset": 10,
+            "minCount": 2,
+            "maxCount": 8,
+            "yMin": 10,
+            "yMax": 50,
+            "spread": 0.6
+        },
+        {
+            "type": "ore",
+            "block": 140,
+            "threshold": 0.96,
+            "allowedBlock": 3,
+            "seedOffset": 11,
+            "minCount": 2,
+            "maxCount": 8,
+            "yMin": 2,
+            "yMax": 40,
+            "spread": 1.0
+        },
+        {
+            "type": "ore",
+            "block": 141,
+            "threshold": 0.97,
+            "allowedBlock": 3,
+            "seedOffset": 12,
+            "minCount": 2,
+            "maxCount": 6,
+            "yMin": 2,
+            "yMax": 30,
+            "spread": 1.0
+        },
+        {
+            "type": "ore",
+            "block": 142,
+            "threshold": 0.96,
+            "allowedBlock": 3,
+            "seedOffset": 13,
+            "minCount": 35,
+            "maxCount": 70,
+            "yMin": 7,
+            "yMax": 90,
+            "spread": 0.2
+        },
+        {
+            "type": "ore",
+            "block": 143,
+            "threshold": 0.96,
+            "allowedBlock": 3,
+            "seedOffset": 14,
+            "minCount": 35,
+            "maxCount": 70,
+            "yMin": 7,
+            "yMax": 90,
+            "spread": 0.2
         }
     ]
 }

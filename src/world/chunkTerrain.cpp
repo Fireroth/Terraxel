@@ -372,6 +372,8 @@ void generateChunkTerrain(Chunk& chunk) {
             generateChunkBiomeFeatures(chunk, feature.threshold, feature.xOffset, feature.zOffset, feature.structure, feature.allowedBlock, feature.seedOffset, feature.yOffset);
         } else if (feature.type == "block") {
             generateChunkBiomeBlocks(chunk, feature.threshold, feature.block, feature.allowedBlock, feature.seedOffset, feature.yOffset.value_or(0));
+        } else if (feature.type == "ore") {
+            generateChunkBiomeOres(chunk, feature.threshold, feature.block, feature.allowedBlock, feature.seedOffset, feature.minCount, feature.maxCount, feature.yMin, feature.yMax, feature.spread);
         }
     }
 }    
@@ -495,6 +497,145 @@ void generateChunkBiomeBlocks(Chunk& chunk, float threshold, int blockID, int al
                     int ty = (y + 1) + yOffset;
                     if (ty >= 0 && ty < Chunk::chunkHeight) 
                         chunk.blocks[x][ty][z].type = static_cast<uint16_t>(blockID);
+                }
+            }
+        }
+    }
+}
+
+void generateChunkBiomeOres(Chunk& chunk, float threshold, int blockID, int allowedBlockID, int seedOffset, int minCount, int maxCount, int yMin, int yMax, float spread) {
+    const int mainBiomeIndex = chunk.biomeIndex;
+    const int chunkWidth = Chunk::chunkWidth;
+    const int chunkDepth = Chunk::chunkDepth;
+    const int chunkHeight = Chunk::chunkHeight;
+    const int chunkWorldX = chunk.chunkX * chunkWidth;
+    const int chunkWorldZ = chunk.chunkZ * chunkDepth;
+
+    const float biomeDistortStrength = 8.0f;
+    const int biomeCount = BiomeDB::getBiomeCount();
+    auto& noises = chunk.noises;
+
+    // Search radius of 6 blocks around the current chunk
+    const int R = 6;
+
+    for (int rx = -R; rx < chunkWidth + R; rx++) {
+        for (int rz = -R; rz < chunkDepth + R; rz++) {
+            int worldX = chunkWorldX + rx;
+            int worldZ = chunkWorldZ + rz;
+            float biomeDistortX = noises.biomeDistortNoise.GetNoise((double)worldX, (double)worldZ) * biomeDistortStrength;
+            float biomeDistortY = noises.biomeDistortNoise.GetNoise((double)worldX + 1000.0, (double)worldZ + 1000.0) * biomeDistortStrength;
+            float b = noises.biomeNoise.GetNoise((double)worldX + biomeDistortX, (double)worldZ + biomeDistortY);
+            int colBiomeIdx = getBiomeIndex(b, biomeCount);
+
+            if (colBiomeIdx != mainBiomeIndex) 
+                continue;
+
+            float n = seededHash(worldX, worldZ, seedOffset);
+            if (n > threshold) {
+                uint64_t veinSeed = static_cast<uint64_t>(worldX) * 341873128712ULL + static_cast<uint64_t>(worldZ) * 132897987541ULL + static_cast<uint64_t>(seedOffset) + static_cast<uint64_t>(SaveManager::getActiveSeed());
+                std::mt19937 rng(veinSeed);
+
+                std::uniform_int_distribution<int> yDist(yMin, yMax);
+                int startY = yDist(rng);
+                std::uniform_int_distribution<int> countDist(minCount, maxCount);
+                int count = countDist(rng);
+
+                std::vector<glm::ivec3> candidates;
+                std::vector<glm::ivec3> visited;
+
+                auto isVisited = [&](const glm::ivec3& pos) {
+                    for (const auto& v : visited) {
+                        if (v.x == pos.x && v.y == pos.y && v.z == pos.z) return true;
+                    }
+                    return false;
+                };
+
+                glm::ivec3 center(worldX, startY, worldZ);
+                candidates.push_back(center);
+                visited.push_back(center);
+
+                int placedCount = 0;
+                glm::ivec3 lastPlaced = center;
+
+                auto addNeighbors = [&](int wx, int wy, int wz) {
+                    static const glm::ivec3 dirs[6] = {
+                        { 0,  0,  1}, { 0,  0, -1},
+                        {-1,  0,  0}, { 1,  0,  0},
+                        { 0,  1,  0}, { 0, -1,  0}
+                    };
+                    for (int i = 0; i < 6; ++i) {
+                        int nx = wx + dirs[i].x;
+                        int ny = wy + dirs[i].y;
+                        int nz = wz + dirs[i].z;
+                        if (ny >= yMin && ny <= yMax &&
+                            ny >= 1 && ny < chunkHeight - 1) {
+                            glm::ivec3 nextPos(nx, ny, nz);
+                            if (!isVisited(nextPos)) {
+                                visited.push_back(nextPos);
+                                candidates.push_back(nextPos);
+                            }
+                        }
+                    }
+                };
+
+                std::uniform_real_distribution<float> floatDist(0.0f, 1.0f);
+                while (placedCount < count && !candidates.empty()) {
+                    int chosenIndex = -1;
+                    float r = floatDist(rng);
+
+                    if (r >= spread) {
+                        float minDistSq = 1e9f;
+                        float perturbation = 4.0f;
+                        for (size_t i = 0; i < candidates.size(); ++i) {
+                            glm::vec3 diff = glm::vec3(candidates[i] - center);
+                            float d2 = glm::dot(diff, diff);
+                            float score = d2 + floatDist(rng) * perturbation;
+                            if (score < minDistSq) {
+                                minDistSq = score;
+                                chosenIndex = static_cast<int>(i);
+                            }
+                        }
+                    } else {
+                        std::vector<int> adjacentCandidates;
+                        for (size_t i = 0; i < candidates.size(); ++i) {
+                            glm::ivec3 diff = candidates[i] - lastPlaced;
+                            if (std::abs(diff.x) + std::abs(diff.y) + std::abs(diff.z) == 1) {
+                                adjacentCandidates.push_back(static_cast<int>(i));
+                            }
+                        }
+
+                        if (!adjacentCandidates.empty()) {
+                            std::uniform_int_distribution<int> adjDist(0, (int)adjacentCandidates.size() - 1);
+                            chosenIndex = adjacentCandidates[adjDist(rng)];
+                        } else {
+                            std::uniform_int_distribution<int> candDist(0, (int)candidates.size() - 1);
+                            chosenIndex = candDist(rng);
+                        }
+                    }
+
+                    if (chosenIndex != -1) {
+                        glm::ivec3 nextPos = candidates[chosenIndex];
+                        candidates.erase(candidates.begin() + chosenIndex);
+
+                        int localX = nextPos.x - chunkWorldX;
+                        int localZ = nextPos.z - chunkWorldZ;
+
+                        if (localX >= 0 && localX < chunkWidth &&
+                            localZ >= 0 && localZ < chunkDepth) {
+                            if (chunk.blocks[localX][nextPos.y][localZ].type == allowedBlockID) {
+                                chunk.blocks[localX][nextPos.y][localZ].type = static_cast<uint16_t>(blockID);
+                                placedCount++;
+                                lastPlaced = nextPos;
+                                addNeighbors(nextPos.x, nextPos.y, nextPos.z);
+                            }
+                        } else {
+                            placedCount++;
+                            lastPlaced = nextPos;
+                            addNeighbors(nextPos.x, nextPos.y, nextPos.z);
+                        }
+                    } else {
+                        break;
+                    }
                 }
             }
         }

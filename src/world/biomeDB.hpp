@@ -27,15 +27,22 @@ struct BiomeLayer {
 };
 
 struct BiomeFeature {
-    std::string type; // "structure" or "block"
+    std::string type; // "structure", "block", or "ore"
     std::string structure; // for type "structure"
-    int block = 0; // for type "block"
+    int block = 0; // for type "block" and "ore"
     float threshold = 0.99f;
     std::optional<int> xOffset;
     std::optional<int> yOffset;
     std::optional<int> zOffset;
     int allowedBlock = 1;
     int seedOffset = 0;
+
+    // Ore specific parameters
+    int minCount = 1;
+    int maxCount = 8;
+    int yMin = 0;
+    int yMax = 256;
+    float spread = 1.0f;
 };
 
 struct BiomeData {

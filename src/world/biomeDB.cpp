@@ -98,6 +98,11 @@ void BiomeDB::init() {
                         }
                         feature.allowedBlock = featureJson.value("allowedBlock", 1);
                         feature.seedOffset = featureJson.value("seedOffset", 0);
+                        feature.minCount = featureJson.value("minCount", 1);
+                        feature.maxCount = featureJson.value("maxCount", 8);
+                        feature.yMin = featureJson.value("yMin", 0);
+                        feature.yMax = featureJson.value("yMax", 256);
+                        feature.spread = featureJson.value("spread", 1.0f);
                         biome.features.push_back(feature);
                         LOG_TRACE("BiomeDB: biome '", biome.id, "' parsed feature: type=", feature.type,
                                   feature.type == "structure" ? ", structure=" + feature.structure : ", block=" + std::to_string(feature.block));
