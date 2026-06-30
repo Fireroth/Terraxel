@@ -11,6 +11,8 @@
 #include "imguiOverlay.hpp"
 #include "../world/block_interaction.hpp"
 #include "../core/logger.hpp"
+#include "../world/blockDB.hpp"
+#include "../world/modelDB.hpp"
 
 
 Renderer::Renderer()
@@ -462,34 +464,57 @@ void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio
         hit.hitChunk->chunkZ * Chunk::chunkDepth + hit.hitBlockPos.z
     );
 
+    uint16_t type = hit.hitChunk->blocks[hit.hitBlockPos.x][hit.hitBlockPos.y][hit.hitBlockPos.z].type;
+    std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
+    const BlockDB::BlockInfo* blockInfo = BlockDB::getBlockInfo(type);
+    if (blockInfo) {
+        if (!ModelDB::getHitBoxes(blockInfo->modelName, boxes) || boxes.empty()) {
+            boxes.clear();
+            boxes.emplace_back(glm::vec3(0.0f), glm::vec3(1.0f));
+        }
+    } else {
+        boxes.emplace_back(glm::vec3(0.0f), glm::vec3(1.0f));
+    }
+
     glm::mat4 view = camera.getViewMatrix();
     glm::mat4 projection = glm::perspective(glm::radians(currentFov), aspectRatio, 0.1f, 5000.0f);
 
     glUseProgram(borderShaderProgram);
-
     glDisable(GL_CULL_FACE);
-    glLineWidth(4.0f);
-
-    // Avoid z-fighting
-    glEnable(GL_POLYGON_OFFSET_LINE);
-    glPolygonOffset(-2.0f, -4.0f);
-
+    glLineWidth(2.5f);
     glDepthMask(GL_FALSE);
-
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(glm::dvec3(worldPos) - camera.getPositionDouble()));
-    model = glm::scale(model, glm::vec3(1.001f));
-
-    glUniformMatrix4fv(uBorderModelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(uBorderViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(uBorderProjLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_POLYGON_OFFSET_LINE);
+    glPolygonOffset(-1.0f, -1.0f);
     glBindVertexArray(borderVAO);
-    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+
+    for (const auto& box : boxes) {
+        glm::vec3 minBound = box.first;
+        glm::vec3 maxBound = box.second;
+
+        if (minBound.x > 0.0f) minBound.x -= 0.001f;
+        if (minBound.y > 0.0f) minBound.y -= 0.001f;
+        if (minBound.z > 0.0f) minBound.z -= 0.001f;
+        if (maxBound.x < 1.0f) maxBound.x += 0.001f;
+        if (maxBound.y < 1.0f) maxBound.y += 0.001f;
+        if (maxBound.z < 1.0f) maxBound.z += 0.001f;
+
+        glm::vec3 size = maxBound - minBound;
+        glm::dvec3 finalPos = glm::dvec3(worldPos) + glm::dvec3(minBound) - camera.getPositionDouble();
+
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(finalPos));
+        model = glm::scale(model, size);
+
+        glUniformMatrix4fv(uBorderModelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(uBorderViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(uBorderProjLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+    }
+
     glBindVertexArray(0);
-
-    glDepthMask(GL_TRUE);
     glDisable(GL_POLYGON_OFFSET_LINE);
-
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
     glLineWidth(2.0f);
     glEnable(GL_CULL_FACE);
     glUseProgram(0);

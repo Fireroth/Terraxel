@@ -13,7 +13,7 @@ extern "C" {
 Fix liquid face gap when liquid is built in the shape of stairs
 Sounds
 Survival mode
-Lighting > Caves > Ores
+Lighting
 Support for models spanning multiple blocks
 Replace ImGUI with custom UI rendering for inventory and hotbar
 

@@ -229,7 +229,7 @@
         "transparent": true,
         "liquid": false,
         "name": "Poppy",
-        "model": "cross",
+        "model": "crossSmall",
         "renderFacesInBetween": false,
         "tabName": "Plants"
     },
@@ -240,7 +240,7 @@
         "transparent": true,
         "liquid": false,
         "name": "Dandelion",
-        "model": "cross",
+        "model": "crossSmall",
         "renderFacesInBetween": false,
         "tabName": "Plants"
     },
@@ -658,7 +658,7 @@
         "transparent": true,
         "liquid": false,
         "name": "Red Rose",
-        "model": "cross",
+        "model": "crossSmall",
         "renderFacesInBetween": false,
         "tabName": "Plants"
     },
@@ -713,7 +713,7 @@
         "transparent": false,
         "liquid": false,
         "name": "Brown Mushroom",
-        "model": "cross",
+        "model": "crossSmall",
         "renderFacesInBetween": false,
         "tabName": "Plants"
     },
@@ -724,7 +724,7 @@
         "transparent": false,
         "liquid": false,
         "name": "Red Mushroom",
-        "model": "cross",
+        "model": "crossSmall",
         "renderFacesInBetween": false,
         "tabName": "Plants"
     },
