@@ -1,6 +1,5 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
-#include <sstream>
 #include <random>
 #include <cmath>
 #include "../world/world.hpp"
@@ -426,13 +425,15 @@ void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camer
     float pitch = 0.0f;
     std::array<uint16_t, 9> hotbar;
     bool flyEnabled = false;
+    bool isSneaking = false;
 
-    if (SaveManager::loadPlayerState(position, yaw, pitch, hotbar, flyEnabled)) {
+    if (SaveManager::loadPlayerState(position, yaw, pitch, hotbar, flyEnabled, isSneaking)) {
         int playerChunkX = static_cast<int>(std::floor(position.x / Chunk::chunkWidth));
         int playerChunkZ = static_cast<int>(std::floor(position.z / Chunk::chunkDepth));
         world->generateChunks(2, playerChunkX, playerChunkZ);
         camera.setPosition(position);
         camera.setRotation(yaw, pitch);
+        camera.setSneaking(isSneaking, world, true);
         setHotbarBlocks(hotbar);
         setFlyMode(flyEnabled);
     } else {
@@ -502,7 +503,8 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                     camera.getYaw(),
                     camera.getPitch(),
                     getHotbarBlocks(),
-                    getFlyMode()
+                    getFlyMode(),
+                    camera.getIsSneaking()
                 );
                 world->reset();
                 SaveManager::clearActiveWorld();
@@ -716,7 +718,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             displayControlRow("Move Left", g_controls.moveLeft, 2);
             displayControlRow("Move Right", g_controls.moveRight, 3);
             displayControlRow("Jump/Up", g_controls.jumpUp, 4);
-            displayControlRow("Down", g_controls.crouchDown, 5);
+            displayControlRow("Crouch/Down", g_controls.crouchDown, 5);
             displayControlRow("Sprint", g_controls.sprint, 6);
             displayControlRow("Toggle Fly Mode", g_controls.toggleFlyMode, 7);
             displayControlRow("Toggle Wireframe", g_controls.toggleWireframe, 8);

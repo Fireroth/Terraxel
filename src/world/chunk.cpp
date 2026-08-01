@@ -10,7 +10,6 @@
 #include "noise.hpp"
 #include "chunkTerrain.hpp"
 #include "modelDB.hpp"
-#include "../core/logger.hpp"
 
 struct pendingBlock {
     int x, y, z;

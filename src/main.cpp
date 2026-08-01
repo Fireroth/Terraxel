@@ -133,7 +133,8 @@ int main() {
         camera.getYaw(),
         camera.getPitch(),
         getHotbarBlocks(),
-        getFlyMode()
+        getFlyMode(),
+        camera.getIsSneaking()
     );
 
     BlockPreviewRenderer::cleanup();

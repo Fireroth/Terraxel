@@ -8,7 +8,8 @@
 #include "../core/options.hpp"
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
-    : position(glm::dvec3(position)), worldUp(up), yaw(yaw), pitch(pitch), movementSpeed(2.5f), stepViewOffset(0.0) {
+    : position(glm::dvec3(position)), worldUp(up), yaw(yaw), pitch(pitch), movementSpeed(2.5f), stepViewOffset(0.0),
+      currentEyeHeight(1.62f), currentPlayerHeight(1.8f), isSneaking(false) {
     updateCameraVectors();
 }
 
@@ -92,10 +93,10 @@ static bool aabbOverlapStrict(const glm::dvec3& amin, const glm::dvec3& amax, co
 
 bool Camera::isInLiquid(World* world, float& outDrag) const {
     if (!world) return false;
-    double feetY = position.y - eyeHeight;
+    double feetY = position.y - currentEyeHeight;
     double shrinkRadius = playerRadius * 0.8;
     glm::dvec3 aabbMin(position.x - shrinkRadius, feetY, position.z - shrinkRadius);
-    glm::dvec3 aabbMax(position.x + shrinkRadius, feetY + playerHeight * 0.9, position.z + shrinkRadius);
+    glm::dvec3 aabbMax(position.x + shrinkRadius, feetY + currentPlayerHeight * 0.9, position.z + shrinkRadius);
 
     bool foundLiquid = false;
     float maxDrag = 0.0f;
@@ -172,6 +173,20 @@ void Camera::stepVelocity(float deltaTime, World* world) {
 
     inLiquid = world ? isInLiquid(world, liquidDrag) : false;
 
+    // Smooth interpolation
+    float targetEye = isSneaking ? sneakEyeHeight : eyeHeight;
+    float targetHeight = isSneaking ? sneakPlayerHeight : playerHeight;
+    if (std::abs(currentEyeHeight - targetEye) > 0.0001f) {
+        float oldEye = currentEyeHeight;
+        float lerpFactor = std::min(1.0f, 14.0f * deltaTime);
+        currentEyeHeight += (targetEye - currentEyeHeight) * lerpFactor;
+        currentPlayerHeight += (targetHeight - currentPlayerHeight) * lerpFactor;
+        position.y += static_cast<double>(currentEyeHeight - oldEye);
+    } else {
+        currentEyeHeight = targetEye;
+        currentPlayerHeight = targetHeight;
+    }
+
     if (inLiquid) {
         velocity.y += (gravity * 0.15f) * deltaTime;
     } else {
@@ -180,7 +195,7 @@ void Camera::stepVelocity(float deltaTime, World* world) {
 
     glm::dvec3 proposedPos = position;
     glm::dvec3 horizMove = glm::dvec3(velocity.x, 0.0, velocity.z) * static_cast<double>(deltaTime);
-    double feetY_current = position.y - eyeHeight;
+    double feetY_current = position.y - currentEyeHeight;
 
     auto isBlockSolid = [&](uint16_t type) -> bool {
         if (type == 0) return false;
@@ -230,9 +245,9 @@ void Camera::stepVelocity(float deltaTime, World* world) {
     };
 
     auto tryMoveOrStep = [&](const glm::dvec3& tryPos, glm::dvec3& outPos) -> bool {
-        double feetY = tryPos.y - eyeHeight;
+        double feetY = tryPos.y - currentEyeHeight;
         glm::dvec3 aabbMin(tryPos.x - playerRadius, feetY, tryPos.z - playerRadius);
-        glm::dvec3 aabbMax(tryPos.x + playerRadius, feetY + playerHeight, tryPos.z + playerRadius);
+        glm::dvec3 aabbMax(tryPos.x + playerRadius, feetY + currentPlayerHeight, tryPos.z + playerRadius);
 
         double blockTop = 0.0;
         if (!collidesWithTop(aabbMin, aabbMax, world, blockTop)) {
@@ -244,11 +259,11 @@ void Camera::stepVelocity(float deltaTime, World* world) {
         double stepDiff = blockTop - feetY_current;
         if (grounded && !inLiquid && stepDiff > -0.01 - COLLISION_EPS && stepDiff <= stepHeight + COLLISION_EPS) {
             glm::dvec3 steppedPos = tryPos;
-            steppedPos.y = blockTop + eyeHeight;
-            double steppedFeetY = steppedPos.y - eyeHeight;
+            steppedPos.y = blockTop + currentEyeHeight;
+            double steppedFeetY = steppedPos.y - currentEyeHeight;
 
             glm::dvec3 sMin(steppedPos.x - playerRadius, steppedFeetY, steppedPos.z - playerRadius);
-            glm::dvec3 sMax(steppedPos.x + playerRadius, steppedFeetY + playerHeight, steppedPos.z + playerRadius);
+            glm::dvec3 sMax(steppedPos.x + playerRadius, steppedFeetY + currentPlayerHeight, steppedPos.z + playerRadius);
 
             double dummyTop;
             if (!collidesWithTop(sMin, sMax, world, dummyTop)) {
@@ -262,18 +277,28 @@ void Camera::stepVelocity(float deltaTime, World* world) {
         return false; // blocked
     };
 
+    auto validMove = [&](const glm::dvec3& tryPos, glm::dvec3& outPos) -> bool {
+        if (!tryMoveOrStep(tryPos, outPos)) return false;
+        if (isSneaking && grounded && !inLiquid) {
+            if (!hasGroundSupport(outPos, world)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     if (world) {
         glm::dvec3 stepPos;
 
         // full X+Z
-        if (tryMoveOrStep(position + horizMove, stepPos)) {
+        if (validMove(position + horizMove, stepPos)) {
             if (stepPos.y > position.y) {
                 stepViewOffset -= (stepPos.y - position.y);
             }
             proposedPos = stepPos;
         }
         // X only
-        else if (tryMoveOrStep(position + glm::dvec3(horizMove.x, 0.0, 0.0), stepPos)) {
+        else if (validMove(position + glm::dvec3(horizMove.x, 0.0, 0.0), stepPos)) {
             if (stepPos.y > position.y) {
                 stepViewOffset -= (stepPos.y - position.y);
             }
@@ -282,7 +307,7 @@ void Camera::stepVelocity(float deltaTime, World* world) {
             velocity.z = 0.0;
         }
         // Z only
-        else if (tryMoveOrStep(position + glm::dvec3(0.0, 0.0, horizMove.z), stepPos)) {
+        else if (validMove(position + glm::dvec3(0.0, 0.0, horizMove.z), stepPos)) {
             if (stepPos.y > position.y) {
                 stepViewOffset -= (stepPos.y - position.y);
             }
@@ -295,16 +320,16 @@ void Camera::stepVelocity(float deltaTime, World* world) {
 
         // vertical movement
         proposedPos.y += velocity.y * deltaTime;
-        double feetY = proposedPos.y - eyeHeight;
+        double feetY = proposedPos.y - currentEyeHeight;
         glm::dvec3 aabbMin(proposedPos.x - playerRadius, feetY, proposedPos.z - playerRadius);
-        glm::dvec3 aabbMax(proposedPos.x + playerRadius, feetY + playerHeight, proposedPos.z + playerRadius);
+        glm::dvec3 aabbMax(proposedPos.x + playerRadius, feetY + currentPlayerHeight, proposedPos.z + playerRadius);
 
         grounded = false;
         double blockTop;
         if (collidesWithTop(aabbMin, aabbMax, world, blockTop)) {
             if (feetY <= blockTop + 0.01 + COLLISION_EPS &&
                 feetY >= blockTop - stepHeight - COLLISION_EPS) {
-                proposedPos.y = blockTop + eyeHeight + COLLISION_EPS;
+                proposedPos.y = blockTop + currentEyeHeight + COLLISION_EPS;
                 velocity.y = 0.0;
                 grounded = true;
             } else {
@@ -340,6 +365,119 @@ void Camera::stepVelocity(float deltaTime, World* world) {
         velocity.x = horizVel.x;
         velocity.z = horizVel.z;
     }
+}
+
+void Camera::setSneaking(bool sneakReq, World* world, bool instant) {
+    if (sneakReq) {
+        isSneaking = true;
+        if (instant) {
+            currentEyeHeight = sneakEyeHeight;
+            currentPlayerHeight = sneakPlayerHeight;
+        }
+    } else {
+        if (isSneaking) {
+            if (canUncrouch(world)) {
+                isSneaking = false;
+                if (instant) {
+                    currentEyeHeight = eyeHeight;
+                    currentPlayerHeight = playerHeight;
+                }
+            }
+        }
+    }
+}
+
+bool Camera::canUncrouch(World* world) const {
+    if (!world) return true;
+    double feetY = position.y - currentEyeHeight;
+    glm::dvec3 standingMin(position.x - playerRadius, feetY, position.z - playerRadius);
+    glm::dvec3 standingMax(position.x + playerRadius, feetY + playerHeight, position.z + playerRadius);
+
+    for (int blockX = static_cast<int>(std::floor(standingMin.x)); blockX <= static_cast<int>(std::floor(standingMax.x)); ++blockX) {
+        for (int blockZ = static_cast<int>(std::floor(standingMin.z)); blockZ <= static_cast<int>(std::floor(standingMax.z)); ++blockZ) {
+            int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
+            int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
+            Chunk* chunk = world->getChunk(chunkX, chunkZ);
+            if (!chunk) continue;
+
+            for (int blockY = std::max(0, static_cast<int>(std::floor(standingMin.y)));
+                 blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(standingMax.y)));
+                 ++blockY) {
+                int localX = blockX - chunkX * Chunk::chunkWidth;
+                int localY = blockY;
+                int localZ = blockZ - chunkZ * Chunk::chunkDepth;
+                if (localX < 0 || localX >= Chunk::chunkWidth ||
+                    localY < 0 || localY >= Chunk::chunkHeight ||
+                    localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+
+                uint16_t type = chunk->blocks[localX][localY][localZ].type;
+                if (type == 0) continue;
+                const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+                if (info && info->liquid) continue;
+
+                std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
+                if (!info || !ModelDB::getCollisionBoxes(info->modelName, boxes)) continue;
+
+                for (const auto& [minF, maxF] : boxes) {
+                    glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
+                    glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
+
+                    if (aabbOverlapStrict(standingMin, standingMax, bmin, bmax)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool Camera::hasGroundSupport(const glm::dvec3& eyePos, World* world) const {
+    if (!world) return true;
+    double feetY = eyePos.y - currentEyeHeight;
+    glm::dvec3 feetMin(eyePos.x - playerRadius, feetY - stepHeight - 0.05, eyePos.z - playerRadius);
+    glm::dvec3 feetMax(eyePos.x + playerRadius, feetY + 0.05, eyePos.z + playerRadius);
+
+    for (int blockX = static_cast<int>(std::floor(feetMin.x)); blockX <= static_cast<int>(std::floor(feetMax.x)); ++blockX) {
+        for (int blockZ = static_cast<int>(std::floor(feetMin.z)); blockZ <= static_cast<int>(std::floor(feetMax.z)); ++blockZ) {
+            int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
+            int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
+            Chunk* chunk = world->getChunk(chunkX, chunkZ);
+            if (!chunk) continue;
+
+            for (int blockY = std::max(0, static_cast<int>(std::floor(feetMin.y)));
+                 blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(feetMax.y)));
+                 ++blockY) {
+                int localX = blockX - chunkX * Chunk::chunkWidth;
+                int localY = blockY;
+                int localZ = blockZ - chunkZ * Chunk::chunkDepth;
+                if (localX < 0 || localX >= Chunk::chunkWidth ||
+                    localY < 0 || localY >= Chunk::chunkHeight ||
+                    localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+
+                uint16_t type = chunk->blocks[localX][localY][localZ].type;
+                if (type == 0) continue;
+                const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+                if (info && info->liquid) continue;
+
+                std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
+                if (!info || !ModelDB::getCollisionBoxes(info->modelName, boxes)) continue;
+
+                for (const auto& [minF, maxF] : boxes) {
+                    glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
+                    glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
+
+                    if (bmax.y >= feetY - stepHeight - 0.05 && bmax.y <= feetY + 0.1) {
+                        if (feetMin.x <= bmax.x - COLLISION_EPS && feetMax.x >= bmin.x + COLLISION_EPS &&
+                            feetMin.z <= bmax.z - COLLISION_EPS && feetMax.z >= bmin.z + COLLISION_EPS) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }
 
 void Camera::updateVelocityFlight(float deltaTime) {

@@ -18,8 +18,15 @@ public:
     float getYaw() const { return yaw; }
     float getPitch() const { return pitch; }
     float getPlayerRadius() const { return playerRadius; }
-    float getPlayerHeight() const { return playerHeight; }
-    float getEyeHeight() const { return eyeHeight; }
+    float getPlayerHeight() const { return currentPlayerHeight; }
+    float getEyeHeight() const { return currentEyeHeight; }
+    float getStandingEyeHeight() const { return eyeHeight; }
+    float getStandingPlayerHeight() const { return playerHeight; }
+    bool getIsSneaking() const { return isSneaking; }
+
+    void setSneaking(bool sneakReq, class World* world = nullptr, bool instant = false);
+    bool canUncrouch(class World* world) const;
+    bool hasGroundSupport(const glm::dvec3& eyePos, class World* world) const;
 
     void updateVelocity(float deltaTime, class World* world = nullptr);
     void stepVelocity(float deltaTime, class World* world);
@@ -56,6 +63,8 @@ private:
     const float jumpPower = 8.73f;
     const float playerHeight = 1.8f;
     const float eyeHeight = 1.62f;
+    const float sneakPlayerHeight = 1.46f;
+    const float sneakEyeHeight = 1.27f;
     const float playerRadius = 0.3f;
     const float stepHeight = 0.56f;
     const float airControlFactor = 0.3f;
@@ -64,6 +73,10 @@ private:
     const float coyoteTime = 0.05f; // seconds to allow jump after walking off an edge
     const float jumpBufferTime = 0.1f; // seconds to buffer a jump input
     const float stepViewOffsetSpeed = 35.0f;
+
+    float currentEyeHeight = eyeHeight;
+    float currentPlayerHeight = playerHeight;
+    bool isSneaking = false;
 
     float coyoteTimer = 0.0f;
     float jumpBufferTimer = 0.0f;

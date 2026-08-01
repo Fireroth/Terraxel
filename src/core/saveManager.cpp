@@ -162,7 +162,7 @@ void SaveManager::clearActiveWorld() {
     hasActiveWorld = false;
 }
 
-bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled) {
+bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled, bool isSneaking) {
     if (!hasActiveWorld) {
         return false;
     }
@@ -178,6 +178,7 @@ bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float p
         j["yaw"] = yaw;
         j["pitch"] = pitch;
         j["flyEnabled"] = flyEnabled;
+        j["isSneaking"] = isSneaking;
         j["hotbar"] = hotbar;
 
         std::ofstream file(playerPath);
@@ -194,7 +195,7 @@ bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float p
     }
 }
 
-bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled) {
+bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled, bool& isSneaking) {
     if (!hasActiveWorld) {
         return false;
     }
@@ -229,6 +230,7 @@ bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch
         yaw = j.at("yaw").get<float>();
         pitch = j.at("pitch").get<float>();
         flyEnabled = j.at("flyEnabled").get<bool>();
+        isSneaking = j.value("isSneaking", false);
         for (size_t i = 0; i < hotbar.size(); i++) {
             hotbar[i] = hotbarJson[i].get<uint16_t>();
         }

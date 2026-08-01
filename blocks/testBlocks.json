@@ -52,5 +52,16 @@
         "model": "testModel2",
         "renderFacesInBetween": false,
         "tabName": "Internal"
+    },
+
+    "stone_top_slab": {
+        "id": 65005,
+        "textures": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Stone Top Slab",
+        "model": "testModel3",
+        "renderFacesInBetween": false,
+        "tabName": "Internal"
     }
 }

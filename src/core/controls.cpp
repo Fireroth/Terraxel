@@ -210,7 +210,7 @@ void initializeDefaultControls() {
     g_controls.jumpUp = GLFW_KEY_SPACE;
     g_controls.crouchDown = GLFW_KEY_LEFT_SHIFT;
     g_controls.toggleFlyMode = GLFW_KEY_F;
-    g_controls.toggleWireframe = GLFW_KEY_G;
+    g_controls.toggleWireframe = GLFW_KEY_F4;
     g_controls.sprint = GLFW_KEY_LEFT_CONTROL;
     g_controls.openInventory = GLFW_KEY_E;
     g_controls.openConsole = GLFW_KEY_T;

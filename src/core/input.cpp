@@ -153,13 +153,18 @@ void setupInputCallbacks(GLFWwindow* window, Camera* camera, World* world) {
 // Speed multiplier
 float getSpeedMultiplier(GLFWwindow* window) {
     bool sprintPressed = glfwGetKey(window, g_controls.sprint) == GLFW_PRESS;
+    bool crouchPressed = glfwGetKey(window, g_controls.crouchDown) == GLFW_PRESS;
+    bool isSneaking = g_camera && g_camera->getIsSneaking();
+    bool activeSneak = crouchPressed || isSneaking;
     bool onlyForward = (glfwGetKey(window, g_controls.moveForward) == GLFW_PRESS) && (glfwGetKey(window, g_controls.moveBackward) != GLFW_PRESS);
-    bool canSprint = sprintPressed && onlyForward;
+    bool canSprint = sprintPressed && onlyForward && !activeSneak;
     
     if (flyMode)
         return sprintPressed ? 30.0f : 4.0f;
+    else if (activeSneak && g_camera && !g_camera->isInLiquidCached())
+        return 0.45f;
     else
-        return canSprint ? 2.25f : 1.75f;
+        return canSprint ? 2.1f : 1.50f;
 }
 
 // Keyboard movement
@@ -230,6 +235,13 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime, float spe
     hotbarTogglePressedLastFrame = hotbarTogglePressedThisFrame;
 
     if (!ingoreInput) { // True if console is opened
+
+        bool crouchPressed = glfwGetKey(window, g_controls.crouchDown) == GLFW_PRESS;
+        if (!flyMode && !camera.isInLiquidCached()) {
+            camera.setSneaking(crouchPressed, g_world);
+        } else {
+            camera.setSneaking(false, g_world);
+        }
 
         if (glfwGetKey(window, g_controls.moveForward) == GLFW_PRESS)
             camera.processKeyboard("FORWARD", deltaTime, speedMultiplier, flyMode);

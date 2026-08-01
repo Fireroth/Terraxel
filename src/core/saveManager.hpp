@@ -24,8 +24,8 @@ public:
     static int getActiveSeed();
     static const WorldInfo* getActiveWorld();
     static void clearActiveWorld();
-    static bool savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled);
-    static bool loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled);
+    static bool savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled, bool isSneaking = false);
+    static bool loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled, bool& isSneaking);
 
 private:
     static std::string generateUUID();
