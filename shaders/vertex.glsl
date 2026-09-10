@@ -4,11 +4,13 @@ layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aTexCoord;
 layout (location = 2) in float aFaceID;
 layout (location = 3) in float aAO;
+layout (location = 4) in vec2 aLight;
 
 out vec3 TexCoord;
 out float FaceID;
 out vec3 WorldPos;
 out float AO;
+out vec2 Light;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -21,4 +23,5 @@ void main() {
     FaceID = aFaceID;
     WorldPos = worldPosition.xyz;
     AO = aAO;
+    Light = aLight;
 }

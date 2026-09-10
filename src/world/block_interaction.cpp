@@ -6,6 +6,8 @@
 #include "modelDB.hpp"
 #include "block_interaction.hpp"
 #include "../renderer/imguiOverlay.hpp"
+#include "lighting.hpp"
+#include "../core/options.hpp"
 
 
 // Helper function to get Hitbox for a block model
@@ -158,13 +160,31 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
     RaycastResult hit = raycast(world, origin, dir, 6.0f);
 
     int chunkX = 0, chunkZ = 0, x = 0, z = 0;
+    std::set<Chunk*> chunksToRemesh;
 
     // p = place, b = break
     if (action == 'b') {
         if (!hit.hit || !hit.hitChunk) return;
+        uint16_t oldType = hit.hitChunk->blocks[hit.hitBlockPos.x][hit.hitBlockPos.y][hit.hitBlockPos.z].type;
+        if (oldType == 0) return;
+        const auto* oldInfo = BlockDB::getBlockInfo(oldType);
+
         hit.hitChunk->blocks[hit.hitBlockPos.x][hit.hitBlockPos.y][hit.hitBlockPos.z].type = 0;
         hit.hitChunk->isModified = true;
-        hit.hitChunk->buildMesh();
+        chunksToRemesh.insert(hit.hitChunk);
+
+        if (oldInfo && oldInfo->lightEmission > 0) {
+            auto remesh = VoxelLighting::removeLightEmitter(world, hit.hitChunk, hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+            chunksToRemesh.insert(remesh.begin(), remesh.end());
+        } else {
+            auto remesh = VoxelLighting::removeLightBlocker(world, hit.hitChunk, hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+            chunksToRemesh.insert(remesh.begin(), remesh.end());
+        }
+
+        if (!VoxelLighting::isLightPassable(oldType)) {
+            auto remesh = VoxelLighting::removeSkyLightBlocker(world, hit.hitChunk, hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+            chunksToRemesh.insert(remesh.begin(), remesh.end());
+        }
 
         chunkX = hit.hitChunk->chunkX;
         chunkZ = hit.hitChunk->chunkZ;
@@ -213,7 +233,18 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
 
         block.type = blockType;
         hit.placeChunk->isModified = true;
-        hit.placeChunk->buildMesh();
+        chunksToRemesh.insert(hit.placeChunk);
+
+        const auto* newInfo = BlockDB::getBlockInfo(blockType);
+        if (newInfo && newInfo->lightEmission > 0) {
+            auto remesh = VoxelLighting::addLightEmitter(world, hit.placeChunk, hit.placeBlockPos.x, hit.placeBlockPos.y, hit.placeBlockPos.z, newInfo->lightEmission);
+            chunksToRemesh.insert(remesh.begin(), remesh.end());
+        } else if (!VoxelLighting::isLightPassable(blockType)) {
+            auto remesh1 = VoxelLighting::addLightBlocker(world, hit.placeChunk, hit.placeBlockPos.x, hit.placeBlockPos.y, hit.placeBlockPos.z);
+            chunksToRemesh.insert(remesh1.begin(), remesh1.end());
+            auto remesh2 = VoxelLighting::addSkyLightBlocker(world, hit.placeChunk, hit.placeBlockPos.x, hit.placeBlockPos.y, hit.placeBlockPos.z);
+            chunksToRemesh.insert(remesh2.begin(), remesh2.end());
+        }
 
         chunkX = hit.placeChunk->chunkX;
         chunkZ = hit.placeChunk->chunkZ;
@@ -224,37 +255,41 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
     // Rebuild neighbor chunk mesh if at chunk edge
     if (x == 0) {
         Chunk* neighbor = world->getChunk(chunkX - 1, chunkZ);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
     if (x == Chunk::chunkWidth - 1) {
         Chunk* neighbor = world->getChunk(chunkX + 1, chunkZ);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
     if (z == 0) {
         Chunk* neighbor = world->getChunk(chunkX, chunkZ - 1);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
     if (z == Chunk::chunkDepth - 1) {
         Chunk* neighbor = world->getChunk(chunkX, chunkZ + 1);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
 
     // Rebuild diagonal neighbor chunks for AO at corners
     if (x == 0 && z == 0) {
         Chunk* neighbor = world->getChunk(chunkX - 1, chunkZ - 1);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
     if (x == Chunk::chunkWidth - 1 && z == 0) {
         Chunk* neighbor = world->getChunk(chunkX + 1, chunkZ - 1);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
     if (x == 0 && z == Chunk::chunkDepth - 1) {
         Chunk* neighbor = world->getChunk(chunkX - 1, chunkZ + 1);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
     }
     if (x == Chunk::chunkWidth - 1 && z == Chunk::chunkDepth - 1) {
         Chunk* neighbor = world->getChunk(chunkX + 1, chunkZ + 1);
-        if (neighbor) neighbor->buildMesh();
+        if (neighbor) chunksToRemesh.insert(neighbor);
+    }
+
+    for (Chunk* chunk : chunksToRemesh) {
+        chunk->buildMesh();
     }
 }
 
@@ -274,6 +309,34 @@ BlockInfo getLookedAtBlockInfo(World* world, const Camera& camera) {
         hit.hitChunk->chunkZ * Chunk::chunkDepth + hit.hitBlockPos.z
     );
     info.type = hit.hitChunk->blocks[hit.hitBlockPos.x][hit.hitBlockPos.y][hit.hitBlockPos.z].type;
+
+    if (getOptionInt("enable_lighting", 1) == 0) {
+        info.skyLight = 15;
+        info.blockLight = 0;
+        return info;
+    }
+
+    if (VoxelLighting::isLightPassable(info.type)) {
+        info.skyLight = hit.hitChunk->getSkyLight(hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+        info.blockLight = hit.hitChunk->getBlockLight(hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+    } else if (hit.hasPlacePos && hit.placeChunk) {
+        info.skyLight = hit.placeChunk->getSkyLight(hit.placeBlockPos.x, hit.placeBlockPos.y, hit.placeBlockPos.z);
+        info.blockLight = hit.placeChunk->getBlockLight(hit.placeBlockPos.x, hit.placeBlockPos.y, hit.placeBlockPos.z);
+    } else {
+        int placeY = hit.hitBlockPos.y + hit.faceNormal.y;
+        if (placeY >= Chunk::chunkHeight) {
+            info.skyLight = 15;
+            info.blockLight = 0;
+        } else {
+            info.skyLight = hit.hitChunk->getSkyLight(hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+            info.blockLight = hit.hitChunk->getBlockLight(hit.hitBlockPos.x, hit.hitBlockPos.y, hit.hitBlockPos.z);
+        }
+    }
+
+    const auto* blockDef = BlockDB::getBlockInfo(info.type);
+    if (blockDef && blockDef->lightEmission > 0) {
+        info.blockLight = std::max(info.blockLight, static_cast<uint8_t>(blockDef->lightEmission));
+    }
 
     return info;
 }

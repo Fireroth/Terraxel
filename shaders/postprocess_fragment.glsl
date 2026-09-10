@@ -57,7 +57,7 @@ void main() {
     //---------------------------------------------------------------------------------
     if (effectType == 9) {
         activeFogColor         = vec3(0.145, 0.231, 0.80);
-        activeFogDensity       = 0.07;
+        activeFogDensity       = 0.03;
         activeFogStartDistance = 0.0;
 
         // Chromatic aberration and blur
@@ -112,7 +112,7 @@ void main() {
     //---------------------------------------------------------------------------------
     else if (effectType == 69) {
         activeFogColor         = vec3(0.145, 0.525, 0.80);
-        activeFogDensity       = 0.07;
+        activeFogDensity       = 0.03;
         activeFogStartDistance = 0.0;
 
         // Chromatic aberration and blur

@@ -536,7 +536,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
 
         case PauseMenuPage::Video: {
             float sliderHeight = buttonSize.y;
-            float totalH = titleH + spacing + 6 * (sliderHeight + spacing) + buttonSize.y;
+            float totalH = titleH + spacing + 7 * (sliderHeight + spacing) + buttonSize.y;
             MenuLayout layout(totalH, spacing);
 
             drawMenuTitle(layout, "Video Settings");
@@ -572,6 +572,13 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             const char* fpsFormat = (sliderVal >= 250) ? "Unlimited" : "%d";
             if (drawMenuSliderInt(layout, "Max FPS", "##MaxFPS", &sliderVal, 10, 250, 300.0f, fpsFormat)) {
                 setOption("max_fps", static_cast<float>((sliderVal >= 250) ? 0 : sliderVal));
+            }
+
+            bool lightingEnabled = renderer->lightingEnabled;
+            if (drawMenuToggle(layout, "Enable Lighting", &lightingEnabled, ImVec2(300, buttonSize.y))) {
+                renderer->lightingEnabled = lightingEnabled;
+                setOption("enable_lighting", static_cast<float>(lightingEnabled ? 1 : 0));
+                world->reset();
             }
 
             bool fasterTreesEnabled = getOptionInt("faster_trees", 0) != 0;
@@ -791,6 +798,33 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
     int chunkX = static_cast<int>(std::floor(feetPos.x / 16.0f));
     int chunkZ = static_cast<int>(std::floor(feetPos.z / 16.0f));
 
+    int eyeBlockX = static_cast<int>(std::floor(pos.x));
+    int eyeBlockY = static_cast<int>(std::floor(pos.y));
+    int eyeBlockZ = static_cast<int>(std::floor(pos.z));
+    int eyeChunkX = worldToChunkCoord(eyeBlockX, Chunk::chunkWidth);
+    int eyeChunkZ = worldToChunkCoord(eyeBlockZ, Chunk::chunkDepth);
+    Chunk* eyeChunk = world->getChunk(eyeChunkX, eyeChunkZ);
+    uint8_t eyeSkyLight = 0;
+    uint8_t eyeBlockLight = 0;
+    if (getOptionInt("enable_lighting", 1) == 0) {
+        eyeSkyLight = 15;
+        eyeBlockLight = 0;
+    } else if (eyeChunk) {
+        int eyeLocalX = eyeBlockX - eyeChunkX * Chunk::chunkWidth;
+        int eyeLocalY = eyeBlockY;
+        int eyeLocalZ = eyeBlockZ - eyeChunkZ * Chunk::chunkDepth;
+        if (eyeLocalX >= 0 && eyeLocalX < Chunk::chunkWidth &&
+            eyeLocalY >= 0 && eyeLocalY < Chunk::chunkHeight &&
+            eyeLocalZ >= 0 && eyeLocalZ < Chunk::chunkDepth) {
+            eyeSkyLight = eyeChunk->getSkyLight(eyeLocalX, eyeLocalY, eyeLocalZ);
+            eyeBlockLight = eyeChunk->getBlockLight(eyeLocalX, eyeLocalY, eyeLocalZ);
+        } else if (eyeLocalY >= Chunk::chunkHeight) {
+            eyeSkyLight = 15;
+        }
+    } else if (eyeBlockY >= Chunk::chunkHeight) {
+        eyeSkyLight = 15;
+    }
+
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.1f, 0.1f, 0.5f));
     ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(1.0f, 1.0f, 1.0f, 0.7f));
 
@@ -818,6 +852,8 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
     ImGui::Text("Camera -> Grounded: %s", grounded ? "True" : "False");
     ImGui::Text("Camera -> In Liquid: %s", inLiquid ? "True" : "False");
     ImGui::Text("Camera -> Eye Block: %d", eyeBlock);
+    ImGui::Text("Camera -> Sky Light: %d", eyeSkyLight);
+    ImGui::Text("Camera -> Block Light: %d", eyeBlockLight);
     ImGui::Separator();
     ImGui::Text("Input -> Selected: %s", BlockDB::getBlockInfo(selectedBlockType)->name.c_str());
     ImGui::Text("Input -> Selected ID: %d", selectedBlockType);
@@ -831,8 +867,9 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
         ImGui::Text("Block -> translucent: %s", info->translucent ? "True" : "False");
         ImGui::Text("Block -> renderFacesInBetween: %s", info->renderFacesInBetween ? "True" : "False");
         ImGui::Text("Block -> model name: %s", info->modelName.c_str());
-        ImGui::Text("Block -> drag: %.1f", info->drag);
         ImGui::Text("Block -> light emission: %i", info->lightEmission);
+        ImGui::Text("Block -> sky light: %d", blockInfo.skyLight);
+        ImGui::Text("Block -> block light: %d", blockInfo.blockLight);
 
     } else {
         ImGui::Text("Block -> name: Air");

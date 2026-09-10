@@ -14,6 +14,7 @@
 #include "../world/blockDB.hpp"
 #include "../world/structureDB.hpp"
 #include "../world/block_interaction.hpp"
+#include "../world/lighting.hpp"
 
 std::vector<ConsoleCommand> Console::commands;
 std::vector<std::string> Console::logLines;
@@ -431,6 +432,14 @@ void Console::init() {
                         chunksToRebuild.insert(chunk);
 
                 }
+                }
+
+                for (Chunk* c : chunksToRebuild) {
+                    c->clearLight();
+                    c->isLightCalculated.store(false, std::memory_order_release);
+                }
+                for (Chunk* c : chunksToRebuild) {
+                    VoxelLighting::calculateFullLighting(world, c);
                 }
 
                 std::set<Chunk*> allChunksToRebuild;

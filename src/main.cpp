@@ -50,6 +50,9 @@ int main() {
         timeBeginPeriod(1);
     #endif
 
+    Window window(windowWidth, windowHeight, "Terraxel");
+    window.init();
+
     Renderer renderer;
     ImGuiOverlay ImGuiOverlay;
     BlockDB::init();
@@ -63,9 +66,6 @@ int main() {
         0.0f,                          // Yaw
         0.0f                           // Pitch
     );
-
-    Window window(windowWidth, windowHeight, "Terraxel");
-    window.init();
 
     window.setFramebufferResizeCallback([&aspectRatio](int w, int h, float ar) {
         aspectRatio = ar;
@@ -136,6 +136,9 @@ int main() {
         getFlyMode(),
         camera.getIsSneaking()
     );
+
+    renderer.world.reset();
+    SaveManager::clearActiveWorld();
 
     BlockPreviewRenderer::cleanup();
 

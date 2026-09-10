@@ -10,10 +10,12 @@
 #include "noise.hpp"
 #include "chunkTerrain.hpp"
 #include "modelDB.hpp"
+#include "lighting.hpp"
 
 struct pendingBlock {
     int x, y, z;
     uint16_t type;
+    int srcChunkX = 0, srcChunkZ = 0;
 };
 static std::map<std::pair<int, int>, std::vector<pendingBlock >> pendingBlockPlacements;
 static std::mutex pendingPlacementsMutex;
@@ -131,6 +133,9 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                                 targetChunk->isModified = true;
                             }
                             chunksToRebuild.insert(targetChunk);
+                            if (targetChunk != this) {
+                                modifiedNeighborChunks.insert(targetChunk);
+                            }
 
                             if (localX == 0) {
                                 Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ);
@@ -170,13 +175,20 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                         // Chunk not loaded, defer placement
                         std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
                         auto key = std::make_pair(targetChunkX, targetChunkZ);
-                        pendingBlockPlacements[key].push_back({localX, worldY, localZ, blockType});
+                        pendingBlockPlacements[key].push_back({localX, worldY, localZ, blockType, chunkX, chunkZ});
                     }
                 }
             }
         }
     }
     if (forced) {
+        for (Chunk* chunk : chunksToRebuild) {
+            chunk->clearLight();
+            chunk->isLightCalculated.store(false, std::memory_order_release);
+        }
+        for (Chunk* chunk : chunksToRebuild) {
+            VoxelLighting::calculateFullLighting(world, chunk);
+        }
         for (Chunk* chunk : chunksToRebuild) {
             chunk->buildMesh();
         }
@@ -199,6 +211,12 @@ void Chunk::applyPendingBlockPlacements() {
             for (const auto& pb : iterator->second) {
                 if (pb.x >= 0 && pb.x < chunkWidth && pb.y >= 0 && pb.y < chunkHeight && pb.z >= 0 && pb.z < chunkDepth) {
                     blocks[pb.x][pb.y][pb.z].type = pb.type;
+                }
+                if (world) {
+                    Chunk* srcChunk = world->getChunk(pb.srcChunkX, pb.srcChunkZ);
+                    if (srcChunk && srcChunk != this) {
+                        modifiedNeighborChunks.insert(srcChunk);
+                    }
                 }
             }
         }
@@ -228,6 +246,10 @@ void Chunk::computeMesh() {
         }
     }
 
+    if (getOptionInt("enable_lighting", 1) != 0 && !isLightCalculated.load(std::memory_order_acquire)) {
+        return;
+    }
+
     // Cache neighboring chunks to avoid tree map lookups in loops
     for (int dx = -1; dx <= 1; dx++) {
         for (int dz = -1; dz <= 1; dz++) {
@@ -241,6 +263,7 @@ void Chunk::computeMesh() {
 
     bool fasterTrees = (getOptionInt("faster_trees", 0) != 0);
     bool useAO = (getOptionInt("ambient_occlusion", 1) != 0);
+    bool useLighting = (getOptionInt("enable_lighting", 1) != 0);
 
     ChunkMeshData data;
     unsigned int indexOffset = 0;
@@ -260,7 +283,7 @@ void Chunk::computeMesh() {
                 if (m) {
                     if (!m->planes.empty()) {
                         for (int planeIndex = 0; planeIndex < (int)m->planes.size(); planeIndex++) {
-                            addPlaneFace(data.crossVertices, data.crossIndices, x, y, z, planeIndex, info, crossIndexOffset);
+                            addPlaneFace(data.crossVertices, data.crossIndices, x, y, z, planeIndex, info, crossIndexOffset, useLighting);
                         }
                     }
                     if (!m->cuboids.empty()) {
@@ -270,7 +293,7 @@ void Chunk::computeMesh() {
                         for (int face = 0; face < 6; face++) {
                             if (isBlockVisible(x, y, z, face, fasterTrees, info)) {
                                 for (size_t cuboidIndex = 0; cuboidIndex < m->cuboids.size(); cuboidIndex++) {
-                                    addCuboidFace(targetVerts, targetIndices, x, y, z, face, cuboidIndex, info, targetOffset, useAO);
+                                    addCuboidFace(targetVerts, targetIndices, x, y, z, face, cuboidIndex, info, targetOffset, useAO, useLighting);
                                 }
                             }
                         }
@@ -283,7 +306,7 @@ void Chunk::computeMesh() {
     // Compute face centroids for sorting
     data.translucentFaceCentroids.clear();
     data.translucentFaceCentroids.reserve(data.translucentIndices.size() / 6);
-    const size_t stride = 9;
+    const size_t stride = 11;
     for (size_t i = 0; i + 5 < data.translucentIndices.size(); i += 6) {
         unsigned int base = data.translucentIndices[i + 0];
         for (size_t k = 1; k < 6; ++k) {
@@ -358,14 +381,16 @@ void Chunk::uploadMesh() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int), data.indices.data(), GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(6 * sizeof(float)));
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(7 * sizeof(float)));
+        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
         glEnableVertexAttribArray(3);
+        glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(8 * sizeof(float)));
+        glEnableVertexAttribArray(4);
 
         glBindVertexArray(0);
     } else {
@@ -397,10 +422,12 @@ void Chunk::uploadMesh() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, crossEBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.crossIndices.size() * sizeof(unsigned int), data.crossIndices.data(), GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
     } else {
@@ -432,16 +459,18 @@ void Chunk::uploadMesh() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.translucentIndices.size() * sizeof(unsigned int), data.translucentIndices.data(), GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(6 * sizeof(float)));
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(7 * sizeof(float)));
+        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(7 * sizeof(float)));
         glEnableVertexAttribArray(3);
-        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(8 * sizeof(float)));
+        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(8 * sizeof(float)));
         glEnableVertexAttribArray(4);
+        glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(9 * sizeof(float)));
+        glEnableVertexAttribArray(5);
 
         glBindVertexArray(0);
     } else {
@@ -528,7 +557,7 @@ bool Chunk::isBlockVisible(int x, int y, int z, int face, bool fasterTrees, cons
     return false;
 }
 
-void Chunk::addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset) {
+void Chunk::addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useLighting) {
     const Model* model = ModelDB::getModel(blockInfo->modelName);
     if (!model || planeIndex < 0 || planeIndex >= (int)model->planes.size()) return;
 
@@ -582,14 +611,18 @@ void Chunk::addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>
         float local_u = (i == 1 || i == 2) ? faceData.uvTo.x : faceData.uvFrom.x;
         float local_v = (i == 2 || i == 3) ? faceData.uvTo.y : faceData.uvFrom.y;
         float layer = atlasOffset.y * 16.0f + atlasOffset.x;
-        vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer});
+        glm::vec2 light = useLighting ? getVoxelLight(x, y, z) : glm::vec2(15.0f, 0.0f);
+        if (blockInfo->lightEmission > 0) {
+            light.y = std::max(light.y, static_cast<float>(blockInfo->lightEmission));
+        }
+        vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, light.x, light.y});
     }
 
     indices.insert(indices.end(), {offset, offset + 1, offset + 2, offset + 2, offset + 3, offset});
     offset += 4;
 }
 
-void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO) {
+void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO, bool useLighting) {
     const Model* model = ModelDB::getModel(blockInfo->modelName);
     if (!model || cuboidIndex >= model->cuboids.size()) return;
 
@@ -673,8 +706,17 @@ void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int
     }
 
     float ao[4];
+    glm::vec2 vertLight[4];
     for (int i = 0; i < 4; ++i) {
         ao[i] = calculateVertexAO(x, y, z, face, faceVerts[i], useAO, isLiquid);
+        if (useLighting) {
+            vertLight[i] = calculateVertexLight(x, y, z, face, faceVerts[i], isLiquid);
+            if (blockInfo->lightEmission > 0) {
+                vertLight[i].y = std::max(vertLight[i].y, static_cast<float>(blockInfo->lightEmission));
+            }
+        } else {
+            vertLight[i] = glm::vec2(15.0f, 0.0f);
+        }
     }
 
     for (int i = 0; i < 4; ++i) {
@@ -690,9 +732,9 @@ void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int
                 if (isTopFace || (face <= 3 && std::abs(faceVerts[i].y - faceMaxY) < eps))
                     isTop = 1.0f;
             }
-            vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), isTop, ao[i]});
+            vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), isTop, ao[i], vertLight[i].x, vertLight[i].y});
         } else {
-            vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), ao[i]});
+            vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), ao[i], vertLight[i].x, vertLight[i].y});
         }
     }
 
@@ -940,4 +982,132 @@ float Chunk::calculateVertexAO(int x, int y, int z, int face, const glm::vec3& c
     }
 
     return static_cast<float>(ao);
+}
+
+glm::vec2 Chunk::getVoxelLight(int nx, int ny, int nz) const {
+    if (ny < 0 || ny >= chunkHeight)
+        return glm::vec2(15.0f, 0.0f);
+
+    int localX = nx;
+    int localZ = nz;
+    int rx = 1;
+    int rz = 1;
+
+    if (localX < 0) {
+        localX += chunkWidth;
+        rx = 0;
+    } else if (localX >= chunkWidth) {
+        localX -= chunkWidth;
+        rx = 2;
+    }
+
+    if (localZ < 0) {
+        localZ += chunkDepth;
+        rz = 0;
+    } else if (localZ >= chunkDepth) {
+        localZ -= chunkDepth;
+        rz = 2;
+    }
+
+    const Chunk* targetChunk = neighborCache[rx][rz];
+    if (!targetChunk || !targetChunk->isLightCalculated.load(std::memory_order_acquire)) {
+        int cx = std::clamp(nx, 0, chunkWidth - 1);
+        int cz = std::clamp(nz, 0, chunkDepth - 1);
+        return glm::vec2(static_cast<float>(getSkyLight(cx, ny, cz)),
+                         static_cast<float>(getBlockLight(cx, ny, cz)));
+    }
+
+    return glm::vec2(static_cast<float>(targetChunk->getSkyLight(localX, ny, localZ)),
+                     static_cast<float>(targetChunk->getBlockLight(localX, ny, localZ)));
+}
+
+glm::vec2 Chunk::calculateVertexLight(int x, int y, int z, int face, const glm::vec3& cornerPos, bool isLiquid) const {
+    constexpr float eps = 1e-4f;
+    if (face < 4 && cornerPos.y > eps && cornerPos.y < 1.0f - eps) {
+        glm::vec3 bottomPos = cornerPos;
+        bottomPos.y = 0.0f;
+        glm::vec3 topPos = cornerPos;
+        topPos.y = 1.0f;
+        glm::vec2 light_bottom = calculateVertexLight(x, y, z, face, bottomPos, isLiquid);
+        glm::vec2 light_top = calculateVertexLight(x, y, z, face, topPos, isLiquid);
+        return glm::mix(light_bottom, light_top, cornerPos.y);
+    }
+
+    static const int offsets[6][3] = {
+        { 0,  0,  1},  // face 0
+        { 0,  0, -1},  // face 1
+        {-1,  0,  0},  // face 2
+        { 1,  0,  0},  // face 3
+        { 0,  1,  0},  // face 4
+        { 0, -1,  0}   // face 5
+    };
+
+    int static_nx = offsets[face][0];
+    int static_ny = offsets[face][1];
+    int static_nz = offsets[face][2];
+
+    int nx = 0, ny = 0, nz = 0;
+
+    if (static_nx > 0)       nx = (cornerPos.x + eps > 1.0f) ? 1 : 0;
+    else if (static_nx < 0)  nx = (cornerPos.x - eps < 0.0f) ? -1 : 0;
+
+    if (static_ny > 0)       ny = (cornerPos.y + eps > 1.0f) ? 1 : 0;
+    else if (static_ny < 0)  ny = (cornerPos.y - eps < 0.0f) ? -1 : 0;
+
+    if (static_nz > 0)       nz = (cornerPos.z + eps > 1.0f) ? 1 : 0;
+    else if (static_nz < 0)  nz = (cornerPos.z - eps < 0.0f) ? -1 : 0;
+
+    int tx = 0, ty = 0, tz = 0;
+    int ux = 0, uy = 0, uz = 0;
+
+    bool has_t1 = false;
+    bool has_t2 = false;
+
+    switch (face) {
+        case 0: // north (z+)
+        case 1: // south (z-)
+            tx = (cornerPos.x + eps > 1.0f) ? 1 : ((cornerPos.x - eps < 0.0f) ? -1 : 0);
+            uy = (cornerPos.y + eps > 1.0f) ? 1 : ((cornerPos.y - eps < 0.0f) ? -1 : 0);
+            has_t1 = (tx != 0);
+            has_t2 = (uy != 0);
+            break;
+        case 2: // west (x-)
+        case 3: // east (x+)
+            tz = (cornerPos.z + eps > 1.0f) ? 1 : ((cornerPos.z - eps < 0.0f) ? -1 : 0);
+            uy = (cornerPos.y + eps > 1.0f) ? 1 : ((cornerPos.y - eps < 0.0f) ? -1 : 0);
+            has_t1 = (tz != 0);
+            has_t2 = (uy != 0);
+            break;
+        case 4: // up (y+)
+        case 5: // down (y-)
+            tx = (cornerPos.x + eps > 1.0f) ? 1 : ((cornerPos.x - eps < 0.0f) ? -1 : 0);
+            uz = (cornerPos.z + eps > 1.0f) ? 1 : ((cornerPos.z - eps < 0.0f) ? -1 : 0);
+            has_t1 = (tx != 0);
+            has_t2 = (uz != 0);
+            break;
+    }
+
+    glm::vec2 l0 = getVoxelLight(x + nx, y + ny, z + nz);
+    glm::vec2 totalLight = l0;
+    int sampleCount = 1;
+
+    bool side1Opaque = has_t1 && isOpaque(x + nx + tx, y + ny + ty, z + nz + tz);
+    bool side2Opaque = has_t2 && isOpaque(x + nx + ux, y + ny + uy, z + nz + uz);
+
+    if (has_t1 && !side1Opaque) {
+        totalLight += getVoxelLight(x + nx + tx, y + ny + ty, z + nz + tz);
+        sampleCount++;
+    }
+    if (has_t2 && !side2Opaque) {
+        totalLight += getVoxelLight(x + nx + ux, y + ny + uy, z + nz + uz);
+        sampleCount++;
+    }
+    if (has_t1 && has_t2 && (!side1Opaque || !side2Opaque)) {
+        if (!isOpaque(x + nx + tx + ux, y + ny + ty + uy, z + nz + tz + uz)) {
+            totalLight += getVoxelLight(x + nx + tx + ux, y + ny + ty + uy, z + nz + tz + uz);
+            sampleCount++;
+        }
+    }
+
+    return totalLight / static_cast<float>(sampleCount);
 }

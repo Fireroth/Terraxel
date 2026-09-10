@@ -63,5 +63,18 @@
         "model": "testModel3",
         "renderFacesInBetween": false,
         "tabName": "Internal"
+    },
+
+    "torch2": {
+        "id": 65006,
+        "textures": [[11,12],[11,12],[11,12],[11,12],[11,12],[11,12]],
+        "transparent": false,
+        "liquid": false,
+        "drag": 0.0,
+        "name": "Torch2",
+        "model": "torch",
+        "renderFacesInBetween": false,
+        "tabName": "Internal",
+        "lightEmission": 10
     }
 }

@@ -117,16 +117,21 @@ void Renderer::init() {
     uOpaqueFogDensityLoc = glGetUniformLocation(shaderProgram, "fogDensity");
     uOpaqueFogStartLoc = glGetUniformLocation(shaderProgram, "fogStartDistance");
     uOpaqueFogColorLoc = glGetUniformLocation(shaderProgram, "fogColor");
+    uOpaqueLightingEnabledLoc = glGetUniformLocation(shaderProgram, "lightingEnabled");
 
     uCrossFogEnabledLoc = glGetUniformLocation(crossShaderProgram, "fogEnabled");
     uCrossFogDensityLoc = glGetUniformLocation(crossShaderProgram, "fogDensity");
     uCrossFogStartLoc = glGetUniformLocation(crossShaderProgram, "fogStartDistance");
     uCrossFogColorLoc = glGetUniformLocation(crossShaderProgram, "fogColor");
+    uCrossLightingEnabledLoc = glGetUniformLocation(crossShaderProgram, "lightingEnabled");
 
     uTranslucentFogEnabledLoc = glGetUniformLocation(translucentShaderProgram, "fogEnabled");
     uTranslucentFogDensityLoc = glGetUniformLocation(translucentShaderProgram, "fogDensity");
     uTranslucentFogStartLoc = glGetUniformLocation(translucentShaderProgram, "fogStartDistance");
     uTranslucentFogColorLoc = glGetUniformLocation(translucentShaderProgram, "fogColor");
+    uTranslucentLightingEnabledLoc = glGetUniformLocation(translucentShaderProgram, "lightingEnabled");
+
+    lightingEnabled = (getOptionInt("enable_lighting", 1) != 0);
 
     uPostProcessTextureLoc = glGetUniformLocation(postProcessShaderProgram, "screenTexture");
     uPostProcessEffectTypeLoc = glGetUniformLocation(postProcessShaderProgram, "effectType");
@@ -337,6 +342,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     if (uOpaqueFogColorLoc != -1) {
         glUniform3fv(uOpaqueFogColorLoc, 1, &fogColor[0]);
     }
+    if (uOpaqueLightingEnabledLoc != -1) {
+        glUniform1i(uOpaqueLightingEnabledLoc, lightingEnabled ? 1 : 0);
+    }
 
     world.render(camera, uModelLoc, frustum);
 
@@ -363,6 +371,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     }
     if (uCrossFogColorLoc != -1) {
         glUniform3fv(uCrossFogColorLoc, 1, &fogColor[0]);
+    }
+    if (uCrossLightingEnabledLoc != -1) {
+        glUniform1i(uCrossLightingEnabledLoc, lightingEnabled ? 1 : 0);
     }
 
     world.renderCross(camera, uCrossModelLoc, frustum);
@@ -393,6 +404,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     }
     if (uTranslucentFogColorLoc != -1) {
         glUniform3fv(uTranslucentFogColorLoc, 1, &fogColor[0]);
+    }
+    if (uTranslucentLightingEnabledLoc != -1) {
+        glUniform1i(uTranslucentLightingEnabledLoc, lightingEnabled ? 1 : 0);
     }
 
     world.renderTranslucent(camera, uTranslucentModelLoc, frustum);

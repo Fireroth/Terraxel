@@ -31,10 +31,10 @@ void generateCaves(Chunk& chunk) {
 
     std::uniform_real_distribution<float> spawnDist (0.0f,  1.0f);
     std::uniform_real_distribution<float> posYDist  (15.0f, 60.0f);
-    std::uniform_real_distribution<float> lengthDist(40.0f, 80.0f);
+    std::uniform_real_distribution<float> lengthDist(65.0f, 80.0f);
     std::uniform_real_distribution<float> angleDist (0.0f,  2.0f * PI);
     std::uniform_real_distribution<float> pitchDist (-0.1f * PI, 0.1f * PI);
-    std::uniform_real_distribution<float> radiusDist(1.5f,  3.5f);
+    std::uniform_real_distribution<float> radiusDist(2.0f,  3.5f);
     std::uniform_int_distribution<int> numWormsDist(1, 3);
 
     for (int cx = chunkX - SEARCH_RADIUS; cx <= chunkX + SEARCH_RADIUS; ++cx) {

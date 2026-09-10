@@ -6,6 +6,7 @@
 #include <fstream>
 #include <nlohmannJSON/json.hpp>
 #include "world.hpp"
+#include "lighting.hpp"
 #include "../core/options.hpp"
 #include "../core/saveManager.hpp"
 #include "../core/logger.hpp"
@@ -32,6 +33,9 @@ World::World() {
 
 World::~World() {
     LOG_INFO("World: Shutting down ThreadPool...");
+    if (threadPool) {
+        threadPool->shutdown();
+    }
     threadPool.reset();
 
     for (auto& [coord, chunk] : chunks) {
@@ -40,10 +44,13 @@ World::~World() {
     }
     chunks.clear();
 
-    for (Chunk* chunk : pendingDeletion) {
-        delete chunk;
+    {
+        std::lock_guard<std::mutex> lock(deletionMutex);
+        for (Chunk* chunk : pendingDeletion) {
+            delete chunk;
+        }
+        pendingDeletion.clear();
     }
-    pendingDeletion.clear();
 }
 
 void World::reset() {
@@ -322,6 +329,11 @@ void World::generateChunks(int radius, int originX, int originZ) {
         }
     }
 
+    // Calculate lighting
+    for (Chunk* chunk : activeChunks) {
+        VoxelLighting::calculateFullLighting(this, chunk);
+    }
+
     // Build meshes
     for (Chunk* chunk : activeChunks) {
         chunk->buildMesh();
@@ -447,16 +459,47 @@ void World::loadChunkAsync(int x, int z) {
 
             newChunk->applyPendingBlockPlacements();
 
+            std::set<Chunk*> chunksToRelight;
+            chunksToRelight.insert(newChunk);
+            for (Chunk* neighbor : newChunk->modifiedNeighborChunks) {
+                if (neighbor && neighbor->isLightCalculated.load(std::memory_order_acquire)) {
+                    neighbor->refCount++;
+                    chunksToRelight.insert(neighbor);
+                }
+            }
+
+            for (Chunk* c : chunksToRelight) {
+                c->clearLight();
+                c->isLightCalculated.store(false, std::memory_order_release);
+            }
+
+            std::set<Chunk*> remeshChunks;
+            for (Chunk* c : chunksToRelight) {
+                auto r = VoxelLighting::calculateFullLighting(this, c);
+                remeshChunks.insert(r.begin(), r.end());
+            }
+
             {
                 std::lock_guard<std::mutex> lock(loadingMutex);
                 loadingChunks.erase({x, z});
             }
 
-            queueMeshComputation(x, z);
-            queueMeshComputation(x + 1, z);
-            queueMeshComputation(x - 1, z);
-            queueMeshComputation(x, z + 1);
-            queueMeshComputation(x, z - 1);
+            for (Chunk* c : remeshChunks) {
+                queueMeshComputation(c->chunkX, c->chunkZ);
+            }
+            for (Chunk* c : chunksToRelight) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    for (int dz = -1; dz <= 1; ++dz) {
+                        queueMeshComputation(c->chunkX + dx, c->chunkZ + dz);
+                    }
+                }
+            }
+
+            for (Chunk* neighbor : newChunk->modifiedNeighborChunks) {
+                if (chunksToRelight.count(neighbor)) {
+                    neighbor->refCount--;
+                }
+            }
 
             newChunk->refCount--;
         });
@@ -471,12 +514,15 @@ void World::queueMeshComputation(int x, int z) {
     auto it = chunks.find({x, z});
     if (it != chunks.end()) {
         Chunk* chunk = it->second;
+        chunk->dirtyMesh = true;
         bool expected = false;
         if (chunk->isMeshing.compare_exchange_strong(expected, true)) {
             chunk->refCount++;
             try {
                 threadPool->enqueue([this, chunk]() {
-                    chunk->computeMesh();
+                    while (chunk->dirtyMesh.exchange(false)) {
+                        chunk->computeMesh();
+                    }
                     chunk->isMeshing = false;
                     chunk->refCount--;
                 });

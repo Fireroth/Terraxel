@@ -13,6 +13,7 @@ public:
     GLint uOpaqueFogEnabledLoc, uOpaqueFogDensityLoc, uOpaqueFogStartLoc, uOpaqueFogColorLoc;
     GLint uCrossFogEnabledLoc, uCrossFogDensityLoc, uCrossFogStartLoc, uCrossFogColorLoc;
     GLint uTranslucentFogEnabledLoc, uTranslucentFogDensityLoc, uTranslucentFogStartLoc, uTranslucentFogColorLoc;
+    GLint uOpaqueLightingEnabledLoc, uCrossLightingEnabledLoc, uTranslucentLightingEnabledLoc;
     Renderer();
     ~Renderer();
 
@@ -24,6 +25,7 @@ public:
     World world;
     float currentFov;
     bool fogEnabled;
+    bool lightingEnabled;
     float fogDensity;
     float fogStartDistance;
     glm::vec3 fogColor;

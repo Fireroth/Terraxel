@@ -2,9 +2,11 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <set>
 #include <glad/glad.h>
 #include <atomic>
 #include <mutex>
+#include <cstring>
 #include "blockDB.hpp"
 #include "../core/camera.hpp"
 #include "structureDB.hpp"
@@ -50,15 +52,45 @@ public:
     void applyPendingBlockPlacements();
 
     Block blocks[chunkWidth][chunkHeight][chunkDepth];
+    uint8_t light[chunkWidth][chunkHeight][chunkDepth] = {{{0}}};
     int chunkX, chunkZ;
     int biomeIndex = 0;
     bool isModified = false;
     bool loadedFromSave = false;
 
+    inline uint8_t getSkyLight(int x, int y, int z) const {
+        if (x < 0 || x >= chunkWidth || y < 0 || y >= chunkHeight || z < 0 || z >= chunkDepth) return 0;
+        return (light[x][y][z] >> 4) & 0x0F;
+    }
+
+    inline void setSkyLight(int x, int y, int z, uint8_t val) {
+        if (x >= 0 && x < chunkWidth && y >= 0 && y < chunkHeight && z >= 0 && z < chunkDepth) {
+            light[x][y][z] = (light[x][y][z] & 0x0F) | ((val & 0x0F) << 4);
+        }
+    }
+
+    inline uint8_t getBlockLight(int x, int y, int z) const {
+        if (x < 0 || x >= chunkWidth || y < 0 || y >= chunkHeight || z < 0 || z >= chunkDepth) return 0;
+        return light[x][y][z] & 0x0F;
+    }
+
+    inline void setBlockLight(int x, int y, int z, uint8_t val) {
+        if (x >= 0 && x < chunkWidth && y >= 0 && y < chunkHeight && z >= 0 && z < chunkDepth) {
+            light[x][y][z] = (light[x][y][z] & 0xF0) | (val & 0x0F);
+        }
+    }
+
+    inline void clearLight() {
+        std::memset(light, 0, sizeof(light));
+    }
+
     std::atomic<int> refCount{0};
     std::atomic<bool> isMeshing{false};
+    std::atomic<bool> dirtyMesh{false};
+    std::atomic<bool> isLightCalculated{false};
     ChunkMeshData pendingMeshData;
     std::mutex meshMutex;
+    std::set<Chunk*> modifiedNeighborChunks;
 
 private:
     World* world;
@@ -76,12 +108,14 @@ private:
     bool translucentNeedsSort;
     glm::vec3 lastSortCamPosLocal;
 
-    void addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset);
-    void addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO);
+    void addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useLighting);
+    void addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO, bool useLighting);
 
     bool isBlockVisible(int x, int y, int z, int face, bool fasterTrees, const BlockDB::BlockInfo* thisInfo) const;
     bool isOpaque(int x, int y, int z) const;
     float calculateVertexAO(int x, int y, int z, int face, const glm::vec3& cornerPos, bool useAO, bool isLiquid) const;
+    glm::vec2 calculateVertexLight(int x, int y, int z, int face, const glm::vec3& cornerPos, bool isLiquid) const;
+    glm::vec2 getVoxelLight(int nx, int ny, int nz) const;
 
     Chunk* neighborCache[3][3] = {{nullptr}};
 };

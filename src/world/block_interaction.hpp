@@ -30,6 +30,8 @@ struct BlockInfo {
     bool valid = false;
     glm::ivec3 worldPos;
     uint16_t type;
+    uint8_t skyLight = 0;
+    uint8_t blockLight = 0;
 };
 
 BlockInfo getLookedAtBlockInfo(World* world, const Camera& camera);
