@@ -10,7 +10,6 @@ extern "C" {
 ----------------------------------------------------------------------------
 
 --TODO--
-Fix liquid face gap when liquid is built in the shape of stairs
 Sounds
 Survival mode
 Support for models spanning multiple blocks

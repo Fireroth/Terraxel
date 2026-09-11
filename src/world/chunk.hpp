@@ -113,6 +113,7 @@ private:
 
     bool isBlockVisible(int x, int y, int z, int face, bool fasterTrees, const BlockDB::BlockInfo* thisInfo) const;
     bool isOpaque(int x, int y, int z) const;
+    bool isLiquidBlock(int nx, int ny, int nz) const;
     float calculateVertexAO(int x, int y, int z, int face, const glm::vec3& cornerPos, bool useAO, bool isLiquid) const;
     glm::vec2 calculateVertexLight(int x, int y, int z, int face, const glm::vec3& cornerPos, bool isLiquid) const;
     glm::vec2 getVoxelLight(int nx, int ny, int nz) const;

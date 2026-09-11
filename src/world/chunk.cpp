@@ -705,6 +705,21 @@ void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int
         faceMaxY = std::max({faceVerts[0].y, faceVerts[1].y, faceVerts[2].y, faceVerts[3].y});
     }
 
+    bool lowerBottom = false;
+    if (isLiquid && face <= 3 && y > 0) {
+        static const int offsets[4][2] = {
+            { 0,  1}, // z+
+            { 0, -1}, // z-
+            {-1,  0}, // x-
+            { 1,  0}  // x+
+        };
+        int nx = x + offsets[face][0];
+        int nz = z + offsets[face][1];
+        if (isLiquidBlock(x, y - 1, z) && isLiquidBlock(nx, y - 1, nz)) {
+            lowerBottom = true;
+        }
+    }
+
     float ao[4];
     glm::vec2 vertLight[4];
     for (int i = 0; i < 4; ++i) {
@@ -727,10 +742,15 @@ void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int
 
         if (isLiquid || blockInfo->translucent) {
             float isTop = 0.0f;
-            if (isLiquid && !liquidAbove) {
-                bool isTopFace = (face == 4);
-                if (isTopFace || (face <= 3 && std::abs(faceVerts[i].y - faceMaxY) < eps))
+            if (isLiquid) {
+                if (!liquidAbove) {
+                    bool isTopFace = (face == 4);
+                    if (isTopFace || (face <= 3 && std::abs(faceVerts[i].y - faceMaxY) < eps))
+                        isTop = 1.0f;
+                }
+                if (lowerBottom && face <= 3 && faceVerts[i].y < eps) {
                     isTop = 1.0f;
+                }
             }
             vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), isTop, ao[i], vertLight[i].x, vertLight[i].y});
         } else {
@@ -888,6 +908,43 @@ bool Chunk::isOpaque(int nx, int ny, int nz) const {
         return false;
 
     return true;
+}
+
+bool Chunk::isLiquidBlock(int nx, int ny, int nz) const {
+    if (ny < 0 || ny >= chunkHeight)
+        return false;
+
+    int localX = nx;
+    int localZ = nz;
+    int rx = 1;
+    int rz = 1;
+
+    if (localX < 0) {
+        localX += chunkWidth;
+        rx = 0;
+    } else if (localX >= chunkWidth) {
+        localX -= chunkWidth;
+        rx = 2;
+    }
+
+    if (localZ < 0) {
+        localZ += chunkDepth;
+        rz = 0;
+    } else if (localZ >= chunkDepth) {
+        localZ -= chunkDepth;
+        rz = 2;
+    }
+
+    const Chunk* targetChunk = neighborCache[rx][rz];
+    if (!targetChunk)
+        return false;
+
+    uint16_t type = targetChunk->blocks[localX][ny][localZ].type;
+    if (type == 0)
+        return false;
+
+    const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+    return info && info->liquid;
 }
 
 float Chunk::calculateVertexAO(int x, int y, int z, int face, const glm::vec3& cornerPos, bool useAO, bool isLiquid) const {

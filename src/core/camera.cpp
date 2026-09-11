@@ -1,5 +1,4 @@
 #include <glm/gtc/matrix_transform.hpp>
-#include <cstring>
 #include "camera.hpp"
 #include "../world/world.hpp"
 #include "../world/chunk.hpp"
@@ -25,15 +24,15 @@ void Camera::processKeyboard(const char *direction, float deltaTime, float speed
 
     if (direction[0] == 'F' && direction[1] == 'O')   // FORWARD
         accel += glm::normalize(glm::vec3(front.x, 0.0f, front.z)) * acceleration;
-     else if (direction[0] == 'B')   // BACKWARD
+    else if (direction[0] == 'B')   // BACKWARD
         accel -= glm::normalize(glm::vec3(front.x, 0.0f, front.z)) * acceleration;
-     else if (direction[0] == 'L')   // LEFT
+    else if (direction[0] == 'L')   // LEFT
         accel -= right * acceleration;
-     else if (direction[0] == 'R')   // RIGHT
+    else if (direction[0] == 'R')   // RIGHT
         accel += right * acceleration;
-     else if (direction[0] == 'U')   // UP
+    else if (direction[0] == 'U')   // UP
         accel += worldUp * acceleration;
-     else if (direction[0] == 'D')  // DOWN
+    else if (direction[0] == 'D')  // DOWN
         accel -= worldUp * acceleration;
 
     applyAcceleration(accel, deltaTime, ignoreAirControl);
@@ -154,6 +153,8 @@ void Camera::updateVelocity(float deltaTime, World* world) {
             stepViewOffset = 0.0;
         }
     }
+
+    checkVoid();
 }
 
 void Camera::stepVelocity(float deltaTime, World* world) {
@@ -491,6 +492,8 @@ void Camera::updateVelocityFlight(float deltaTime) {
 
     if (glm::length(velocity) < 0.01)
         velocity = glm::dvec3(0.0);
+
+    checkVoid();
 }
 
 void Camera::applyAcceleration(const glm::vec3& acceleration, float deltaTime, bool ignoreAirControl) {
@@ -523,6 +526,12 @@ void Camera::jump() {
         jumpBuffered = false;
         jumpBufferTimer = 0.0f;
         coyoteTimer = 0.0f;
+    }
+}
+
+void Camera::checkVoid() {
+    if (position.y <= voidYThreshold) {
+        setPosition(glm::dvec3(position.x, static_cast<double>(Chunk::chunkHeight) + 20.0, position.z));
     }
 }
 

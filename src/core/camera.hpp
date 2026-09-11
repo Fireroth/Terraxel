@@ -44,6 +44,7 @@ public:
 
 private:
     void updateCameraVectors();
+    void checkVoid();
 
     glm::dvec3 position;
     glm::vec3 front;
@@ -73,6 +74,7 @@ private:
     const float coyoteTime = 0.05f; // seconds to allow jump after walking off an edge
     const float jumpBufferTime = 0.1f; // seconds to buffer a jump input
     const float stepViewOffsetSpeed = 35.0f;
+    const double voidYThreshold = -100.0;
 
     float currentEyeHeight = eyeHeight;
     float currentPlayerHeight = playerHeight;
