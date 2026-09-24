@@ -870,6 +870,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
         ImGui::Text("Block -> light emission: %i", info->lightEmission);
         ImGui::Text("Block -> sky light: %d", blockInfo.skyLight);
         ImGui::Text("Block -> block light: %d", blockInfo.blockLight);
+        ImGui::Text("Block -> drag: %.1f", info->drag);
 
     } else {
         ImGui::Text("Block -> name: Air");

@@ -1,23 +1,52 @@
 {
     "name": "Fir Forest",
     "id": "fir_forest",
+    "waterBlock": 9,
+    "waterLevel": 63,
     "terrain": {
-        "heightScale": 0.9,
-        "detailWeight": 0.4,
-        "detail2Weight": 0.2,
-        "power": 1.0,
         "baseHeight": 55.0,
-        "heightMultiplier": 24.0,
-        "deepenBelowY": 63.0,
-        "deepenFactor": 0.5
+        "noises": [
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.005,
+                "seedOffset": 0,
+                "weight": 21.6,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.02,
+                "seedOffset": 1,
+                "weight": 8.64,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.05,
+                "seedOffset": 2,
+                "weight": 4.32,
+                "power": 1.0,
+                "operation": "add"
+            }
+        ],
+        "modifiers": [
+            {
+                "type": "deepen",
+                "belowY": 63.0,
+                "factor": 0.5
+            }
+        ]
     },
     "layers": [
         {
+            "position": "top",
             "block": 23,
             "depth": 1,
-            "position": "top",
-            "aboveY": 63,
-            "fallbackBlock": 4
+            "overrides": [
+                { "maxY": 62, "block": 4 }
+            ]
         },
         {
             "block": 2,
@@ -34,15 +63,11 @@
             "position": "fill"
         }
     ],
-    "waterBlock": 9,
-    "waterLevel": 63,
     "features": [
         {
             "type": "structure",
             "structure": "firTree",
             "threshold": 0.985,
-            "xOffset": 4,
-            "zOffset": 4,
             "allowedBlock": 23,
             "seedOffset": 0,
             "yOffset": 0
@@ -51,8 +76,6 @@
             "type": "structure",
             "structure": "smallFirTree",
             "threshold": 0.99,
-            "xOffset": 4,
-            "zOffset": 4,
             "allowedBlock": 23,
             "seedOffset": 1,
             "yOffset": 0

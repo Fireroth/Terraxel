@@ -4,26 +4,97 @@
 #include <vector>
 #include <unordered_map>
 #include <optional>
+#include <FastNoiseLite.h>
+
+enum class BiomeNoiseOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Min,
+    Max,
+    Set
+};
+
+struct BiomeNoise {
+    FastNoiseLite noise;
+    std::string type = "OpenSimplex2";
+    float frequency = 0.01f;
+    int seedOffset = 0;
+    float weight = 1.0f;
+    float offset = 0.0f;
+    float power = 1.0f;
+    BiomeNoiseOp operation = BiomeNoiseOp::Add;
+    bool normalize = true;
+
+    std::string fractalType = "None";
+    int octaves = 3;
+    float lacunarity = 2.0f;
+    float gain = 0.5f;
+    float weightedStrength = 0.0f;
+    float pingPongStrength = 2.0f;
+
+    std::string cellularDistanceFunction = "EuclideanSq";
+    std::string cellularReturnType = "Distance";
+    float cellularJitter = 1.0f;
+
+    std::string domainWarpType = "None";
+    float domainWarpAmp = 1.0f;
+
+    void initNoise(int worldSeed);
+    float evaluate(double worldX, double worldZ) const;
+};
 
 struct BiomeTerrainParams {
-    float heightScale = 1.0f;
-    float detailWeight = 0.3f;
-    float detail2Weight = 0.2f;
-    float power = 1.3f;
     float baseHeight = 30.0f;
-    float heightMultiplier = 24.0f;
-    float deepenBelowY = 37.0f;
-    float deepenFactor = 0.5f;
-    float flattenAboveY = -1.0f;
+};
+
+enum class BiomeModifierType {
+    Deepen,
+    Clamp,
+    Add,
+    Multiply,
+    Power
+};
+
+struct BiomeModifier {
+    BiomeModifierType type = BiomeModifierType::Deepen;
+    float belowY = 0.0f;
+    float aboveY = 0.0f;
+    float factor = 0.0f;
+    float value = 0.0f;
+    bool hasBelowY = false;
+    bool hasAboveY = false;
+
+    float apply(float height) const;
+};
+
+struct BiomeLayerOverride {
+    std::optional<int> minY;
+    std::optional<int> maxY;
+    std::optional<int> block;
+    std::optional<int> depth;
 };
 
 struct BiomeLayer {
+    std::string position = "fill"; // "top", "below_top" or "fill"
     int block = 3;
     int depth = 1;
-    std::string position = "fill"; // "top", "below_top" or "fill"
-    int aboveY = -1;
-    int belowY = -1;
-    int fallbackBlock = -1;
+    std::vector<BiomeLayerOverride> overrides;
+
+    std::pair<int, int> resolve(int height) const {
+        int effBlock = block;
+        int effDepth = depth;
+        for (const auto& ov : overrides) {
+            if (ov.minY.has_value() && height < *ov.minY) continue;
+            if (ov.maxY.has_value() && height > *ov.maxY) continue;
+            if (ov.block.has_value()) effBlock = *ov.block;
+            if (ov.depth.has_value()) effDepth = *ov.depth;
+            break;
+        }
+        if (effDepth < 0) effDepth = 0;
+        return {effBlock, effDepth};
+    }
 };
 
 struct BiomeFeature {
@@ -49,10 +120,15 @@ struct BiomeData {
     std::string name;
     std::string id;
     BiomeTerrainParams terrain;
+    std::vector<BiomeNoise> noises;
+    std::vector<BiomeModifier> modifiers;
     std::vector<BiomeLayer> layers;
     std::vector<BiomeFeature> features;
     int waterBlock = 9;
     int waterLevel = 37;
+
+    float evaluateTerrainNoise(double worldX, double worldZ) const;
+    float applyModifiers(float height) const;
 };
 
 class BiomeDB {
@@ -61,6 +137,7 @@ public:
     static const BiomeData* getBiome(int index);
     static int getBiomeCount();
     static const BiomeData* getBiomeByName(const std::string& id);
+    static void setWorldSeed(int seed);
 
 private:
     static std::vector<BiomeData> biomes;

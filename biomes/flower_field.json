@@ -1,23 +1,52 @@
 {
     "name": "Flower Field",
     "id": "flower_field",
+    "waterBlock": 9,
+    "waterLevel": 63,
     "terrain": {
-        "heightScale": 0.7,
-        "detailWeight": 0.1,
-        "detail2Weight": 0.2,
-        "power": 1.0,
         "baseHeight": 56.0,
-        "heightMultiplier": 24.0,
-        "deepenBelowY": 63.0,
-        "deepenFactor": 0.5
+        "noises": [
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.005,
+                "seedOffset": 0,
+                "weight": 16.8,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.02,
+                "seedOffset": 1,
+                "weight": 1.68,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.05,
+                "seedOffset": 2,
+                "weight": 3.36,
+                "power": 1.0,
+                "operation": "add"
+            }
+        ],
+        "modifiers": [
+            {
+                "type": "deepen",
+                "belowY": 63.0,
+                "factor": 0.5
+            }
+        ]
     },
     "layers": [
         {
+            "position": "top",
             "block": 1,
             "depth": 1,
-            "position": "top",
-            "aboveY": 63,
-            "fallbackBlock": 4
+            "overrides": [
+                { "maxY": 62, "block": 4 }
+            ]
         },
         {
             "block": 2,
@@ -34,8 +63,6 @@
             "position": "fill"
         }
     ],
-    "waterBlock": 9,
-    "waterLevel": 63,
     "features": [
         {
             "type": "block",
@@ -113,8 +140,6 @@
             "type": "structure",
             "structure": "tinyTree",
             "threshold": 0.97,
-            "xOffset": 1,
-            "zOffset": 1,
             "allowedBlock": 1,
             "seedOffset": 9,
             "yOffset": 0

@@ -1,23 +1,41 @@
 {
     "name": "Ocean",
     "id": "ocean",
+    "waterBlock": 9,
+    "waterLevel": 63,
     "terrain": {
-        "heightScale": 1.0,
-        "detailWeight": 1.0,
-        "detail2Weight": 1.0,
-        "power": 1.0,
         "baseHeight": 52.0,
-        "heightMultiplier": 1.0,
-        "deepenBelowY": 63.0,
-        "deepenFactor": 0.9
+        "noises": [
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.005,
+                "seedOffset": 0,
+                "weight": 1.0,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.04,
+                "seedOffset": 1,
+                "weight": 1.2,
+                "power": 1.0,
+                "operation": "add"
+            }
+        ],
+        "modifiers": [
+            {
+                "type": "deepen",
+                "belowY": 63.0,
+                "factor": 0.9
+            }
+        ]
     },
     "layers": [
         {
-            "block": 4,
-            "depth": 1,
             "position": "top",
-            "aboveY": 63,
-            "fallbackBlock": 4
+            "block": 4,
+            "depth": 1
         },
         {
             "block": 4,
@@ -29,8 +47,6 @@
             "position": "fill"
         }
     ],
-    "waterBlock": 9,
-    "waterLevel": 63,
     "features": [
         {
             "type": "ore",

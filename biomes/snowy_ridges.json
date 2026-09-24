@@ -1,0 +1,187 @@
+{
+    "name": "Snowy Ridges",
+    "id": "snowy_ridges",
+    "waterBlock": 9,
+    "waterLevel": 63,
+    "terrain": {
+        "baseHeight": 72.0,
+        "noises": [
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.007,
+                "seedOffset": 0,
+                "domainWarpType": "OpenSimplex2",
+                "domainWarpAmp": 42.0,
+                "fractal": {
+                    "type": "Ridged",
+                    "octaves": 4,
+                    "lacunarity": 2.2,
+                    "gain": 0.45,
+                    "weightedStrength": 0.3
+                },
+                "weight": 60.0,
+                "power": 2.0,
+                "operation": "add"
+            },
+            {
+                "type": "Cellular",
+                "frequency": 0.015,
+                "seedOffset": 1,
+                "cellular": {
+                    "distanceFunction": "Hybrid",
+                    "returnType": "Distance2",
+                    "jitter": 1.0
+                },
+                "normalize": true,
+                "weight": 1.2,
+                "power": 1.4,
+                "operation": "multiply"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.045,
+                "seedOffset": 2,
+                "weight": 2.2,
+                "power": 1.0,
+                "operation": "add"
+            }
+        ],
+        "modifiers": [
+            {
+                "type": "clamp",
+                "maxY": 180.0
+            }
+        ]
+    },
+    "layers": [
+        {
+            "position": "top",
+            "block": 62,
+            "depth": 1,
+            "overrides": [
+                { "minY": 105, "block": 144, "depth": 2},
+                { "minY": 81, "block": 3 }
+            ]
+        },
+        {
+            "block": 3,
+            "depth": 3,
+            "position": "below_top"
+        },
+        {
+            "block": 67,
+            "depth": 2,
+            "position": "below_top"
+        },
+        {
+            "block": 3,
+            "position": "fill"
+        }
+    ],
+    "features": [
+        {
+            "type": "structure",
+            "structure": "tree",
+            "threshold": 0.997,
+            "yOffset": 1,
+            "allowedBlock": 62,
+            "seedOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 25,
+            "threshold": 0.86,
+            "allowedBlock": 62,
+            "seedOffset": 2,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 28,
+            "threshold": 0.94,
+            "allowedBlock": 62,
+            "seedOffset": 3,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 33,
+            "threshold": 0.94,
+            "allowedBlock": 62,
+            "seedOffset": 4,
+            "yOffset": 0
+        },
+        {
+            "type": "ore",
+            "block": 138,
+            "threshold": 0.88,
+            "allowedBlock": 3,
+            "seedOffset": 5,
+            "minCount": 6,
+            "maxCount": 20,
+            "yMin": 10,
+            "yMax": 120,
+            "spread": 0.4
+        },
+        {
+            "type": "ore",
+            "block": 139,
+            "threshold": 0.90,
+            "allowedBlock": 3,
+            "seedOffset": 6,
+            "minCount": 4,
+            "maxCount": 12,
+            "yMin": 20,
+            "yMax": 115,
+            "spread": 0.5
+        },
+        {
+            "type": "ore",
+            "block": 140,
+            "threshold": 0.95,
+            "allowedBlock": 3,
+            "seedOffset": 7,
+            "minCount": 3,
+            "maxCount": 10,
+            "yMin": 5,
+            "yMax": 60,
+            "spread": 0.8
+        },
+        {
+            "type": "ore",
+            "block": 141,
+            "threshold": 0.96,
+            "allowedBlock": 3,
+            "seedOffset": 8,
+            "minCount": 2,
+            "maxCount": 8,
+            "yMin": 2,
+            "yMax": 40,
+            "spread": 1.0
+        },
+        {
+            "type": "ore",
+            "block": 142,
+            "threshold": 0.94,
+            "allowedBlock": 3,
+            "seedOffset": 9,
+            "minCount": 40,
+            "maxCount": 80,
+            "yMin": 10,
+            "yMax": 120,
+            "spread": 0.3
+        },
+        {
+            "type": "ore",
+            "block": 143,
+            "threshold": 0.94,
+            "allowedBlock": 3,
+            "seedOffset": 10,
+            "minCount": 40,
+            "maxCount": 80,
+            "yMin": 10,
+            "yMax": 120,
+            "spread": 0.3
+        }
+    ]
+}

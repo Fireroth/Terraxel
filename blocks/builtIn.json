@@ -1659,6 +1659,61 @@
         "model": "cube",
         "renderFacesInBetween": false,
         "tabName": "Blocks"
+    },
+
+    "snow": {
+        "id": 144,
+        "textures": [[12,13],[12,13],[12,13],[12,13],[12,13],[12,13]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Snow",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "red_mushroom_block": {
+        "id": 145,
+        "textures": [[12,12],[12,12],[12,12],[12,12],[12,12],[12,12]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Red Mushroom Block",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "brown_mushroom_block": {
+        "id": 146,
+        "textures": [[11,11],[11,11],[11,11],[11,11],[11,11],[11,11]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Brown Mushroom Block",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "mushroom_pores_block": {
+        "id": 147,
+        "textures": [[12,11],[12,11],[12,11],[12,11],[12,11],[12,11]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Mushroom Pores Block",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "mushroom_stem_block": {
+        "id": 148,
+        "textures": [[11,10],[11,10],[11,10],[11,10],[12,11],[12,11]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Mushroom Stem Block",
+        "model": "cube",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
     }
 
 }

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include "saveManager.hpp"
 #include "logger.hpp"
+#include "../world/biomeDB.hpp"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -146,6 +147,7 @@ bool SaveManager::renameWorld(const std::string& uuid, const std::string& newNam
 void SaveManager::setActiveWorld(const WorldInfo& world) {
     activeWorld = world;
     hasActiveWorld = true;
+    BiomeDB::setWorldSeed(world.seed);
 }
 
 int SaveManager::getActiveSeed() {

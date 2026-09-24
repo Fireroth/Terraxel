@@ -1,33 +1,44 @@
 {
-    "name": "Rocky Waters",
-    "id": "rocky_waters",
+    "name": "Mushroom Swamp",
+    "id": "mushroom_swamp",
     "waterBlock": 9,
     "waterLevel": 63,
     "terrain": {
-        "baseHeight": 20.0,
+        "baseHeight": 59.0,
         "noises": [
             {
                 "type": "OpenSimplex2",
-                "frequency": 0.005,
-                "seedOffset": 0,
-                "weight": 10.0,
-                "power": 1.0,
-                "operation": "add"
-            },
-            {
-                "type": "OpenSimplex2S",
                 "frequency": 0.02,
-                "seedOffset": 1,
-                "weight": 10.0,
-                "power": 1.0,
+                "seedOffset": 0,
+                "fractalType": "FBm",
+                "octaves": 3,
+                "domainWarpType": "OpenSimplex2",
+                "domainWarpAmp": 50.0,
+                "weight": 4.8,
+                "normalize": true,
                 "operation": "add"
             },
             {
-                "type": "OpenSimplex2S",
-                "frequency": 0.05,
+                "type": "Cellular",
+                "frequency": 0.04,
+                "seedOffset": 1,
+                "cellular": {
+                    "distanceFunction": "Hybrid",
+                    "returnType": "Distance2Sub",
+                    "jitter": 1.0
+                },
+                "domainWarpType": "OpenSimplex2",
+                "domainWarpAmp": 18.0,
+                "weight": 2.8,
+                "normalize": true,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.015,
                 "seedOffset": 2,
-                "weight": 50.0,
-                "power": 1.0,
+                "weight": 1.6,
+                "normalize": true,
                 "operation": "add"
             }
         ],
@@ -35,67 +46,104 @@
             {
                 "type": "deepen",
                 "belowY": 63.0,
-                "factor": -0.55
+                "factor": 0.35
             },
             {
                 "type": "clamp",
-                "aboveY": 78.0
+                "aboveY": 64.8
             }
         ]
     },
     "layers": [
         {
             "position": "top",
-            "block": 62,
+            "block": 23,
             "depth": 1,
             "overrides": [
-                { "maxY": 61, "block": 4 }
+                {"maxY": 61, "block": 2}
             ]
         },
         {
-            "block": 3,
-            "position": "fill"
+            "position": "below_top",
+            "block": 2,
+            "depth": 4
+        },
+        {
+            "position": "fill",
+            "block": 3
         }
     ],
     "features": [
         {
             "type": "structure",
-            "structure": "palmTree",
-            "threshold": 0.99,
-            "allowedBlock": 62,
-            "seedOffset": 1,
-            "yOffset": 0
+            "structure": "giantRedMushroom",
+            "threshold": 0.993,
+            "yOffset": 0,
+            "allowedBlock": 23,
+            "seedOffset": 1
+        },
+        {
+            "type": "structure",
+            "structure": "giantBrownMushroom",
+            "threshold": 0.993,
+            "yOffset": 0,
+            "allowedBlock": 23,
+            "seedOffset": 2
+        },
+        {
+            "type": "structure",
+            "structure": "darkTree",
+            "threshold": 0.995,
+            "yOffset": 0,
+            "allowedBlock": 23,
+            "seedOffset": 3
         },
         {
             "type": "block",
-            "block": 17,
-            "threshold": 0.75,
-            "allowedBlock": 62,
-            "seedOffset": 2,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 18,
-            "threshold": 0.75,
-            "allowedBlock": 62,
-            "seedOffset": 3,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 29,
-            "threshold": 0.9,
-            "allowedBlock": 62,
+            "block": 61,
+            "threshold": 0.90,
+            "allowedBlock": 23,
             "seedOffset": 4,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 60,
+            "threshold": 0.90,
+            "allowedBlock": 23,
+            "seedOffset": 5,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 26,
+            "threshold": 0.82,
+            "allowedBlock": 23,
+            "seedOffset": 6,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 24,
+            "threshold": 0.85,
+            "allowedBlock": 23,
+            "seedOffset": 7,
             "yOffset": 0
         },
         {
             "type": "block",
             "block": 25,
             "threshold": 0.9,
-            "allowedBlock": 62,
-            "seedOffset": 5,
+            "allowedBlock": 23,
+            "seedOffset": 8,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 56,
+            "threshold": 0.95,
+            "allowedBlock": 9,
+            "seedOffset": 9,
             "yOffset": 0
         },
         {
@@ -103,7 +151,7 @@
             "block": 138,
             "threshold": 0.9,
             "allowedBlock": 3,
-            "seedOffset": 6,
+            "seedOffset": 10,
             "minCount": 4,
             "maxCount": 16,
             "yMin": 5,
@@ -115,7 +163,7 @@
             "block": 139,
             "threshold": 0.92,
             "allowedBlock": 3,
-            "seedOffset": 7,
+            "seedOffset": 11,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 10,
@@ -127,7 +175,7 @@
             "block": 140,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 8,
+            "seedOffset": 12,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 2,
@@ -139,7 +187,7 @@
             "block": 141,
             "threshold": 0.97,
             "allowedBlock": 3,
-            "seedOffset": 9,
+            "seedOffset": 13,
             "minCount": 2,
             "maxCount": 6,
             "yMin": 2,
@@ -151,7 +199,7 @@
             "block": 142,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 10,
+            "seedOffset": 14,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,
@@ -163,7 +211,7 @@
             "block": 143,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 11,
+            "seedOffset": 15,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,

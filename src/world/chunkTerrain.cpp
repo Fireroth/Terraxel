@@ -3,6 +3,7 @@
 #include <random>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 #include "structureDB.hpp"
 #include "noise.hpp"
 #include "chunkTerrain.hpp"
@@ -110,7 +111,7 @@ void generateCaves(Chunk& chunk) {
                                             const int checkUp  = std::min(chunkHeight - 1, wy + WATER_CHECK_RANGE);
                                             const int checkDn  = std::max(0, wy - WATER_CHECK_RANGE);
                                             for (int cy = checkDn; cy <= checkUp && !nearWater; ++cy)
-                                                if (chunk.blocks[lx][cy][lz].type == 9)
+                                                if (chunk.blocks[lx][cy][lz].type == 9 || chunk.blocks[lx][cy][lz].type == 69)
                                                     nearWater = true;
                                         }
 
@@ -119,7 +120,7 @@ void generateCaves(Chunk& chunk) {
                                             const int checkXMin = std::max(0, lx - WATER_CHECK_RANGE);
                                             const int checkXMax = std::min(chunkWidth-1, lx + WATER_CHECK_RANGE);
                                             for (int cx2 = checkXMin; cx2 <= checkXMax && !nearWater; ++cx2)
-                                                if (chunk.blocks[cx2][wy][lz].type == 9)
+                                                if (chunk.blocks[cx2][wy][lz].type == 9 || chunk.blocks[cx2][wy][lz].type == 69)
                                                     nearWater = true;
                                         }
 
@@ -128,7 +129,7 @@ void generateCaves(Chunk& chunk) {
                                             const int checkZMin = std::max(0, lz - WATER_CHECK_RANGE);
                                             const int checkZMax = std::min(chunkDepth-1, lz + WATER_CHECK_RANGE);
                                             for (int cz2 = checkZMin; cz2 <= checkZMax && !nearWater; ++cz2)
-                                                if (chunk.blocks[lx][wy][cz2].type == 9)
+                                                if (chunk.blocks[lx][wy][cz2].type == 9 || chunk.blocks[lx][wy][cz2].type == 69)
                                                     nearWater = true;
                                         }
                                         if (nearWater) continue;
@@ -155,13 +156,18 @@ void generateCaves(Chunk& chunk) {
 
 // Helper function to get biome index based on noise value
 int getBiomeIndex(float b, int count) {
-    if (count == 0) return 0;
+    if (count <= 0) return 0;
 
-    float normalized = (b + 1.0f) / 2.0f;
+    float normalized = (b + 1.0f) * 0.5f;
+    if (normalized < 0.0f) normalized = 0.0f;
+    if (normalized > 1.0f) normalized = 1.0f;
+
     int index = static_cast<int>(normalized * static_cast<float>(count));
 
     if (index >= count)
         index = count - 1;
+    if (index < 0)
+        index = 0;
 
     return index;
 }
@@ -204,41 +210,19 @@ void generateChunkTerrain(Chunk& chunk) {
             int biomeIdx = getBiomeIndex(biomeNoise, biomeCount);
             biomeCache[localOffsetX + transitionRadius][localOffsetZ + transitionRadius] = biomeIdx;
 
-            float base = noises.baseNoise.GetNoise((double)worldX, (double)worldZ) * 0.5f + 0.5f;
-            float detail = noises.detailNoise.GetNoise((double)worldX, (double)worldZ) * 0.5f + 0.5f;
-            float detail2 = noises.detail2Noise.GetNoise((double)worldX, (double)worldZ) * 0.5f + 0.5f;
-
             const BiomeData* biomeData = BiomeDB::getBiome(biomeIdx);
-            float heightScale = 1.0f;
-            float detailWeight = 0.3f;
-            float detail2Weight = 0.2f;
-            float power = 1.3f;
             float baseHeight = 30.0f;
-            float heightMultiplier = 24.0f;
-            float deepenBelowY = 37.0f;
-            float deepenFactor = 0.5f;
-            float flattenAboveY = -1.0f;
+            float combined = 0.0f;
 
             if (biomeData) {
-                heightScale = biomeData->terrain.heightScale;
-                detailWeight = biomeData->terrain.detailWeight;
-                detail2Weight = biomeData->terrain.detail2Weight;
-                power = biomeData->terrain.power;
                 baseHeight = biomeData->terrain.baseHeight;
-                heightMultiplier = biomeData->terrain.heightMultiplier;
-                deepenBelowY = biomeData->terrain.deepenBelowY;
-                deepenFactor = biomeData->terrain.deepenFactor;
-                flattenAboveY = biomeData->terrain.flattenAboveY;
+                combined = biomeData->evaluateTerrainNoise(worldX, worldZ);
             }
 
-            float combined = base + detail * detailWeight + detail2 * detail2Weight;
-            combined = std::pow(combined, power);
-
-            float height = combined * heightMultiplier * heightScale + baseHeight;
-            if (height < deepenBelowY)
-                height = height - ((deepenBelowY - height) * deepenFactor);
-            if (flattenAboveY >= 0.0f && height > flattenAboveY)
-                height = flattenAboveY;
+            float height = combined + baseHeight;
+            if (biomeData) {
+                height = biomeData->applyModifiers(height);
+            }
 
             heightCache[localOffsetX + transitionRadius][localOffsetZ + transitionRadius] = height;
         }
@@ -296,12 +280,38 @@ void generateChunkTerrain(Chunk& chunk) {
                 finalBiomeIdx = centerBiomeIdx;
             }
 
+            if (std::isnan(blendedHeight) || std::isinf(blendedHeight)) {
+                blendedHeight = 30.0f;
+            }
+
             int height = static_cast<int>(blendedHeight);
 
             const BiomeData* finalBiome = BiomeDB::getBiome(finalBiomeIdx);
             int waterLevel = finalBiome ? finalBiome->waterLevel : 63;
             int waterBlock = finalBiome ? finalBiome->waterBlock : 9;
             bool hasLayers = finalBiome && !finalBiome->layers.empty();
+
+            struct ActiveLayer {
+                int block;
+                int maxDepth;
+            };
+            ActiveLayer activeLayers[16];
+            int activeCount = 0;
+
+            if (hasLayers) {
+                int currentDepth = 0;
+                for (const auto& layer : finalBiome->layers) {
+                    if (activeCount >= 16) break;
+                    auto [effBlock, effDepth] = layer.resolve(height);
+                    if (layer.position == "fill") {
+                        activeLayers[activeCount++] = {effBlock, std::numeric_limits<int>::max()};
+                        break;
+                    } else if (effDepth > 0) {
+                        currentDepth += effDepth;
+                        activeLayers[activeCount++] = {effBlock, currentDepth};
+                    }
+                }
+            }
 
             for (int y = 0; y < chunkHeight; y++) {
                 if (y == 0) {
@@ -310,51 +320,15 @@ void generateChunkTerrain(Chunk& chunk) {
                     // Above terrain: water or air
                     chunk.blocks[x][y][z].type = (y < waterLevel) ? static_cast<uint16_t>(waterBlock) : 0;
                 } else if (hasLayers) {
-                    // Layer placement
                     int depthFromTop = height - y; // 0 = surface, 1 = one below, etc.
-                    bool placed = false;
-                    int layerStartDepth = 0;
-
-                    for (const auto& layer : finalBiome->layers) {
-                        if (layer.position == "top") {
-                            if (depthFromTop == 0) {
-                                // Check Y conditions
-                                bool conditionMet = true;
-                                if (layer.aboveY >= 0 && y < layer.aboveY)
-                                    conditionMet = false;
-                                if (layer.belowY >= 0 && y > layer.belowY)
-                                    conditionMet = false;
-
-                                if (conditionMet) {
-                                    chunk.blocks[x][y][z].type = static_cast<uint16_t>(layer.block);
-                                } else if (layer.fallbackBlock >= 0) {
-                                    chunk.blocks[x][y][z].type = static_cast<uint16_t>(layer.fallbackBlock);
-                                } else {
-                                    chunk.blocks[x][y][z].type = static_cast<uint16_t>(layer.block);
-                                }
-                                placed = true;
-                                layerStartDepth = 1;
-                                break;
-                            }
-                        } else if (layer.position == "below_top") {
-                            if (depthFromTop >= layerStartDepth && depthFromTop < layerStartDepth + layer.depth) {
-                                chunk.blocks[x][y][z].type = static_cast<uint16_t>(layer.block);
-                                placed = true;
-                                break;
-                            }
-                            layerStartDepth += layer.depth;
-                        } else if (layer.position == "fill") {
-                            if (depthFromTop >= layerStartDepth) {
-                                chunk.blocks[x][y][z].type = static_cast<uint16_t>(layer.block);
-                                placed = true;
-                                break;
-                            }
+                    int blockType = 3; // Stone fallback
+                    for (int i = 0; i < activeCount; i++) {
+                        if (depthFromTop < activeLayers[i].maxDepth) {
+                            blockType = activeLayers[i].block;
+                            break;
                         }
                     }
-
-                    if (!placed) {
-                        chunk.blocks[x][y][z].type = 3; // Stone fallback
-                    }
+                    chunk.blocks[x][y][z].type = static_cast<uint16_t>(blockType);
                 } else {
                     chunk.blocks[x][y][z].type = 3; // Stone fallback
                 }

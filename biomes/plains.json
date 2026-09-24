@@ -1,23 +1,52 @@
 {
     "name": "Plains",
     "id": "plains",
+    "waterBlock": 9,
+    "waterLevel": 63,
     "terrain": {
-        "heightScale": 0.6,
-        "detailWeight": 0.5,
-        "detail2Weight": 0.2,
-        "power": 1.0,
         "baseHeight": 56.0,
-        "heightMultiplier": 24.0,
-        "deepenBelowY": 64.0,
-        "deepenFactor": 0.5
+        "noises": [
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.005,
+                "seedOffset": 0,
+                "weight": 14.4,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.02,
+                "seedOffset": 1,
+                "weight": 7.2,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.05,
+                "seedOffset": 2,
+                "weight": 2.88,
+                "power": 1.0,
+                "operation": "add"
+            }
+        ],
+        "modifiers": [
+            {
+                "type": "deepen",
+                "belowY": 64.0,
+                "factor": 0.5
+            }
+        ]
     },
     "layers": [
         {
+            "position": "top",
             "block": 1,
             "depth": 1,
-            "position": "top",
-            "aboveY": 63,
-            "fallbackBlock": 4
+            "overrides": [
+                { "maxY": 62, "block": 4 }
+            ]
         },
         {
             "block": 2,
@@ -34,15 +63,11 @@
             "position": "fill"
         }
     ],
-    "waterBlock": 9,
-    "waterLevel": 63,
     "features": [
         {
             "type": "structure",
             "structure": "puddle",
             "threshold": 0.9997,
-            "xOffset": 4,
-            "zOffset": 3,
             "allowedBlock": 1,
             "seedOffset": 0,
             "yOffset": -4
@@ -51,8 +76,6 @@
             "type": "structure",
             "structure": "tree",
             "threshold": 0.998,
-            "xOffset": 2,
-            "zOffset": 2,
             "allowedBlock": 1,
             "seedOffset": 1,
             "yOffset": 0

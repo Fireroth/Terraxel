@@ -1,56 +1,65 @@
 {
-    "name": "Rocky Waters",
-    "id": "rocky_waters",
+    "name": "High Peaks",
+    "id": "high_peaks",
     "waterBlock": 9,
     "waterLevel": 63,
     "terrain": {
-        "baseHeight": 20.0,
+        "baseHeight": 76.0,
         "noises": [
             {
                 "type": "OpenSimplex2",
                 "frequency": 0.005,
                 "seedOffset": 0,
-                "weight": 10.0,
-                "power": 1.0,
+                "fractalType": "Ridged",
+                "octaves": 4,
+                "lacunarity": 2.0,
+                "gain": 0.5,
+                "weight": 34.0,
+                "power": 2.0,
                 "operation": "add"
             },
             {
-                "type": "OpenSimplex2S",
+                "type": "Perlin",
                 "frequency": 0.02,
                 "seedOffset": 1,
-                "weight": 10.0,
-                "power": 1.0,
+                "weight": 8.0,
+                "power": 1.2,
                 "operation": "add"
             },
             {
                 "type": "OpenSimplex2S",
-                "frequency": 0.05,
+                "frequency": 0.06,
                 "seedOffset": 2,
-                "weight": 50.0,
+                "weight": 3.0,
                 "power": 1.0,
                 "operation": "add"
             }
         ],
         "modifiers": [
             {
-                "type": "deepen",
-                "belowY": 63.0,
-                "factor": -0.55
-            },
-            {
                 "type": "clamp",
-                "aboveY": 78.0
+                "maxY": 125.0
             }
         ]
     },
     "layers": [
         {
             "position": "top",
-            "block": 62,
+            "block": 3,
             "depth": 1,
             "overrides": [
-                { "maxY": 61, "block": 4 }
+                { "maxY": 85, "block": 7 }
             ]
+        },
+        {
+            "block": 7,
+            "depth": 2,
+            "position": "below_top"
+        },
+        {
+            "block": 3,
+            "depth": 2,
+            "position": "below_top"
         },
         {
             "block": 3,
@@ -60,42 +69,26 @@
     "features": [
         {
             "type": "structure",
-            "structure": "palmTree",
-            "threshold": 0.99,
-            "allowedBlock": 62,
+            "structure": "rock",
+            "threshold": 0.995,
+            "allowedBlock": 3,
+            "seedOffset": 0,
+            "yOffset": -1
+        },
+        {
+            "type": "structure",
+            "structure": "smallFirTree",
+            "threshold": 0.9975,
+            "allowedBlock": 7,
             "seedOffset": 1,
             "yOffset": 0
         },
         {
             "type": "block",
-            "block": 17,
-            "threshold": 0.75,
-            "allowedBlock": 62,
-            "seedOffset": 2,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 18,
-            "threshold": 0.75,
-            "allowedBlock": 62,
-            "seedOffset": 3,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 29,
-            "threshold": 0.9,
-            "allowedBlock": 62,
-            "seedOffset": 4,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
             "block": 25,
-            "threshold": 0.9,
-            "allowedBlock": 62,
-            "seedOffset": 5,
+            "threshold": 0.88,
+            "allowedBlock": 7,
+            "seedOffset": 2,
             "yOffset": 0
         },
         {
@@ -103,7 +96,7 @@
             "block": 138,
             "threshold": 0.9,
             "allowedBlock": 3,
-            "seedOffset": 6,
+            "seedOffset": 3,
             "minCount": 4,
             "maxCount": 16,
             "yMin": 5,
@@ -115,7 +108,7 @@
             "block": 139,
             "threshold": 0.92,
             "allowedBlock": 3,
-            "seedOffset": 7,
+            "seedOffset": 4,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 10,
@@ -127,7 +120,7 @@
             "block": 140,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 8,
+            "seedOffset": 5,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 2,
@@ -139,7 +132,7 @@
             "block": 141,
             "threshold": 0.97,
             "allowedBlock": 3,
-            "seedOffset": 9,
+            "seedOffset": 6,
             "minCount": 2,
             "maxCount": 6,
             "yMin": 2,
@@ -151,7 +144,7 @@
             "block": 142,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 10,
+            "seedOffset": 7,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,
@@ -163,7 +156,7 @@
             "block": 143,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 11,
+            "seedOffset": 8,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,

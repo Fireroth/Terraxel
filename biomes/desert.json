@@ -1,15 +1,65 @@
 {
     "name": "Desert",
     "id": "desert",
+    "waterBlock": 9,
+    "waterLevel": 63,
     "terrain": {
-        "heightScale": 0.5,
-        "detailWeight": 0.1,
-        "detail2Weight": 0.2,
-        "power": 1.0,
         "baseHeight": 63.0,
-        "heightMultiplier": 24.0,
-        "deepenBelowY": 63.0,
-        "deepenFactor": 0.5
+        "noises": [
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.005,
+                "seedOffset": 0,
+                "weight": 12.0,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.02,
+                "seedOffset": 1,
+                "weight": 1.2,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2S",
+                "frequency": 0.05,
+                "seedOffset": 2,
+                "weight": 2.4,
+                "power": 1.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.0025,
+                "seedOffset": 10,
+                "weight": 30.0,
+                "power": 16.0,
+                "domainWarpType": "OpenSimplex2",
+                "domainWarpAmp": 15.0,
+                "operation": "add"
+            },
+            {
+                "type": "OpenSimplex2",
+                "frequency": 0.003,
+                "seedOffset": 5,
+                "weight": 14.0,
+                "power": 2.8,
+                "fractalType": "Ridged",
+                "octaves": 3,
+                "lacunarity": 2.0,
+                "gain": 0.5,
+                "operation": "add"
+            }
+        ],
+        "modifiers": [
+            {
+                "type": "deepen",
+                "belowY": 63.0,
+                "factor": 0.5
+            }
+        ]
     },
     "layers": [
         {
@@ -27,25 +77,11 @@
             "position": "fill"
         }
     ],
-    "waterBlock": 9,
-    "waterLevel": 63,
     "features": [
         {
             "type": "structure",
-            "structure": "cactus2",
-            "threshold": 0.997,
-            "xOffset": 0,
-            "zOffset": 0,
-            "allowedBlock": 4,
-            "seedOffset": 0,
-            "yOffset": 0
-        },
-        {
-            "type": "structure",
             "structure": "cactus",
-            "threshold": 0.997,
-            "xOffset": 0,
-            "zOffset": 0,
+            "threshold": 0.994,
             "allowedBlock": 4,
             "seedOffset": 1,
             "yOffset": 0
@@ -62,20 +98,24 @@
             "type": "structure",
             "structure": "pyramid",
             "threshold": 0.99999,
-            "xOffset": 8,
-            "zOffset": 8,
             "allowedBlock": 4,
             "seedOffset": 3,
             "yOffset": -1
         },
         {
             "type": "structure",
-            "structure": "flowerCactus",
-            "threshold": 0.998,
-            "xOffset": 0,
-            "zOffset": 0,
+            "structure": "desertMonolith",
+            "threshold": 0.99999,
             "allowedBlock": 4,
             "seedOffset": 4,
+            "yOffset": -1
+        },
+        {
+            "type": "structure",
+            "structure": "flowerCactus",
+            "threshold": 0.998,
+            "allowedBlock": 4,
+            "seedOffset": 5,
             "yOffset": 0
         },
         {
@@ -83,7 +123,7 @@
             "block": 59,
             "threshold": 0.985,
             "allowedBlock": 4,
-            "seedOffset": 5,
+            "seedOffset": 6,
             "yOffset": 0
         },
         {
@@ -91,7 +131,7 @@
             "block": 138,
             "threshold": 0.9,
             "allowedBlock": 3,
-            "seedOffset": 6,
+            "seedOffset": 7,
             "minCount": 4,
             "maxCount": 16,
             "yMin": 5,
@@ -103,7 +143,7 @@
             "block": 139,
             "threshold": 0.92,
             "allowedBlock": 3,
-            "seedOffset": 7,
+            "seedOffset": 8,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 10,
@@ -115,7 +155,7 @@
             "block": 140,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 8,
+            "seedOffset": 9,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 2,
@@ -127,7 +167,7 @@
             "block": 141,
             "threshold": 0.97,
             "allowedBlock": 3,
-            "seedOffset": 9,
+            "seedOffset": 10,
             "minCount": 2,
             "maxCount": 6,
             "yMin": 2,
@@ -139,7 +179,7 @@
             "block": 142,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 10,
+            "seedOffset": 11,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,
@@ -151,7 +191,7 @@
             "block": 143,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 11,
+            "seedOffset": 12,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,
