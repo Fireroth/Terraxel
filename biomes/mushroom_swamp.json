@@ -76,6 +76,13 @@
     "features": [
         {
             "type": "structure",
+            "structure": "witchHut",
+            "threshold": 0.99995,
+            "allowedBlock": 23,
+            "seedOffset": 0
+        },
+        {
+            "type": "structure",
             "structure": "giantRedMushroom",
             "threshold": 0.993,
             "yOffset": 0,

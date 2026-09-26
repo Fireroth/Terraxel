@@ -17,12 +17,26 @@ struct pendingBlock {
     uint16_t type;
     int srcChunkX = 0, srcChunkZ = 0;
 };
+struct pendingFillColumn {
+    int x, z;
+    int startY;
+    uint16_t type;
+    int srcChunkX = 0, srcChunkZ = 0;
+};
 static std::map<std::pair<int, int>, std::vector<pendingBlock >> pendingBlockPlacements;
+static std::map<std::pair<int, int>, std::vector<pendingFillColumn>> pendingFillPlacements;
 static std::mutex pendingPlacementsMutex;
+
+static inline bool isAirOrLiquidBlock(uint16_t type) {
+    if (type == 0) return true;
+    const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+    return info && info->liquid;
+}
 
 void clearPendingBlockPlacements() {
     std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
     pendingBlockPlacements.clear();
+    pendingFillPlacements.clear();
 }
 
 Chunk::Chunk(int x, int z, World* worldPtr) :
@@ -181,6 +195,120 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
             }
         }
     }
+
+    if (structure.hasFillLayer && !structure.fillLayer.empty()) {
+        int fillDepth = (int)structure.fillLayer.size();
+
+        for (int z = 0; z < fillDepth; z++) {
+            int fillWidth = (int)structure.fillLayer[z].size();
+            for (int x = 0; x < fillWidth; x++) {
+                uint32_t fillCode = structure.fillLayer[z][x];
+                uint8_t chance = fillCode / 100000;
+                uint16_t fillBlockType = fillCode % 100000;
+
+                if (fillBlockType == 0 || fillBlockType == 44) 
+                    continue;
+                if (BlockDB::getBlockInfo(fillBlockType) == nullptr) {
+                    fillBlockType = 65000;
+                }
+
+                int worldX = baseX + x;
+                int worldZ = baseZ + z;
+
+                if (chance > 0) {
+                    float randNoise = noises.randomNoise.GetNoise((double)worldX, (double)(baseY - 1), (double)worldZ);
+                    float noiseValue = (randNoise + 1.0f) * 0.5f;
+
+                    bool place = false;
+                    switch (chance) {
+                        case 1: place = !(noiseValue >= (1.0f / 2)); break;  // 1 in 2
+                        case 2: place = !(noiseValue >= (1.0f / 5)); break;  // 1 in 5
+                        case 3: place = !(noiseValue >= (1.0f / 20)); break;  // 1 in 20
+                    }
+                    if (!place) {
+                        continue;
+                    }
+                }
+
+                // Compute which chunk this column belongs to
+                int chunkOffsetX = 0, chunkOffsetZ = 0;
+                int localX = worldX, localZ = worldZ;
+                if (worldX < 0) {
+                    chunkOffsetX = (worldX / chunkWidth) - (worldX % chunkWidth != 0 ? 1 : 0);
+                    localX = worldX - chunkOffsetX * chunkWidth;
+                } else if (worldX >= chunkWidth) {
+                    chunkOffsetX = worldX / chunkWidth;
+                    localX = worldX - chunkOffsetX * chunkWidth;
+                }
+                if (worldZ < 0) {
+                    chunkOffsetZ = (worldZ / chunkDepth) - (worldZ % chunkDepth != 0 ? 1 : 0);
+                    localZ = worldZ - chunkOffsetZ * chunkDepth;
+                } else if (worldZ >= chunkDepth) {
+                    chunkOffsetZ = worldZ / chunkDepth;
+                    localZ = worldZ - chunkOffsetZ * chunkDepth;
+                }
+
+                int targetChunkX = chunkX + chunkOffsetX;
+                int targetChunkZ = chunkZ + chunkOffsetZ;
+
+                Chunk* targetChunk = nullptr;
+                if (chunkOffsetX == 0 && chunkOffsetZ == 0) {
+                    targetChunk = this;
+                } else if (world) {
+                    targetChunk = world->getChunk(targetChunkX, targetChunkZ);
+                }
+
+                if (targetChunk &&
+                    localX >= 0 && localX < chunkWidth &&
+                    localZ >= 0 && localZ < chunkDepth) {
+                    if (forced || (!targetChunk->loadedFromSave && !targetChunk->isModified)) {
+                        int startY = std::min(baseY - 1, chunkHeight - 1);
+                        bool anyPlaced = false;
+                        for (int fillY = startY; fillY >= 0; fillY--) {
+                            if (!isAirOrLiquidBlock(targetChunk->blocks[localX][fillY][localZ].type)) {
+                                break; // Hit solid block - stop filling down
+                            }
+                            targetChunk->blocks[localX][fillY][localZ].type = fillBlockType;
+                            anyPlaced = true;
+                        }
+
+                        if (anyPlaced) {
+                            if (forced) {
+                                targetChunk->isModified = true;
+                            }
+                            chunksToRebuild.insert(targetChunk);
+                            if (targetChunk != this) {
+                                modifiedNeighborChunks.insert(targetChunk);
+                            }
+
+                            if (localX == 0 && world) {
+                                Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ);
+                                if (neighbor) chunksToRebuild.insert(neighbor);
+                            }
+                            if (localX == chunkWidth - 1 && world) {
+                                Chunk* neighbor = world->getChunk(targetChunkX + 1, targetChunkZ);
+                                if (neighbor) chunksToRebuild.insert(neighbor);
+                            }
+                            if (localZ == 0 && world) {
+                                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ - 1);
+                                if (neighbor) chunksToRebuild.insert(neighbor);
+                            }
+                            if (localZ == chunkDepth - 1 && world) {
+                                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ + 1);
+                                if (neighbor) chunksToRebuild.insert(neighbor);
+                            }
+                        }
+                    }
+                } else {
+                    // Chunk not loaded, defer placement
+                    std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
+                    auto key = std::make_pair(targetChunkX, targetChunkZ);
+                    pendingFillPlacements[key].push_back({localX, localZ, baseY - 1, fillBlockType, chunkX, chunkZ});
+                }
+            }
+        }
+    }
+
     if (forced) {
         for (Chunk* chunk : chunksToRebuild) {
             chunk->clearLight();
@@ -221,6 +349,30 @@ void Chunk::applyPendingBlockPlacements() {
             }
         }
         pendingBlockPlacements.erase(iterator);
+    }
+
+    auto fillIt = pendingFillPlacements.find(key);
+    if (fillIt != pendingFillPlacements.end()) {
+        if (!loadedFromSave) {
+            for (const auto& col : fillIt->second) {
+                if (col.x >= 0 && col.x < chunkWidth && col.z >= 0 && col.z < chunkDepth) {
+                    int startY = std::min(col.startY, chunkHeight - 1);
+                    for (int fillY = startY; fillY >= 0; fillY--) {
+                        if (!isAirOrLiquidBlock(blocks[col.x][fillY][col.z].type)) {
+                            break; // Stop at first solid block
+                        }
+                        blocks[col.x][fillY][col.z].type = col.type;
+                    }
+                }
+                if (world) {
+                    Chunk* srcChunk = world->getChunk(col.srcChunkX, col.srcChunkZ);
+                    if (srcChunk && srcChunk != this) {
+                        modifiedNeighborChunks.insert(srcChunk);
+                    }
+                }
+            }
+        }
+        pendingFillPlacements.erase(fillIt);
     }
 }
 

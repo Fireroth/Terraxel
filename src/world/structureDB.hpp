@@ -11,13 +11,15 @@ class Structure {
 public:
     std::string name;
     std::vector<StructureLayer> layers;
+    StructureLayer fillLayer;
+    bool hasFillLayer = false;
     int defaultXOffset = 0;
     int defaultYOffset = 0;
     int defaultZOffset = 0;
 
     Structure() = default;
-    Structure(const std::string& name, const std::vector<StructureLayer>& layers, int xOffset = 0, int yOffset = 0, int zOffset = 0)
-        : name(name), layers(layers), defaultXOffset(xOffset), defaultYOffset(yOffset), defaultZOffset(zOffset) {}
+    Structure(const std::string& name, const std::vector<StructureLayer>& layers, int xOffset = 0, int yOffset = 0, int zOffset = 0, const StructureLayer& fillLayer = {}, bool hasFillLayer = false)
+        : name(name), layers(layers), fillLayer(fillLayer), hasFillLayer(hasFillLayer || !fillLayer.empty()), defaultXOffset(xOffset), defaultYOffset(yOffset), defaultZOffset(zOffset) {}
 };
 
 class StructureDB {

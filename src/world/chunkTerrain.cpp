@@ -353,6 +353,7 @@ void generateChunkTerrain(Chunk& chunk) {
 }    
 
 StructureLayer rotateLayer(const StructureLayer& layer, int rot) {
+    if (layer.empty() || layer[0].empty()) return layer;
     int h = static_cast<int>(layer.size());
     int w = static_cast<int>(layer[0].size());
     StructureLayer out;
@@ -392,6 +393,9 @@ Structure rotateStructure(const Structure& in, int rot) {
 
     for (const StructureLayer& layer : in.layers) {
         out.layers.push_back(rotateLayer(layer, rot));
+    }
+    if (in.hasFillLayer && !in.fillLayer.empty()) {
+        out.fillLayer = rotateLayer(in.fillLayer, rot);
     }
     return out;
 }

@@ -153,6 +153,13 @@
             "yOffset": 0
         },
         {
+            "type": "structure",
+            "structure": "wishingWell",
+            "threshold": 0.99995,
+            "allowedBlock": 1,
+            "seedOffset": 17
+        },
+        {
             "type": "ore",
             "block": 138,
             "threshold": 0.9,

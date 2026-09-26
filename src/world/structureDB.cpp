@@ -62,13 +62,40 @@ void StructureDB::init() {
                 continue;
             }
 
+            StructureLayer fillLayer;
+            bool hasFillLayer = false;
+            if (j.contains("fillLayer") && j["fillLayer"].is_array() && !j["fillLayer"].empty()) {
+                try {
+                    // Check if 3D array: [ [ [row] ] ]
+                    if (j["fillLayer"][0].is_array() && !j["fillLayer"][0].empty() && j["fillLayer"][0][0].is_array()) {
+                        for (const auto& row : j["fillLayer"][0]) {
+                            std::vector<uint32_t> r;
+                            for (const auto& cell : row)
+                                r.push_back(cell.get<uint32_t>());
+                            fillLayer.push_back(r);
+                        }
+                        hasFillLayer = !fillLayer.empty();
+                    } else if (j["fillLayer"][0].is_array()) { // 2D array: [ [row] ]
+                        for (const auto& row : j["fillLayer"]) {
+                            std::vector<uint32_t> r;
+                            for (const auto& cell : row)
+                                r.push_back(cell.get<uint32_t>());
+                            fillLayer.push_back(r);
+                        }
+                        hasFillLayer = !fillLayer.empty();
+                    }
+                } catch (const std::exception& e) {
+                    LOG_WARN("StructureDB: failed to parse fillLayer for '", name, "': ", e.what());
+                }
+            }
+
             int defaultXOffset = j.value("defaultXOffset", 0);
             int defaultYOffset = j.value("defaultYOffset", 0);
             int defaultZOffset = j.value("defaultZOffset", 0);
 
-            structures[name] = Structure(name, layers, defaultXOffset, defaultYOffset, defaultZOffset);
+            structures[name] = Structure(name, layers, defaultXOffset, defaultYOffset, defaultZOffset, fillLayer, hasFillLayer);
 
-            LOG_DEBUG("StructureDB: loaded '", name, "' offset=(", defaultXOffset, ",", defaultYOffset, ",", defaultZOffset, ") layers=", layers.size());
+            LOG_DEBUG("StructureDB: loaded '", name, "' offset=(", defaultXOffset, ",", defaultYOffset, ",", defaultZOffset, ") layers=", layers.size(), " hasFillLayer=", hasFillLayer);
 
         } catch (std::exception& e) {
             LOG_ERROR("StructureDB: JSON parse error in ", filePath.filename().string(), ": ", e.what());
