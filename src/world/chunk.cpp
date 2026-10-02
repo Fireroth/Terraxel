@@ -1,6 +1,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <set>
+#include <unordered_set>
 #include <map>
 #include <algorithm>
 #include <mutex>
@@ -73,18 +74,75 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
     int structHeight = (int)structure.layers.size();
     int structDepth = (int)structure.layers[0].size();
     int structWidth = (int)structure.layers[0][0].size();
-    std::set<Chunk*> chunksToRebuild;
+    std::unordered_set<Chunk*> chunksToRebuild;
+
+    std::vector<std::pair<std::pair<int, int>, pendingBlock>> localPendingBlocks;
+    std::vector<std::pair<std::pair<int, int>, pendingFillColumn>> localPendingFills;
+
+    int cachedTargetChunkX = INT32_MIN;
+    int cachedTargetChunkZ = INT32_MIN;
+    Chunk* cachedTargetChunk = nullptr;
+
+    auto getTargetChunk = [&](int targetChunkX, int targetChunkZ) -> Chunk* {
+        if (targetChunkX == chunkX && targetChunkZ == chunkZ) {
+            return this;
+        }
+        if (targetChunkX == cachedTargetChunkX && targetChunkZ == cachedTargetChunkZ) {
+            return cachedTargetChunk;
+        }
+        cachedTargetChunkX = targetChunkX;
+        cachedTargetChunkZ = targetChunkZ;
+        cachedTargetChunk = world ? world->getChunk(targetChunkX, targetChunkZ) : nullptr;
+        return cachedTargetChunk;
+    };
+
+    auto markChunkModifiedAndRebuild = [&](Chunk* targetChunk, int targetChunkX, int targetChunkZ, int localX, int localZ) {
+        if (forced) {
+            targetChunk->isModified = true;
+        }
+        chunksToRebuild.insert(targetChunk);
+        if (targetChunk != this) {
+            modifiedNeighborChunks.insert(targetChunk);
+        }
+
+        if (world) {
+            if (localX == 0) {
+                Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ);
+                if (neighbor) chunksToRebuild.insert(neighbor);
+            }
+            if (localX == chunkWidth - 1) {
+                Chunk* neighbor = world->getChunk(targetChunkX + 1, targetChunkZ);
+                if (neighbor) chunksToRebuild.insert(neighbor);
+            }
+            if (localZ == 0) {
+                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ - 1);
+                if (neighbor) chunksToRebuild.insert(neighbor);
+            }
+            if (localZ == chunkDepth - 1) {
+                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ + 1);
+                if (neighbor) chunksToRebuild.insert(neighbor);
+            }
+        }
+    };
 
     for (int y = 0; y < structHeight; y++) {
+        int worldY = baseY + y;
+        if (worldY < 0 || worldY >= chunkHeight) {
+            continue;
+        }
+
         for (int z = 0; z < structDepth; z++) {
+            int worldZ = baseZ + z;
+            int chunkOffsetZ = worldZ >> 4;
+            int localZ = worldZ & 15;
+            int targetChunkZ = chunkZ + chunkOffsetZ;
+
             for (int x = 0; x < structWidth; x++) {
                 uint32_t blockCode = structure.layers[y][z][x];
                 uint8_t chance = blockCode / 100000;
                 uint16_t blockType = blockCode % 100000;
 
                 int worldX = baseX + x;
-                int worldY = baseY + y;
-                int worldZ = baseZ + z;
 
                 if (blockType == 0) 
                     continue;
@@ -110,87 +168,20 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                 }
 
                 // Compute which chunk this block belongs to
-                int chunkOffsetX = 0, chunkOffsetZ = 0;
-                int localX = worldX, localZ = worldZ;
-                if (worldX < 0) {
-                    chunkOffsetX = (worldX / chunkWidth) - (worldX % chunkWidth != 0 ? 1 : 0);
-                    localX = worldX - chunkOffsetX * chunkWidth;
-                } else if (worldX >= chunkWidth) {
-                    chunkOffsetX = worldX / chunkWidth;
-                    localX = worldX - chunkOffsetX * chunkWidth;
-                }
-                if (worldZ < 0) {
-                    chunkOffsetZ = (worldZ / chunkDepth) - (worldZ % chunkDepth != 0 ? 1 : 0);
-                    localZ = worldZ - chunkOffsetZ * chunkDepth;
-                } else if (worldZ >= chunkDepth) {
-                    chunkOffsetZ = worldZ / chunkDepth;
-                    localZ = worldZ - chunkOffsetZ * chunkDepth;
-                }
-
+                int chunkOffsetX = worldX >> 4;
+                int localX = worldX & 15;
                 int targetChunkX = chunkX + chunkOffsetX;
-                int targetChunkZ = chunkZ + chunkOffsetZ;
 
-                if (worldY >= 0 && worldY < chunkHeight) {
-                    Chunk* targetChunk = nullptr;
-                    if (chunkOffsetX == 0 && chunkOffsetZ == 0) {
-                        targetChunk = this;
-                    } else if (world) {
-                        targetChunk = world->getChunk(targetChunkX, targetChunkZ);
+                Chunk* targetChunk = getTargetChunk(targetChunkX, targetChunkZ);
+                if (targetChunk) {
+                    // Do not overwrite chunks that already have player modified state.
+                    if (forced || (!targetChunk->loadedFromSave && !targetChunk->isModified)) {
+                        targetChunk->blocks[localX][worldY][localZ].type = blockType;
+                        markChunkModifiedAndRebuild(targetChunk, targetChunkX, targetChunkZ, localX, localZ);
                     }
-                    if (targetChunk &&
-                        localX >= 0 && localX < chunkWidth &&
-                        localZ >= 0 && localZ < chunkDepth) {
-                        // Do not overwrite chunks that already have player modified state.
-                        if (forced || (!targetChunk->loadedFromSave && !targetChunk->isModified)) {
-                            targetChunk->blocks[localX][worldY][localZ].type = blockType;
-                            if (forced) {
-                                targetChunk->isModified = true;
-                            }
-                            chunksToRebuild.insert(targetChunk);
-                            if (targetChunk != this) {
-                                modifiedNeighborChunks.insert(targetChunk);
-                            }
-
-                            if (localX == 0) {
-                                Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localX == chunkWidth - 1) {
-                                Chunk* neighbor = world->getChunk(targetChunkX + 1, targetChunkZ);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localZ == 0) {
-                                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ - 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localZ == chunkDepth - 1) {
-                                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ + 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-
-                            /*if (localX == 0 && localZ == 0) {
-                                Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ - 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localX == chunkWidth - 1 && localZ == 0) {
-                                Chunk* neighbor = world->getChunk(targetChunkX + 1, targetChunkZ - 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localX == 0 && localZ == chunkDepth - 1) {
-                                Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ + 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localX == chunkWidth - 1 && localZ == chunkDepth - 1) {
-                                Chunk* neighbor = world->getChunk(targetChunkX + 1, targetChunkZ + 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }*/
-                        }
-                    } else {
-                        // Chunk not loaded, defer placement
-                        std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
-                        auto key = std::make_pair(targetChunkX, targetChunkZ);
-                        pendingBlockPlacements[key].push_back({localX, worldY, localZ, blockType, chunkX, chunkZ});
-                    }
+                } else {
+                    // Chunk not loaded, defer placement locally
+                    localPendingBlocks.push_back({std::make_pair(targetChunkX, targetChunkZ), {localX, worldY, localZ, blockType, chunkX, chunkZ}});
                 }
             }
         }
@@ -200,6 +191,11 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
         int fillDepth = (int)structure.fillLayer.size();
 
         for (int z = 0; z < fillDepth; z++) {
+            int worldZ = baseZ + z;
+            int chunkOffsetZ = worldZ >> 4;
+            int localZ = worldZ & 15;
+            int targetChunkZ = chunkZ + chunkOffsetZ;
+
             int fillWidth = (int)structure.fillLayer[z].size();
             for (int x = 0; x < fillWidth; x++) {
                 uint32_t fillCode = structure.fillLayer[z][x];
@@ -213,7 +209,6 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                 }
 
                 int worldX = baseX + x;
-                int worldZ = baseZ + z;
 
                 if (chance > 0) {
                     float randNoise = noises.randomNoise.GetNoise((double)worldX, (double)(baseY - 1), (double)worldZ);
@@ -231,36 +226,12 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                 }
 
                 // Compute which chunk this column belongs to
-                int chunkOffsetX = 0, chunkOffsetZ = 0;
-                int localX = worldX, localZ = worldZ;
-                if (worldX < 0) {
-                    chunkOffsetX = (worldX / chunkWidth) - (worldX % chunkWidth != 0 ? 1 : 0);
-                    localX = worldX - chunkOffsetX * chunkWidth;
-                } else if (worldX >= chunkWidth) {
-                    chunkOffsetX = worldX / chunkWidth;
-                    localX = worldX - chunkOffsetX * chunkWidth;
-                }
-                if (worldZ < 0) {
-                    chunkOffsetZ = (worldZ / chunkDepth) - (worldZ % chunkDepth != 0 ? 1 : 0);
-                    localZ = worldZ - chunkOffsetZ * chunkDepth;
-                } else if (worldZ >= chunkDepth) {
-                    chunkOffsetZ = worldZ / chunkDepth;
-                    localZ = worldZ - chunkOffsetZ * chunkDepth;
-                }
-
+                int chunkOffsetX = worldX >> 4;
+                int localX = worldX & 15;
                 int targetChunkX = chunkX + chunkOffsetX;
-                int targetChunkZ = chunkZ + chunkOffsetZ;
 
-                Chunk* targetChunk = nullptr;
-                if (chunkOffsetX == 0 && chunkOffsetZ == 0) {
-                    targetChunk = this;
-                } else if (world) {
-                    targetChunk = world->getChunk(targetChunkX, targetChunkZ);
-                }
-
-                if (targetChunk &&
-                    localX >= 0 && localX < chunkWidth &&
-                    localZ >= 0 && localZ < chunkDepth) {
+                Chunk* targetChunk = getTargetChunk(targetChunkX, targetChunkZ);
+                if (targetChunk) {
                     if (forced || (!targetChunk->loadedFromSave && !targetChunk->isModified)) {
                         int startY = std::min(baseY - 1, chunkHeight - 1);
                         bool anyPlaced = false;
@@ -273,39 +244,24 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                         }
 
                         if (anyPlaced) {
-                            if (forced) {
-                                targetChunk->isModified = true;
-                            }
-                            chunksToRebuild.insert(targetChunk);
-                            if (targetChunk != this) {
-                                modifiedNeighborChunks.insert(targetChunk);
-                            }
-
-                            if (localX == 0 && world) {
-                                Chunk* neighbor = world->getChunk(targetChunkX - 1, targetChunkZ);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localX == chunkWidth - 1 && world) {
-                                Chunk* neighbor = world->getChunk(targetChunkX + 1, targetChunkZ);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localZ == 0 && world) {
-                                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ - 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
-                            if (localZ == chunkDepth - 1 && world) {
-                                Chunk* neighbor = world->getChunk(targetChunkX, targetChunkZ + 1);
-                                if (neighbor) chunksToRebuild.insert(neighbor);
-                            }
+                            markChunkModifiedAndRebuild(targetChunk, targetChunkX, targetChunkZ, localX, localZ);
                         }
                     }
                 } else {
                     // Chunk not loaded, defer placement
-                    std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
-                    auto key = std::make_pair(targetChunkX, targetChunkZ);
-                    pendingFillPlacements[key].push_back({localX, localZ, baseY - 1, fillBlockType, chunkX, chunkZ});
+                    localPendingFills.push_back({std::make_pair(targetChunkX, targetChunkZ), {localX, localZ, baseY - 1, fillBlockType, chunkX, chunkZ}});
                 }
             }
+        }
+    }
+
+    if (!localPendingBlocks.empty() || !localPendingFills.empty()) {
+        std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
+        for (const auto& item : localPendingBlocks) {
+            pendingBlockPlacements[item.first].push_back(item.second);
+        }
+        for (const auto& item : localPendingFills) {
+            pendingFillPlacements[item.first].push_back(item.second);
         }
     }
 
@@ -959,6 +915,61 @@ void Chunk::renderCross(const Camera& camera, GLint uCrossModelLoc) {
     glBindVertexArray(0);
 }
 
+bool Chunk::needsTranslucentSort(const glm::dvec3& camPosWorld) const {
+    if (translucentIndexCount == 0 || translucentIndexDataCPU.empty())
+        return false;
+
+    if (translucentNeedsSort)
+        return true;
+
+    glm::vec3 camPosLocal = glm::vec3(camPosWorld - glm::dvec3(chunkX * chunkWidth, 0.0f, chunkZ * chunkDepth));
+    glm::vec3 diff = camPosLocal - lastSortCamPosLocal;
+    return glm::dot(diff, diff) > 1.0f;
+}
+
+void Chunk::translucentSortFaces(const glm::dvec3& camPosWorld) {
+    if (translucentIndexCount == 0 || translucentIndexDataCPU.empty())
+        return;
+
+    glm::vec3 camPosLocal = glm::vec3(camPosWorld - glm::dvec3(chunkX * chunkWidth, 0.0f, chunkZ * chunkDepth));
+    lastSortCamPosLocal = camPosLocal;
+    translucentNeedsSort = false;
+
+    struct FaceInfo { size_t baseIdx; float dist2; };
+    static thread_local std::vector<FaceInfo> faces;
+    static thread_local std::vector<unsigned int> sortedIndices;
+
+    faces.clear();
+    const size_t numFaces = translucentFaceCentroids.size();
+    faces.reserve(numFaces);
+
+    for (size_t fIdx = 0; fIdx < numFaces; ++fIdx) {
+        const glm::vec3& centroid = translucentFaceCentroids[fIdx];
+        float d2 = glm::dot(centroid - camPosLocal, centroid - camPosLocal);
+        faces.push_back({fIdx * 6, d2});
+    }
+
+    // Sort faces back to front
+    std::sort(faces.begin(), faces.end(), [](const FaceInfo& A, const FaceInfo& B) {
+        return A.dist2 > B.dist2;
+    });
+
+    sortedIndices.clear();
+    sortedIndices.reserve(numFaces * 6);
+    for (const auto& f : faces) {
+        size_t base = f.baseIdx;
+        for (size_t k = 0; k < 6; ++k) {
+            sortedIndices.push_back(translucentIndexDataCPU[base + k]);
+        }
+    }
+
+    glBindVertexArray(translucentVAO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sortedIndices.size() * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sortedIndices.size() * sizeof(unsigned int), sortedIndices.data());
+    glBindVertexArray(0);
+}
+
 void Chunk::renderTranslucent(const Camera& camera, GLint uModelLoc) {
     glm::dvec3 chunkWorldPos = glm::dvec3(chunkX * chunkWidth, 0, chunkZ * chunkDepth);
     glm::dvec3 relativePos = chunkWorldPos - camera.getPositionDouble();
@@ -969,52 +980,7 @@ void Chunk::renderTranslucent(const Camera& camera, GLint uModelLoc) {
     if (translucentIndexCount == 0 || translucentIndexDataCPU.empty()) 
         return;
 
-    glm::dvec3 camPosWorld = camera.getPositionDouble();
-    glm::vec3 camPosLocal = glm::vec3(camPosWorld - glm::dvec3(chunkX * chunkWidth, 0.0f, chunkZ * chunkDepth));
-
-    glm::vec3 diff = camPosLocal - lastSortCamPosLocal;
-    float distSq = glm::dot(diff, diff);
-
-    if (translucentNeedsSort || distSq > 1.0f) {
-        lastSortCamPosLocal = camPosLocal;
-        translucentNeedsSort = false;
-
-        struct FaceInfo { size_t baseIdx; float dist2; };
-        static thread_local std::vector<FaceInfo> faces;
-        static thread_local std::vector<unsigned int> sortedIndices;
-
-        faces.clear();
-        const size_t numFaces = translucentFaceCentroids.size();
-        faces.reserve(numFaces);
-
-        for (size_t fIdx = 0; fIdx < numFaces; ++fIdx) {
-            const glm::vec3& centroid = translucentFaceCentroids[fIdx];
-            float d2 = glm::dot(centroid - camPosLocal, centroid - camPosLocal);
-            faces.push_back({fIdx * 6, d2});
-        }
-
-        // Sort faces back to front
-        std::sort(faces.begin(), faces.end(), [](const FaceInfo& A, const FaceInfo& B) {
-            return A.dist2 > B.dist2;
-        });
-
-        sortedIndices.clear();
-        sortedIndices.reserve(numFaces * 6);
-        for (const auto& f : faces) {
-            size_t base = f.baseIdx;
-            for (size_t k = 0; k < 6; ++k) {
-                sortedIndices.push_back(translucentIndexDataCPU[base + k]);
-            }
-        }
-
-        glBindVertexArray(translucentVAO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sortedIndices.size() * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sortedIndices.size() * sizeof(unsigned int), sortedIndices.data());
-    } else {
-        glBindVertexArray(translucentVAO);
-    }
-
+    glBindVertexArray(translucentVAO);
     glDrawElements(GL_TRIANGLES, translucentIndexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }

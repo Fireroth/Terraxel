@@ -10,7 +10,7 @@
 // 2xxxxx = 1 in 5
 // 3xxxxx = 1 in 20
 
-std::unordered_map<std::string, Structure> StructureDB::structures;
+std::unordered_map<std::string, std::array<Structure, 4>> StructureDB::structures;
 
 void StructureDB::init() {
     LOG_INFO("StructureDB: Initializing...");
@@ -93,7 +93,57 @@ void StructureDB::init() {
             int defaultYOffset = j.value("defaultYOffset", 0);
             int defaultZOffset = j.value("defaultZOffset", 0);
 
-            structures[name] = Structure(name, layers, defaultXOffset, defaultYOffset, defaultZOffset, fillLayer, hasFillLayer);
+            Structure baseStruct(name, layers, defaultXOffset, defaultYOffset, defaultZOffset, fillLayer, hasFillLayer);
+            
+            auto rotateLayer = [](const StructureLayer& layer, int rot) -> StructureLayer {
+                if (layer.empty() || layer[0].empty() || rot == 0) return layer;
+                int h = static_cast<int>(layer.size());
+                int w = static_cast<int>(layer[0].size());
+                StructureLayer out;
+                switch (rot) {
+                    case 1: // 90 deg
+                        out.assign(w, std::vector<uint32_t>(h));
+                        for (int y = 0; y < h; y++)
+                            for (int x = 0; x < w; x++)
+                                out[x][h - 1 - y] = layer[y][x];
+                        return out;
+                    case 2: // 180 deg
+                        out.assign(h, std::vector<uint32_t>(w));
+                        for (int y = 0; y < h; y++)
+                            for (int x = 0; x < w; x++)
+                                out[h - 1 - y][w - 1 - x] = layer[y][x];
+                        return out;
+                    case 3: // 270 deg
+                        out.assign(w, std::vector<uint32_t>(h));
+                        for (int y = 0; y < h; y++)
+                            for (int x = 0; x < w; x++)
+                                out[w - 1 - x][y] = layer[y][x];
+                        return out;
+                }
+                return layer;
+            };
+
+            auto rotateStructure = [&](const Structure& in, int rot) -> Structure {
+                if (rot == 0) return in;
+                Structure out = in;
+                out.layers.clear();
+                out.layers.reserve(in.layers.size());
+                for (const StructureLayer& layer : in.layers) {
+                    out.layers.push_back(rotateLayer(layer, rot));
+                }
+                if (in.hasFillLayer && !in.fillLayer.empty()) {
+                    out.fillLayer = rotateLayer(in.fillLayer, rot);
+                }
+                return out;
+            };
+
+            std::array<Structure, 4> rotated;
+            rotated[0] = baseStruct;
+            rotated[1] = rotateStructure(baseStruct, 1);
+            rotated[2] = rotateStructure(baseStruct, 2);
+            rotated[3] = rotateStructure(baseStruct, 3);
+
+            structures[name] = std::move(rotated);
 
             LOG_DEBUG("StructureDB: loaded '", name, "' offset=(", defaultXOffset, ",", defaultYOffset, ",", defaultZOffset, ") layers=", layers.size(), " hasFillLayer=", hasFillLayer);
 
@@ -107,9 +157,15 @@ void StructureDB::init() {
 }
 
 const Structure* StructureDB::get(const std::string& name) {
+    return getRotated(name, 0);
+}
+
+const Structure* StructureDB::getRotated(const std::string& name, int rot) {
     auto iterator = structures.find(name);
-    if (iterator != structures.end())
-        return &iterator->second;
+    if (iterator != structures.end()) {
+        int r = (rot % 4 + 4) % 4;
+        return &iterator->second[r];
+    }
     LOG_WARN("StructureDB: unknown structure '", name, "'");
     return nullptr;
 }

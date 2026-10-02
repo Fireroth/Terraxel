@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <functional>
 
+GLFWwindow* getCurrentGLFWwindow();
+
 class Window {
 public:
     Window(int width, int height, const char* title);

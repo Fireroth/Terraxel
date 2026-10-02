@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <array>
 
 using StructureLayer = std::vector<std::vector<uint32_t>>;
 
@@ -26,7 +27,8 @@ class StructureDB {
 public:
     static void init();
     static const Structure* get(const std::string& name);
+    static const Structure* getRotated(const std::string& name, int rot);
 
 private:
-    static std::unordered_map<std::string, Structure> structures;
+    static std::unordered_map<std::string, std::array<Structure, 4>> structures;
 };

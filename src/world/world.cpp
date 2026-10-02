@@ -412,7 +412,7 @@ void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bo
         }
     }
 
-    int chunksToLoadPerFrame = getOptionInt("chunks_to_load_per_frame", 1);
+    int chunksToLoadPerFrame = getOptionInt("chunks_to_load_per_frame", 5);
     for (int i = 0; i < chunksToLoadPerFrame && !chunkLoadQueue.empty(); i++) {
         auto pos = chunkLoadQueue.front();
         chunkLoadQueue.pop_front();
@@ -638,23 +638,77 @@ void World::renderCross(const Camera& camera, GLint uCrossModelLoc, const Frustu
 }
 
 void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frustum& frustum) {
+    int chunksToSortPerFrame = getOptionInt("chunks_to_sort_per_frame", 3);
+    glm::dvec3 camPos = camera.getPositionDouble();
+
     std::vector<std::pair<float, Chunk*>> visible;
+    std::vector<std::pair<float, Chunk*>> visibleNeedsSort;
+
     {
         std::shared_lock<std::shared_mutex> lock(chunksMutex);
         visible.reserve(chunks.size());
 
-        glm::dvec3 camPos = camera.getPositionDouble();
         for (auto& [coord, chunk] : chunks) {
-            if (!isChunkInFrustum(coord.first, coord.second, frustum, camPos))
-                continue;
-
             float cx = (coord.first * Chunk::chunkWidth) + (Chunk::chunkWidth * 0.5f);
             float cz = (coord.second * Chunk::chunkDepth) + (Chunk::chunkDepth * 0.5f);
             float dx = static_cast<float>(camPos.x - cx);
             float dy = static_cast<float>(camPos.y);
             float dz = static_cast<float>(camPos.z - cz);
             float dist2 = dx*dx + dy*dy + dz*dz;
-            visible.emplace_back(dist2, chunk);
+
+            if (isChunkInFrustum(coord.first, coord.second, frustum, camPos)) {
+                visible.emplace_back(dist2, chunk);
+                if (chunksToSortPerFrame > 0 && chunk->needsTranslucentSort(camPos)) {
+                    visibleNeedsSort.emplace_back(dist2, chunk);
+                }
+            }
+        }
+    }
+
+    int sortedCount = 0;
+    if (chunksToSortPerFrame > 0) {
+        std::sort(visibleNeedsSort.begin(), visibleNeedsSort.end(), [](const auto& A, const auto& B) {
+            return A.first < B.first;
+        });
+
+        for (auto& p : visibleNeedsSort) {
+            if (sortedCount >= chunksToSortPerFrame)
+                break;
+            p.second->translucentSortFaces(camPos);
+            sortedCount++;
+        }
+
+        if (sortedCount < chunksToSortPerFrame) {
+            std::vector<std::pair<float, Chunk*>> nonVisibleNeedsSort;
+            {
+                std::shared_lock<std::shared_mutex> lock(chunksMutex);
+                for (auto& [coord, chunk] : chunks) {
+                    if (!isChunkInFrustum(coord.first, coord.second, frustum, camPos)) {
+                        if (chunk->needsTranslucentSort(camPos)) {
+                            float cx = (coord.first * Chunk::chunkWidth) + (Chunk::chunkWidth * 0.5f);
+                            float cz = (coord.second * Chunk::chunkDepth) + (Chunk::chunkDepth * 0.5f);
+                            float dx = static_cast<float>(camPos.x - cx);
+                            float dy = static_cast<float>(camPos.y);
+                            float dz = static_cast<float>(camPos.z - cz);
+                            float dist2 = dx*dx + dy*dy + dz*dz;
+                            nonVisibleNeedsSort.emplace_back(dist2, chunk);
+                        }
+                    }
+                }
+            }
+
+            if (!nonVisibleNeedsSort.empty()) {
+                std::sort(nonVisibleNeedsSort.begin(), nonVisibleNeedsSort.end(), [](const auto& A, const auto& B) {
+                    return A.first < B.first;
+                });
+
+                for (auto& p : nonVisibleNeedsSort) {
+                    if (sortedCount >= chunksToSortPerFrame)
+                        break;
+                    p.second->translucentSortFaces(camPos);
+                    sortedCount++;
+                }
+            }
         }
     }
 

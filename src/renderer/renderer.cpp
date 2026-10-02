@@ -13,19 +13,10 @@
 #include "../core/logger.hpp"
 #include "../world/blockDB.hpp"
 #include "../world/modelDB.hpp"
+#include "../core/window.hpp"
 
 
-Renderer::Renderer()
-    : shaderProgram(0), textureAtlas(0), textureAtlas2D(0),
-      crosshairVAO(0), crosshairVBO(0), borderVAO(0), borderVBO(0), borderShaderProgram(0),
-      fbo(0), fboColorTex(0), fboDepthTex(0), fboWidth(0), fboHeight(0),
-      quadVAO(0), quadVBO(0), postProcessShaderProgram(0),
-      uPostProcessTextureLoc(-1), uPostProcessEffectTypeLoc(-1), uPostProcessTimeLoc(-1),
-      uPostProcessDepthTextureLoc(-1), uPostProcessInvProjLoc(-1),
-      uPostProcessFogEnabledLoc(-1), uPostProcessNormalFogStartLoc(-1),
-      uOpaqueFogEnabledLoc(-1), uOpaqueFogDensityLoc(-1), uOpaqueFogStartLoc(-1), uOpaqueFogColorLoc(-1),
-      uCrossFogEnabledLoc(-1), uCrossFogDensityLoc(-1), uCrossFogStartLoc(-1), uCrossFogColorLoc(-1),
-      uTranslucentFogEnabledLoc(-1), uTranslucentFogDensityLoc(-1), uTranslucentFogStartLoc(-1), uTranslucentFogColorLoc(-1) {}
+Renderer::Renderer() = default;
 
 Renderer::~Renderer() {
     LOG_INFO("Renderer: Cleaning up...");
@@ -33,6 +24,8 @@ Renderer::~Renderer() {
     glDeleteTextures(1, &uiAtlas);
     glDeleteTextures(1, &textureAtlas2D);
     glDeleteProgram(shaderProgram);
+    glDeleteProgram(crossShaderProgram);
+    glDeleteProgram(translucentShaderProgram);
 
     glDeleteVertexArrays(1, &crosshairVAO);
     glDeleteBuffers(1, &crosshairVBO);
@@ -40,20 +33,15 @@ Renderer::~Renderer() {
 
     glDeleteVertexArrays(1, &borderVAO);
     glDeleteBuffers(1, &borderVBO);
-    glDeleteProgram(borderShaderProgram);
+    glDeleteBuffers(1, &borderEBO);
 
-    if (fbo != 0) {
-        glDeleteFramebuffers(1, &fbo);
-        glDeleteTextures(1, &fboColorTex);
-        glDeleteTextures(1, &fboDepthTex);
-    }
-    if (quadVAO != 0) {
-        glDeleteVertexArrays(1, &quadVAO);
-        glDeleteBuffers(1, &quadVBO);
-    }
-    if (postProcessShaderProgram != 0) {
-        glDeleteProgram(postProcessShaderProgram);
-    }
+    glDeleteProgram(borderShaderProgram);
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &fboColorTex);
+    glDeleteTextures(1, &fboDepthTex);
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
+    glDeleteProgram(postProcessShaderProgram);
 }
 
 void Renderer::init() {
@@ -143,8 +131,8 @@ void Renderer::init() {
 
     LOG_INFO("Renderer: Loading texture assets");
     loadTextureAtlas("textures/blocks.png");
-    loadTextureAtlas2D("textures/blocks.png");
-    loadTextureUIAtlas("textures/ui.png");
+    textureAtlas2D = loadTexture2D("textures/blocks.png");
+    uiAtlas = loadTexture2D("textures/ui.png", true);
 
     LOG_INFO("Renderer: Finishing initialization");
     initCrosshair();
@@ -203,7 +191,6 @@ void Renderer::initBorderMesh() {
 
     glGenVertexArrays(1, &borderVAO);
     glGenBuffers(1, &borderVBO);
-    GLuint borderEBO;
     glGenBuffers(1, &borderEBO);
 
     glBindVertexArray(borderVAO);
@@ -289,11 +276,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     int renderDist = getOptionInt("render_distance", 7) + 1; // +1 to account for invisible "mesh helper" chunk
     world.updateChunksAroundPlayer(camera.getPositionDouble(), renderDist);
 
-    GLFWwindow* getCurrentGLFWwindow();
     GLFWwindow* window = getCurrentGLFWwindow();
     float baseFov = getOptionFloat("fov", 70.0f);
     
-    float getSpeedMultiplier(GLFWwindow* window);
     bool sprintState = window && getSpeedMultiplier(window) > 2.0f;
     float sprintFov = baseFov + 10.0f;
 
@@ -318,6 +303,14 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
 
     glm::vec3 camPos = camera.getPosition();
 
+    auto uploadEnvironmentUniforms = [&](GLint fogEnLoc, GLint fogDensLoc, GLint fogStartLoc, GLint fogColLoc, GLint lightEnLoc) {
+        if (fogEnLoc != -1) glUniform1i(fogEnLoc, fogEnabled ? 1 : 0);
+        if (fogDensLoc != -1) glUniform1f(fogDensLoc, fogDensity);
+        if (fogStartLoc != -1) glUniform1f(fogStartLoc, fogStartDistance);
+        if (fogColLoc != -1) glUniform3fv(fogColLoc, 1, &fogColor[0]);
+        if (lightEnLoc != -1) glUniform1i(lightEnLoc, lightingEnabled ? 1 : 0);
+    };
+
     // -------------------------------- Render main --------------------------------
 
     glUseProgram(shaderProgram);
@@ -330,21 +323,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uAtlasLoc, 0);
 
-    if (uOpaqueFogEnabledLoc != -1) {
-        glUniform1i(uOpaqueFogEnabledLoc, fogEnabled ? 1 : 0);
-    }
-    if (uOpaqueFogDensityLoc != -1) {
-        glUniform1f(uOpaqueFogDensityLoc, fogDensity);
-    }
-    if (uOpaqueFogStartLoc != -1) {
-        glUniform1f(uOpaqueFogStartLoc, fogStartDistance);
-    }
-    if (uOpaqueFogColorLoc != -1) {
-        glUniform3fv(uOpaqueFogColorLoc, 1, &fogColor[0]);
-    }
-    if (uOpaqueLightingEnabledLoc != -1) {
-        glUniform1i(uOpaqueLightingEnabledLoc, lightingEnabled ? 1 : 0);
-    }
+    uploadEnvironmentUniforms(uOpaqueFogEnabledLoc, uOpaqueFogDensityLoc, uOpaqueFogStartLoc, uOpaqueFogColorLoc, uOpaqueLightingEnabledLoc);
 
     world.render(camera, uModelLoc, frustum);
 
@@ -360,21 +339,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uCrossAtlasLoc, 0);
     
-    if (uCrossFogEnabledLoc != -1) {
-        glUniform1i(uCrossFogEnabledLoc, fogEnabled ? 1 : 0);
-    }
-    if (uCrossFogDensityLoc != -1) {
-        glUniform1f(uCrossFogDensityLoc, fogDensity);
-    }
-    if (uCrossFogStartLoc != -1) {
-        glUniform1f(uCrossFogStartLoc, fogStartDistance);
-    }
-    if (uCrossFogColorLoc != -1) {
-        glUniform3fv(uCrossFogColorLoc, 1, &fogColor[0]);
-    }
-    if (uCrossLightingEnabledLoc != -1) {
-        glUniform1i(uCrossLightingEnabledLoc, lightingEnabled ? 1 : 0);
-    }
+    uploadEnvironmentUniforms(uCrossFogEnabledLoc, uCrossFogDensityLoc, uCrossFogStartLoc, uCrossFogColorLoc, uCrossLightingEnabledLoc);
 
     world.renderCross(camera, uCrossModelLoc, frustum);
 
@@ -393,21 +358,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glUniform1i(uTranslucentAtlasLoc, 0);
     glUniform1f(uTranslucentTimeLoc, currentFrame);
 
-    if (uTranslucentFogEnabledLoc != -1) {
-        glUniform1i(uTranslucentFogEnabledLoc, fogEnabled ? 1 : 0);
-    }
-    if (uTranslucentFogDensityLoc != -1) {
-        glUniform1f(uTranslucentFogDensityLoc, fogDensity);
-    }
-    if (uTranslucentFogStartLoc != -1) {
-        glUniform1f(uTranslucentFogStartLoc, fogStartDistance);
-    }
-    if (uTranslucentFogColorLoc != -1) {
-        glUniform3fv(uTranslucentFogColorLoc, 1, &fogColor[0]);
-    }
-    if (uTranslucentLightingEnabledLoc != -1) {
-        glUniform1i(uTranslucentLightingEnabledLoc, lightingEnabled ? 1 : 0);
-    }
+    uploadEnvironmentUniforms(uTranslucentFogEnabledLoc, uTranslucentFogDensityLoc, uTranslucentFogStartLoc, uTranslucentFogColorLoc, uTranslucentLightingEnabledLoc);
 
     world.renderTranslucent(camera, uTranslucentModelLoc, frustum);
 
@@ -502,6 +453,9 @@ void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio
     glPolygonOffset(-1.0f, -1.0f);
     glBindVertexArray(borderVAO);
 
+    glUniformMatrix4fv(uBorderViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(uBorderProjLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
     for (const auto& box : boxes) {
         glm::vec3 minBound = box.first;
         glm::vec3 maxBound = box.second;
@@ -520,8 +474,6 @@ void Renderer::renderSelectedBlockBorder(const Camera& camera, float aspectRatio
         model = glm::scale(model, size);
 
         glUniformMatrix4fv(uBorderModelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(uBorderViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(uBorderProjLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
     }
 
@@ -579,13 +531,7 @@ void Renderer::updateFBO(int width, int height) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-GLuint Renderer::createShader(const char *source, GLenum shaderType) {
-    return ::createShader(source, shaderType);
-}
 
-GLuint Renderer::createShaderProgram(const char *vertexSource, const char *fragmentSource) {
-    return ::createShaderProgram(vertexSource, fragmentSource);
-}
 
 void Renderer::loadTextureAtlas(const std::string& path) {
     int width, height, channels;
@@ -596,14 +542,20 @@ void Renderer::loadTextureAtlas(const std::string& path) {
         return;
     }
 
+    int tile_w = width / 16;
+    int tile_h = height / 16;
+    int tileSize = tile_w * tile_h * 4;
+
+    std::vector<unsigned char> tileData(tileSize);
+    std::vector<unsigned char> copyScratch(tileSize);
+
     auto bleedTransparent = [&](unsigned char* pixels, int w, int h) {
-        std::vector<unsigned char> copy(w * h * 4);
-        memcpy(copy.data(), pixels, w * h * 4);
+        memcpy(copyScratch.data(), pixels, tileSize);
 
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
                 int i = (y * w + x) * 4;
-                unsigned char a = copy[i + 3];
+                unsigned char a = copyScratch[i + 3];
                 if (a == 0) {
                     int rsum = 0, gsum = 0, bsum = 0, count = 0;
                     for (int oy = -1; oy <= 1; ++oy) {
@@ -613,10 +565,10 @@ void Renderer::loadTextureAtlas(const std::string& path) {
                             int nx = x + ox;
                             if (nx < 0 || nx >= w) continue;
                             int ni = (ny * w + nx) * 4;
-                            if (copy[ni + 3] > 0) {
-                                rsum += copy[ni + 0];
-                                gsum += copy[ni + 1];
-                                bsum += copy[ni + 2];
+                            if (copyScratch[ni + 3] > 0) {
+                                rsum += copyScratch[ni + 0];
+                                gsum += copyScratch[ni + 1];
+                                bsum += copyScratch[ni + 2];
                                 ++count;
                             }
                         }
@@ -632,15 +584,11 @@ void Renderer::loadTextureAtlas(const std::string& path) {
         }
     };
 
-    int tile_w = width / 16;
-    int tile_h = height / 16;
-
     glGenTextures(1, &textureAtlas);
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
 
     glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, tile_w, tile_h, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-    std::vector<unsigned char> tileData(tile_w * tile_h * 4);
     for (int row = 0; row < 16; ++row) {
         for (int col = 0; col < 16; ++col) {
             for (int y = 0; y < tile_h; ++y) {
@@ -681,19 +629,23 @@ void Renderer::loadTextureAtlas(const std::string& path) {
     stbi_image_free(data);
 }
 
-void Renderer::loadTextureAtlas2D(const std::string& path) {
+GLuint Renderer::loadTexture2D(const std::string& path, bool generateMipmaps) {
     int width, height, channels;
     stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
     if (!data) {
-        LOG_ERROR("Renderer: Failed to load texture atlas 2D: ", path);
-        return;
+        LOG_ERROR("Renderer: Failed to load 2D texture: ", path);
+        return 0;
     }
 
-    glGenTextures(1, &textureAtlas2D);
-    glBindTexture(GL_TEXTURE_2D, textureAtlas2D);
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    if (generateMipmaps) {
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -702,30 +654,7 @@ void Renderer::loadTextureAtlas2D(const std::string& path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     stbi_image_free(data);
-}
-
-void Renderer::loadTextureUIAtlas(const std::string& path) {
-    int width, height, channels;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
-    if (!data) {
-        LOG_ERROR("Renderer: Failed to load texture UI atlas: ", path);
-        return;
-    }
-
-    glGenTextures(1, &uiAtlas);
-    glBindTexture(GL_TEXTURE_2D, uiAtlas);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    stbi_image_free(data);
+    return tex;
 }
 
 void Renderer::reloadTextureAtlases() {
@@ -739,6 +668,6 @@ void Renderer::reloadTextureAtlases() {
     }
 
     loadTextureAtlas("textures/blocks.png");
-    loadTextureAtlas2D("textures/blocks.png");
+    textureAtlas2D = loadTexture2D("textures/blocks.png");
     LOG_INFO("Renderer: Texture atlases reloaded");
 }

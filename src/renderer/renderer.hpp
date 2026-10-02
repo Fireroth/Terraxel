@@ -5,15 +5,15 @@
 
 class Renderer {
 public:
-    GLint uModelLoc, uViewLoc, uProjLoc, uAtlasLoc, uCrosshairAspectLoc;
-    GLint uCrossModelLoc, uCrossViewLoc, uCrossProjLoc, uCrossAtlasLoc;
-    GLint uTranslucentModelLoc, uTranslucentViewLoc, uTranslucentProjLoc, uTranslucentAtlasLoc;
-    GLint uBorderModelLoc, uBorderViewLoc, uBorderProjLoc;
-    GLint uTranslucentTimeLoc, uCrossTimeLoc, uTimeLoc;
-    GLint uOpaqueFogEnabledLoc, uOpaqueFogDensityLoc, uOpaqueFogStartLoc, uOpaqueFogColorLoc;
-    GLint uCrossFogEnabledLoc, uCrossFogDensityLoc, uCrossFogStartLoc, uCrossFogColorLoc;
-    GLint uTranslucentFogEnabledLoc, uTranslucentFogDensityLoc, uTranslucentFogStartLoc, uTranslucentFogColorLoc;
-    GLint uOpaqueLightingEnabledLoc, uCrossLightingEnabledLoc, uTranslucentLightingEnabledLoc;
+    GLint uModelLoc = -1, uViewLoc = -1, uProjLoc = -1, uAtlasLoc = -1, uCrosshairAspectLoc = -1;
+    GLint uCrossModelLoc = -1, uCrossViewLoc = -1, uCrossProjLoc = -1, uCrossAtlasLoc = -1;
+    GLint uTranslucentModelLoc = -1, uTranslucentViewLoc = -1, uTranslucentProjLoc = -1, uTranslucentAtlasLoc = -1;
+    GLint uBorderModelLoc = -1, uBorderViewLoc = -1, uBorderProjLoc = -1;
+    GLint uTranslucentTimeLoc = -1;
+    GLint uOpaqueFogEnabledLoc = -1, uOpaqueFogDensityLoc = -1, uOpaqueFogStartLoc = -1, uOpaqueFogColorLoc = -1;
+    GLint uCrossFogEnabledLoc = -1, uCrossFogDensityLoc = -1, uCrossFogStartLoc = -1, uCrossFogColorLoc = -1;
+    GLint uTranslucentFogEnabledLoc = -1, uTranslucentFogDensityLoc = -1, uTranslucentFogStartLoc = -1, uTranslucentFogColorLoc = -1;
+    GLint uOpaqueLightingEnabledLoc = -1, uCrossLightingEnabledLoc = -1, uTranslucentLightingEnabledLoc = -1;
     Renderer();
     ~Renderer();
 
@@ -23,25 +23,25 @@ public:
     void renderSelectedBlockBorder(const class Camera& camera, float aspectRatio);
 
     World world;
-    float currentFov;
-    bool fogEnabled;
-    bool lightingEnabled;
-    float fogDensity;
-    float fogStartDistance;
-    glm::vec3 fogColor;
-    GLuint textureAtlas;
-    GLuint uiAtlas;
-    GLuint textureAtlas2D;
+    float currentFov = 70.0f;
+    bool fogEnabled = true;
+    bool lightingEnabled = true;
+    float fogDensity = 0.30f;
+    float fogStartDistance = 0.0f;
+    glm::vec3 fogColor = glm::vec3(0.6f, 1.0f, 1.0f);
+    GLuint textureAtlas = 0;
+    GLuint uiAtlas = 0;
+    GLuint textureAtlas2D = 0;
 
 private:
     int lastMipmapOption = -1;
     int lastMipmapLevels = -1;
     float lastLodBias = -10.0f;
-    GLuint shaderProgram;
-    GLuint crossShaderProgram;
-    GLuint translucentShaderProgram;
-    GLuint crosshairVAO, crosshairVBO, crosshairShaderProgram;
-    GLuint borderVAO, borderVBO, borderShaderProgram;
+    GLuint shaderProgram = 0;
+    GLuint crossShaderProgram = 0;
+    GLuint translucentShaderProgram = 0;
+    GLuint crosshairVAO = 0, crosshairVBO = 0, crosshairShaderProgram = 0;
+    GLuint borderVAO = 0, borderVBO = 0, borderEBO = 0, borderShaderProgram = 0;
 
     // Post-processing FBO & Shaders
     GLuint fbo = 0;
@@ -62,11 +62,8 @@ private:
 
     void updateFBO(int width, int height);
 
-    GLuint createShader(const char* source, GLenum shaderType);
-    GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource);
+    static GLuint loadTexture2D(const std::string& path, bool generateMipmaps = false);
     void loadTextureAtlas(const std::string& path);
-    void loadTextureAtlas2D(const std::string& path);
-    void loadTextureUIAtlas(const std::string& path);
     void reloadTextureAtlases();
     void initCrosshair();
     void initBorderMesh();

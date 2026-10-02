@@ -90,6 +90,42 @@ static bool aabbOverlapStrict(const glm::dvec3& amin, const glm::dvec3& amax, co
            (amin.z < bmax.z - COLLISION_EPS && amax.z > bmin.z + COLLISION_EPS);
 }
 
+static inline int worldToChunkCoord(int x, int chunkSize) {
+    return (x >= 0) ? (x / chunkSize) : ((x - chunkSize + 1) / chunkSize);
+}
+
+template<typename Func>
+static void forEachBlockInAABB(World* world, const glm::dvec3& aabbMin, const glm::dvec3& aabbMax, Func&& callback) {
+    if (!world) return;
+
+    int minBlockX = static_cast<int>(std::floor(aabbMin.x));
+    int maxBlockX = static_cast<int>(std::floor(aabbMax.x));
+    int minBlockZ = static_cast<int>(std::floor(aabbMin.z));
+    int maxBlockZ = static_cast<int>(std::floor(aabbMax.z));
+    int minBlockY = std::max(0, static_cast<int>(std::floor(aabbMin.y)));
+    int maxBlockY = std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(aabbMax.y)));
+
+    for (int blockX = minBlockX; blockX <= maxBlockX; ++blockX) {
+        for (int blockZ = minBlockZ; blockZ <= maxBlockZ; ++blockZ) {
+            int chunkX = worldToChunkCoord(blockX, Chunk::chunkWidth);
+            int chunkZ = worldToChunkCoord(blockZ, Chunk::chunkDepth);
+            Chunk* chunk = world->getChunk(chunkX, chunkZ);
+            if (!chunk) continue;
+
+            int localX = blockX - chunkX * Chunk::chunkWidth;
+            int localZ = blockZ - chunkZ * Chunk::chunkDepth;
+            if (localX < 0 || localX >= Chunk::chunkWidth || localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+
+            for (int blockY = minBlockY; blockY <= maxBlockY; ++blockY) {
+                uint16_t type = chunk->blocks[localX][blockY][localZ].type;
+                if (!callback(blockX, blockY, blockZ, type)) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
 bool Camera::isInLiquid(World* world, float& outDrag) const {
     if (!world) return false;
     double feetY = position.y - currentEyeHeight;
@@ -100,35 +136,18 @@ bool Camera::isInLiquid(World* world, float& outDrag) const {
     bool foundLiquid = false;
     float maxDrag = 0.0f;
 
-    for (int blockX = static_cast<int>(std::floor(aabbMin.x)); blockX <= static_cast<int>(std::floor(aabbMax.x)); ++blockX) {
-        for (int blockZ = static_cast<int>(std::floor(aabbMin.z)); blockZ <= static_cast<int>(std::floor(aabbMax.z)); ++blockZ) {
-            int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
-            int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
-            Chunk* chunk = world->getChunk(chunkX, chunkZ);
-            if (!chunk) continue;
-
-            for (int blockY = std::max(0, static_cast<int>(std::floor(aabbMin.y)));
-                 blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(aabbMax.y)));
-                 ++blockY) {
-                int localX = blockX - chunkX * Chunk::chunkWidth;
-                int localY = blockY;
-                int localZ = blockZ - chunkZ * Chunk::chunkDepth;
-                if (localX < 0 || localX >= Chunk::chunkWidth ||
-                    localY < 0 || localY >= Chunk::chunkHeight ||
-                    localZ < 0 || localZ >= Chunk::chunkDepth) continue;
-
-                uint16_t type = chunk->blocks[localX][localY][localZ].type;
-                if (type == 0) continue;
-                const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
-                if (info && info->liquid) {
-                    foundLiquid = true;
-                    if (info->drag > maxDrag) {
-                        maxDrag = info->drag;
-                    }
-                }
+    forEachBlockInAABB(world, aabbMin, aabbMax, [&](int, int, int, uint16_t type) {
+        if (type == 0) return true;
+        const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+        if (info && info->liquid) {
+            foundLiquid = true;
+            if (info->drag > maxDrag) {
+                maxDrag = info->drag;
             }
         }
-    }
+        return true;
+    });
+
     outDrag = maxDrag;
     return foundLiquid;
 }
@@ -207,42 +226,26 @@ void Camera::stepVelocity(float deltaTime, World* world) {
     };
 
     auto collidesWithTop = [&](const glm::dvec3& aabbMin, const glm::dvec3& aabbMax, World* world, double& outBlockTop) -> bool {
-        for (int blockX = static_cast<int>(std::floor(aabbMin.x)); blockX <= static_cast<int>(std::floor(aabbMax.x)); ++blockX) {
-            for (int blockZ = static_cast<int>(std::floor(aabbMin.z)); blockZ <= static_cast<int>(std::floor(aabbMax.z)); ++blockZ) {
-                int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
-                int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
-                Chunk* chunk = world->getChunk(chunkX, chunkZ);
-                if (!chunk) continue;
+        bool collided = false;
+        forEachBlockInAABB(world, aabbMin, aabbMax, [&](int blockX, int blockY, int blockZ, uint16_t type) {
+            if (!isBlockSolid(type)) return true;
 
-                for (int blockY = std::max(0, static_cast<int>(std::floor(aabbMin.y)));
-                     blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(aabbMax.y)));
-                     ++blockY) {
-                    int localX = blockX - chunkX * Chunk::chunkWidth;
-                    int localY = blockY;
-                    int localZ = blockZ - chunkZ * Chunk::chunkDepth;
-                    if (localX < 0 || localX >= Chunk::chunkWidth ||
-                        localY < 0 || localY >= Chunk::chunkHeight ||
-                        localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+            std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
+            getBlockAABBs(type, boxes);
 
-                    uint16_t type = chunk->blocks[localX][localY][localZ].type;
-                    if (!isBlockSolid(type)) continue;
+            for (const auto& [minF, maxF] : boxes) {
+                glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
+                glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
 
-                    std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
-                    getBlockAABBs(type, boxes);
-
-                    for (const auto& [minF, maxF] : boxes) {
-                        glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
-                        glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
-
-                        if (aabbOverlapStrict(aabbMin, aabbMax, bmin, bmax)) {
-                            outBlockTop = bmax.y;
-                            return true;
-                        }
-                    }
+                if (aabbOverlapStrict(aabbMin, aabbMax, bmin, bmax)) {
+                    outBlockTop = bmax.y;
+                    collided = true;
+                    return false; // Stop checking
                 }
             }
-        }
-        return false;
+            return true;
+        });
+        return collided;
     };
 
     auto tryMoveOrStep = [&](const glm::dvec3& tryPos, glm::dvec3& outPos) -> bool {
@@ -394,43 +397,28 @@ bool Camera::canUncrouch(World* world) const {
     glm::dvec3 standingMin(position.x - playerRadius, feetY, position.z - playerRadius);
     glm::dvec3 standingMax(position.x + playerRadius, feetY + playerHeight, position.z + playerRadius);
 
-    for (int blockX = static_cast<int>(std::floor(standingMin.x)); blockX <= static_cast<int>(std::floor(standingMax.x)); ++blockX) {
-        for (int blockZ = static_cast<int>(std::floor(standingMin.z)); blockZ <= static_cast<int>(std::floor(standingMax.z)); ++blockZ) {
-            int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
-            int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
-            Chunk* chunk = world->getChunk(chunkX, chunkZ);
-            if (!chunk) continue;
+    bool blocked = false;
+    forEachBlockInAABB(world, standingMin, standingMax, [&](int blockX, int blockY, int blockZ, uint16_t type) {
+        if (type == 0) return true;
+        const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+        if (info && info->liquid) return true;
 
-            for (int blockY = std::max(0, static_cast<int>(std::floor(standingMin.y)));
-                 blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(standingMax.y)));
-                 ++blockY) {
-                int localX = blockX - chunkX * Chunk::chunkWidth;
-                int localY = blockY;
-                int localZ = blockZ - chunkZ * Chunk::chunkDepth;
-                if (localX < 0 || localX >= Chunk::chunkWidth ||
-                    localY < 0 || localY >= Chunk::chunkHeight ||
-                    localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+        std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
+        if (!info || !ModelDB::getCollisionBoxes(info->modelName, boxes)) return true;
 
-                uint16_t type = chunk->blocks[localX][localY][localZ].type;
-                if (type == 0) continue;
-                const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
-                if (info && info->liquid) continue;
+        for (const auto& [minF, maxF] : boxes) {
+            glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
+            glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
 
-                std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
-                if (!info || !ModelDB::getCollisionBoxes(info->modelName, boxes)) continue;
-
-                for (const auto& [minF, maxF] : boxes) {
-                    glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
-                    glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
-
-                    if (aabbOverlapStrict(standingMin, standingMax, bmin, bmax)) {
-                        return false;
-                    }
-                }
+            if (aabbOverlapStrict(standingMin, standingMax, bmin, bmax)) {
+                blocked = true;
+                return false; // Stop checking
             }
         }
-    }
-    return true;
+        return true;
+    });
+
+    return !blocked;
 }
 
 bool Camera::hasGroundSupport(const glm::dvec3& eyePos, World* world) const {
@@ -439,46 +427,31 @@ bool Camera::hasGroundSupport(const glm::dvec3& eyePos, World* world) const {
     glm::dvec3 feetMin(eyePos.x - playerRadius, feetY - stepHeight - 0.05, eyePos.z - playerRadius);
     glm::dvec3 feetMax(eyePos.x + playerRadius, feetY + 0.05, eyePos.z + playerRadius);
 
-    for (int blockX = static_cast<int>(std::floor(feetMin.x)); blockX <= static_cast<int>(std::floor(feetMax.x)); ++blockX) {
-        for (int blockZ = static_cast<int>(std::floor(feetMin.z)); blockZ <= static_cast<int>(std::floor(feetMax.z)); ++blockZ) {
-            int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
-            int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
-            Chunk* chunk = world->getChunk(chunkX, chunkZ);
-            if (!chunk) continue;
+    bool hasSupport = false;
+    forEachBlockInAABB(world, feetMin, feetMax, [&](int blockX, int blockY, int blockZ, uint16_t type) {
+        if (type == 0) return true;
+        const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
+        if (info && info->liquid) return true;
 
-            for (int blockY = std::max(0, static_cast<int>(std::floor(feetMin.y)));
-                 blockY <= std::min(Chunk::chunkHeight - 1, static_cast<int>(std::floor(feetMax.y)));
-                 ++blockY) {
-                int localX = blockX - chunkX * Chunk::chunkWidth;
-                int localY = blockY;
-                int localZ = blockZ - chunkZ * Chunk::chunkDepth;
-                if (localX < 0 || localX >= Chunk::chunkWidth ||
-                    localY < 0 || localY >= Chunk::chunkHeight ||
-                    localZ < 0 || localZ >= Chunk::chunkDepth) continue;
+        std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
+        if (!info || !ModelDB::getCollisionBoxes(info->modelName, boxes)) return true;
 
-                uint16_t type = chunk->blocks[localX][localY][localZ].type;
-                if (type == 0) continue;
-                const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(type);
-                if (info && info->liquid) continue;
+        for (const auto& [minF, maxF] : boxes) {
+            glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
+            glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
 
-                std::vector<std::pair<glm::vec3, glm::vec3>> boxes;
-                if (!info || !ModelDB::getCollisionBoxes(info->modelName, boxes)) continue;
-
-                for (const auto& [minF, maxF] : boxes) {
-                    glm::dvec3 bmin = glm::dvec3(minF) + glm::dvec3(blockX, blockY, blockZ);
-                    glm::dvec3 bmax = glm::dvec3(maxF) + glm::dvec3(blockX, blockY, blockZ);
-
-                    if (bmax.y >= feetY - stepHeight - 0.05 && bmax.y <= feetY + 0.1) {
-                        if (feetMin.x <= bmax.x - COLLISION_EPS && feetMax.x >= bmin.x + COLLISION_EPS &&
-                            feetMin.z <= bmax.z - COLLISION_EPS && feetMax.z >= bmin.z + COLLISION_EPS) {
-                            return true;
-                        }
-                    }
+            if (bmax.y >= feetY - stepHeight - 0.05 && bmax.y <= feetY + 0.1) {
+                if (feetMin.x <= bmax.x - COLLISION_EPS && feetMax.x >= bmin.x + COLLISION_EPS &&
+                    feetMin.z <= bmax.z - COLLISION_EPS && feetMax.z >= bmin.z + COLLISION_EPS) {
+                    hasSupport = true;
+                    return false;
                 }
             }
         }
-    }
-    return false;
+        return true;
+    });
+
+    return hasSupport;
 }
 
 void Camera::updateVelocityFlight(float deltaTime) {
@@ -564,19 +537,16 @@ uint16_t Camera::getEyeBlock(class World* world) const {
 
     if (blockY < 0 || blockY >= Chunk::chunkHeight) return 0;
 
-    int chunkX = (blockX >= 0) ? (blockX / Chunk::chunkWidth) : ((blockX - Chunk::chunkWidth + 1) / Chunk::chunkWidth);
-    int chunkZ = (blockZ >= 0) ? (blockZ / Chunk::chunkDepth) : ((blockZ - Chunk::chunkDepth + 1) / Chunk::chunkDepth);
+    int chunkX = worldToChunkCoord(blockX, Chunk::chunkWidth);
+    int chunkZ = worldToChunkCoord(blockZ, Chunk::chunkDepth);
     Chunk* chunk = world->getChunk(chunkX, chunkZ);
     if (!chunk) return 0;
 
     int localX = blockX - chunkX * Chunk::chunkWidth;
-    int localY = blockY;
     int localZ = blockZ - chunkZ * Chunk::chunkDepth;
 
-    if (localX < 0 || localX >= Chunk::chunkWidth ||
-        localY < 0 || localY >= Chunk::chunkHeight ||
-        localZ < 0 || localZ >= Chunk::chunkDepth) return 0;
+    if (localX < 0 || localX >= Chunk::chunkWidth || localZ < 0 || localZ >= Chunk::chunkDepth) return 0;
 
-    return chunk->blocks[localX][localY][localZ].type;
+    return chunk->blocks[localX][blockY][localZ].type;
 }
 

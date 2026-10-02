@@ -352,54 +352,6 @@ void generateChunkTerrain(Chunk& chunk) {
     }
 }    
 
-StructureLayer rotateLayer(const StructureLayer& layer, int rot) {
-    if (layer.empty() || layer[0].empty()) return layer;
-    int h = static_cast<int>(layer.size());
-    int w = static_cast<int>(layer[0].size());
-    StructureLayer out;
-
-    switch (rot) {
-        case 0: // 0deg
-            return layer;
-
-        case 1: // 90°
-            out.assign(w, std::vector<uint32_t>(h));
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                    out[x][h - 1 - y] = layer[y][x];
-            return out;
-
-        case 2: // 180deg
-            out.assign(h, std::vector<uint32_t>(w));
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                    out[h - 1 - y][w - 1 - x] = layer[y][x];
-            return out;
-
-        case 3: // 270deg
-            out.assign(w, std::vector<uint32_t>(h));
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                    out[w - 1 - x][y] = layer[y][x];
-            return out;
-    }
-    return layer;
-}
-
-Structure rotateStructure(const Structure& in, int rot) {
-    Structure out = in;
-    out.layers.clear();
-    out.layers.reserve(in.layers.size());
-
-    for (const StructureLayer& layer : in.layers) {
-        out.layers.push_back(rotateLayer(layer, rot));
-    }
-    if (in.hasFillLayer && !in.fillLayer.empty()) {
-        out.fillLayer = rotateLayer(in.fillLayer, rot);
-    }
-    return out;
-}
-
 static inline float seededHash(int wx, int wz, int seed) {
     uint32_t h = static_cast<uint32_t>(seed);
     h ^= static_cast<uint32_t>(wx) * 2246822519u;
@@ -451,10 +403,11 @@ void generateChunkBiomeFeatures(Chunk& chunk, float threshold, std::optional<int
     int chunkSeed = seedOffset ^ (chunk.chunkX * 1619) ^ (chunk.chunkZ * 31337);
     float r = seededHash(chunk.chunkX, chunk.chunkZ, chunkSeed);
     int rot = static_cast<int>((r + 1.0f) * 0.5f * 4.0f) % 4;
-    Structure rotated = rotateStructure(*original, rot);
+    const Structure* rotated = StructureDB::getRotated(structureName, rot);
+    if (!rotated) rotated = original;
 
     for (const auto& p : placements) {
-        chunk.placeStructure(rotated, p.x - actualXOffset, (p.y + 1) + actualYOffset, p.z - actualZOffset);
+        chunk.placeStructure(*rotated, p.x - actualXOffset, (p.y + 1) + actualYOffset, p.z - actualZOffset);
     }
 }
 

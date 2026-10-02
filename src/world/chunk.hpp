@@ -48,6 +48,8 @@ public:
     void render(const Camera& camera, GLint uModelLoc);
     void renderCross(const Camera& camera, GLint uModelLoc);
     void renderTranslucent(const Camera& camera, GLint uModelLoc);
+    bool needsTranslucentSort(const glm::dvec3& camPosWorld) const;
+    void translucentSortFaces(const glm::dvec3& camPosWorld);
     void placeStructure(const Structure& structure, int baseX, int baseY, int baseZ, bool forced = false);
     void applyPendingBlockPlacements();
 

@@ -562,6 +562,11 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 setOption("chunks_to_load_per_frame", static_cast<float>(chunks_to_load_per_frame));
             }
 
+            int chunks_to_sort_per_frame = getOptionInt("chunks_to_sort_per_frame", 3);
+            if (drawMenuSliderInt(layout, "Chunks to Sort per Frame", "##ChunksToSortPerFrame", &chunks_to_sort_per_frame, 1, 16)) {
+                setOption("chunks_to_sort_per_frame", static_cast<float>(chunks_to_sort_per_frame));
+            }
+
             float fov = getOptionFloat("fov", 70.0f);
             if (drawMenuSliderFloat(layout, "Field of View", "##FOV", &fov, 10.0f, 110.0f)) {
                 setOption("fov", static_cast<float>(fov));
@@ -588,12 +593,6 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 BlockDB::init();
                 updateBlockDBItems();
                 BlockPreviewRenderer::generatePreviews();
-            }
-
-            bool aoEnabled = getOptionInt("ambient_occlusion", 1) != 0;
-            if (drawMenuToggle(layout, "Ambient Occlusion", &aoEnabled, ImVec2(300, buttonSize.y))) {
-                setOption("ambient_occlusion", static_cast<float>(aoEnabled ? 1 : 0));
-                world->reset();
             }
 
             float leftColumnEndY = layout.y;
@@ -645,6 +644,12 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 if (windowObj) {
                     windowObj->toggleFullscreen();
                 }
+            }
+
+            bool aoEnabled = getOptionInt("ambient_occlusion", 1) != 0;
+            if (drawMenuToggle(layout, "Ambient Occlusion", &aoEnabled, ImVec2(300, buttonSize.y))) {
+                setOption("ambient_occlusion", static_cast<float>(aoEnabled ? 1 : 0));
+                world->reset();
             }
 
             float rightColumnEndY = layout.y;
