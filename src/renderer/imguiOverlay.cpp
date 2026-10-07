@@ -536,7 +536,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
 
         case PauseMenuPage::Video: {
             float sliderHeight = buttonSize.y;
-            float totalH = titleH + spacing + 7 * (sliderHeight + spacing) + buttonSize.y;
+            float totalH = titleH + spacing + 8 * (sliderHeight + spacing) + buttonSize.y;
             MenuLayout layout(totalH, spacing);
 
             drawMenuTitle(layout, "Video Settings");
@@ -558,7 +558,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             }
 
             int chunks_to_load_per_frame = getOptionInt("chunks_to_load_per_frame", 1);
-            if (drawMenuSliderInt(layout, "Chunks to Load per Frame", "##ChunksToLoadPerFrame", &chunks_to_load_per_frame, 1, 10)) {
+            if (drawMenuSliderInt(layout, "Chunks to Load per Frame", "##ChunksToLoadPerFrame", &chunks_to_load_per_frame, 1, 16)) {
                 setOption("chunks_to_load_per_frame", static_cast<float>(chunks_to_load_per_frame));
             }
 
@@ -593,6 +593,15 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 BlockDB::init();
                 updateBlockDBItems();
                 BlockPreviewRenderer::generatePreviews();
+            }
+
+            static const char* cloudModeLabels[] = { "OFF", "2D", "3D" };
+            if (drawMenuSliderInt(layout, "Clouds", "##Clouds", &renderer->cloudsMode, 0, 2, 300.0f, "%d", cloudModeLabels)) {
+                setOption("clouds", static_cast<float>(renderer->cloudsMode));
+            }
+
+            if (drawMenuSliderInt(layout, "Cloud Distance", "##CloudRenderDistance", &renderer->cloudRenderDistance, 4, 96, 300.0f, "%d chunks")) {
+                setOption("cloud_render_distance", static_cast<float>(renderer->cloudRenderDistance));
             }
 
             float leftColumnEndY = layout.y;
@@ -630,6 +639,10 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
 
             if (drawMenuToggle(layout, "Fog", &renderer->fogEnabled, ImVec2(300, buttonSize.y))) {
                 setOption("fog", static_cast<float>(renderer->fogEnabled ? 1 : 0));
+            }
+
+            if (drawMenuToggle(layout, "Vignette", &renderer->vignetteEnabled, ImVec2(300, buttonSize.y))) {
+                setOption("vignette", static_cast<float>(renderer->vignetteEnabled ? 1 : 0));
             }
 
             bool vsyncEnabled = getOptionInt("vsync", 1) != 0;

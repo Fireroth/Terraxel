@@ -83,7 +83,6 @@
             "type": "structure",
             "structure": "tree",
             "threshold": 0.997,
-            "yOffset": 1,
             "allowedBlock": 62,
             "seedOffset": 0
         },

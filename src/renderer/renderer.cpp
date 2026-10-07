@@ -14,6 +14,7 @@
 #include "../world/blockDB.hpp"
 #include "../world/modelDB.hpp"
 #include "../core/window.hpp"
+#include "../core/saveManager.hpp"
 
 
 Renderer::Renderer() = default;
@@ -42,6 +43,8 @@ Renderer::~Renderer() {
     glDeleteVertexArrays(1, &quadVAO);
     glDeleteBuffers(1, &quadVBO);
     glDeleteProgram(postProcessShaderProgram);
+    glDeleteProgram(skyShaderProgram);
+    sky.cleanup();
 }
 
 void Renderer::init() {
@@ -78,6 +81,9 @@ void Renderer::init() {
     std::string postProcessFragmentSource = loadShaderSource("shaders/postprocess_fragment.glsl");
     postProcessShaderProgram = createShaderProgram(postProcessVertexSource.c_str(), postProcessFragmentSource.c_str());
 
+    std::string skyVertexSource = loadShaderSource("shaders/sky_vertex.glsl");
+    std::string skyFragmentSource = loadShaderSource("shaders/sky_fragment.glsl");
+    skyShaderProgram = createShaderProgram(skyVertexSource.c_str(), skyFragmentSource.c_str());
 
     uCrosshairAspectLoc = glGetUniformLocation(crosshairShaderProgram, "aspectRatio");
 
@@ -119,8 +125,6 @@ void Renderer::init() {
     uTranslucentFogColorLoc = glGetUniformLocation(translucentShaderProgram, "fogColor");
     uTranslucentLightingEnabledLoc = glGetUniformLocation(translucentShaderProgram, "lightingEnabled");
 
-    lightingEnabled = (getOptionInt("enable_lighting", 1) != 0);
-
     uPostProcessTextureLoc = glGetUniformLocation(postProcessShaderProgram, "screenTexture");
     uPostProcessEffectTypeLoc = glGetUniformLocation(postProcessShaderProgram, "effectType");
     uPostProcessTimeLoc = glGetUniformLocation(postProcessShaderProgram, "time");
@@ -128,6 +132,27 @@ void Renderer::init() {
     uPostProcessInvProjLoc = glGetUniformLocation(postProcessShaderProgram, "invProjection");
     uPostProcessFogEnabledLoc = glGetUniformLocation(postProcessShaderProgram, "fogEnabled");
     uPostProcessNormalFogStartLoc = glGetUniformLocation(postProcessShaderProgram, "normalFogStartDistance");
+    uPostProcessVignetteEnabledLoc = glGetUniformLocation(postProcessShaderProgram, "vignetteEnabled");
+
+    uSkyRenderModeLoc = glGetUniformLocation(skyShaderProgram, "renderMode");
+    uSkyProjLoc = glGetUniformLocation(skyShaderProgram, "projection");
+    uSkyViewLoc = glGetUniformLocation(skyShaderProgram, "view");
+    uSkyInvProjLoc = glGetUniformLocation(skyShaderProgram, "invProjection");
+    uSkyInvViewLoc = glGetUniformLocation(skyShaderProgram, "invView");
+    uSkyCamPosLoc = glGetUniformLocation(skyShaderProgram, "cameraPos");
+    uSkyColorLoc = glGetUniformLocation(skyShaderProgram, "skyColor");
+    uSkyHorizonColorLoc = glGetUniformLocation(skyShaderProgram, "horizonColor");
+    uSkyCloudNoiseTexLoc = glGetUniformLocation(skyShaderProgram, "cloudNoiseTexture");
+    uSkyCloudColorLoc = glGetUniformLocation(skyShaderProgram, "cloudColor");
+    uSkyCloudHeightLoc = glGetUniformLocation(skyShaderProgram, "cloudHeight");
+    uSkyCloudOriginFracLoc = glGetUniformLocation(skyShaderProgram, "cloudOriginFrac");
+    uSkyCloudBaseUVLoc = glGetUniformLocation(skyShaderProgram, "cloudBaseUV");
+    uSkyCloudScaleLoc = glGetUniformLocation(skyShaderProgram, "cloudScale");
+    uSkyCloudThresholdLoc = glGetUniformLocation(skyShaderProgram, "cloudThreshold");
+    uSkyCloudPixelSizeLoc = glGetUniformLocation(skyShaderProgram, "cloudPixelSize");
+    uSkyCloudThicknessLoc = glGetUniformLocation(skyShaderProgram, "cloudThickness");
+    uSkyCloudOffsetLoc = glGetUniformLocation(skyShaderProgram, "cloudOffset");
+    uSkyMaxCloudDistLoc = glGetUniformLocation(skyShaderProgram, "maxCloudDist");
 
     LOG_INFO("Renderer: Loading texture assets");
     loadTextureAtlas("textures/blocks.png");
@@ -139,12 +164,19 @@ void Renderer::init() {
     initBorderMesh();
     initPostProcessQuad();
 
+    sky.init(SaveManager::getActiveSeed());
+
     currentFov = getOptionFloat("fov", 70.0f);
 
+    lightingEnabled = (getOptionInt("enable_lighting", 1) != 0);\
+
     fogEnabled = getOptionInt("fog", 1);
+    vignetteEnabled = getOptionInt("vignette", 1);
+    cloudsMode = getOptionInt("clouds", 2);
+    cloudRenderDistance = getOptionInt("cloud_render_distance", 24);
     fogDensity = 0.30f;
     fogStartDistance = ((getOptionFloat("render_distance", 7) + 1) * 16) - 20;
-    fogColor = glm::vec3(0.6f, 1.0f, 1.0f);
+    fogColor = sky.fogColor;
 }
 
 void Renderer::initCrosshair() {
@@ -311,6 +343,26 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
         if (lightEnLoc != -1) glUniform1i(lightEnLoc, lightingEnabled ? 1 : 0);
     };
 
+    // -------------------------------- Render Sky Background --------------------------------
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glUseProgram(skyShaderProgram);
+    glUniform1i(uSkyRenderModeLoc, 0);
+
+    glm::mat4 invProj = glm::inverse(projection);
+    glm::mat4 invView = glm::inverse(view);
+    glUniformMatrix4fv(uSkyInvProjLoc, 1, GL_FALSE, glm::value_ptr(invProj));
+    glUniformMatrix4fv(uSkyInvViewLoc, 1, GL_FALSE, glm::value_ptr(invView));
+    glUniform3fv(uSkyColorLoc, 1, glm::value_ptr(sky.skyColor));
+    glUniform3fv(uSkyHorizonColorLoc, 1, glm::value_ptr(sky.horizonColor));
+
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+
     // -------------------------------- Render main --------------------------------
 
     glUseProgram(shaderProgram);
@@ -342,6 +394,69 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     uploadEnvironmentUniforms(uCrossFogEnabledLoc, uCrossFogDensityLoc, uCrossFogStartLoc, uCrossFogColorLoc, uCrossLightingEnabledLoc);
 
     world.renderCross(camera, uCrossModelLoc, frustum);
+
+    // -------------------------------- Render Clouds --------------------------------
+    if (cloudsMode > 0) {
+        sky.updateSeed(SaveManager::getActiveSeed());
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glUseProgram(skyShaderProgram);
+        glUniform1i(uSkyRenderModeLoc, cloudsMode);
+        glUniformMatrix4fv(uSkyProjLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(uSkyViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniform3fv(uSkyCamPosLoc, 1, glm::value_ptr(camPos));
+        glUniform1f(uSkyCloudHeightLoc, sky.cloudHeight);
+        glUniform3fv(uSkyCloudColorLoc, 1, glm::value_ptr(sky.cloudColor));
+
+        sky.cloudRenderDistance = static_cast<float>(glm::clamp(cloudRenderDistance, 4, 96) * 16);
+        glUniform1f(uSkyMaxCloudDistLoc, sky.cloudRenderDistance);
+
+        const glm::dvec3 camPosD = camera.getPositionDouble();
+        const double cloudTime = glfwGetTime();
+
+        if (cloudsMode == 1) {
+            // 2D
+            glDisable(GL_CULL_FACE);
+            glm::vec2 originFrac, baseUV;
+            sky.compute2DCloudOrigin(camPosD, cloudTime, originFrac, baseUV);
+            glUniform2fv(uSkyCloudOriginFracLoc, 1, glm::value_ptr(originFrac));
+            glUniform2fv(uSkyCloudBaseUVLoc, 1, glm::value_ptr(baseUV));
+            glUniform1f(uSkyCloudScaleLoc, sky.cloudScale);
+            glUniform1f(uSkyCloudThresholdLoc, sky.cloudThreshold);
+            glUniform1f(uSkyCloudPixelSizeLoc, sky.cloudPixelSize);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, sky.cloudTexture);
+            glUniform1i(uSkyCloudNoiseTexLoc, 0);
+
+            glBindVertexArray(sky.cloudVAO);
+            glDrawArrays(GL_TRIANGLES, 0, sky.cloudVertexCount);
+            glBindVertexArray(0);
+        } else if (cloudsMode == 2) {
+            // 3D
+            sky.update3DMesh(camPosD, cloudTime);
+
+            bool insideClouds = (camPos.y >= sky.cloudHeight && camPos.y <= sky.cloudHeight + sky.cloudThickness);
+            if (insideClouds) {
+                glDisable(GL_CULL_FACE);
+            } else {
+                glEnable(GL_CULL_FACE);
+            }
+
+            glUniform3fv(uSkyCloudOffsetLoc, 1, glm::value_ptr(sky.cloud3DOffset));
+
+            glBindVertexArray(sky.cloud3DVAO);
+            glDrawArrays(GL_TRIANGLES, 0, sky.cloud3DVertexCount);
+            glBindVertexArray(0);
+        }
+
+        glDepthMask(GL_TRUE);
+        glEnable(GL_CULL_FACE);
+    }
 
     // -------------------------------- Render translucent & liquid --------------------------------
 
@@ -393,6 +508,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     if (uPostProcessFogEnabledLoc != -1) {
         glUniform1i(uPostProcessFogEnabledLoc, fogEnabled ? 1 : 0);
     }
+    if (uPostProcessVignetteEnabledLoc != -1) {
+        glUniform1i(uPostProcessVignetteEnabledLoc, vignetteEnabled ? 1 : 0);
+    }
     if (uPostProcessNormalFogStartLoc != -1) {
         glUniform1f(uPostProcessNormalFogStartLoc, fogStartDistance);
     }
@@ -400,6 +518,8 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+
+    glActiveTexture(GL_TEXTURE0);
 
     glEnable(GL_DEPTH_TEST);
 }

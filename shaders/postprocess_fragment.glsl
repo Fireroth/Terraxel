@@ -1,6 +1,8 @@
 #version 330 core
+
 out vec4 FragColor;
 in vec2 TexCoords;
+
 uniform sampler2D screenTexture;
 uniform sampler2D depthTexture;
 uniform int effectType; // 9 = water, 10 = lava, 69 = warm water
@@ -8,6 +10,7 @@ uniform float time;
 uniform mat4 invProjection;
 uniform bool fogEnabled;
 uniform float normalFogStartDistance;
+uniform bool vignetteEnabled;
 
 vec4 blur(sampler2D tex, vec2 coords, float radius) {
     vec2 texelSize = 1.0 / vec2(textureSize(tex, 0));
@@ -79,10 +82,12 @@ void main() {
         vec3 finalColor = mix(fogged, activeFogColor, 0.30);
 
         // Vignette
-        vec2 d = abs(TexCoords - 0.5) * 2.0;
-        float vignette = 1.0 - dot(d, d) * 0.2;
-        vignette = clamp(vignette, 0.0, 1.0);
-        finalColor = mix(activeFogColor * 0.5, finalColor, vignette);
+        if (vignetteEnabled) {
+            vec2 d = abs(TexCoords - 0.5) * 2.0;
+            float vignette = 1.0 - dot(d, d) * 0.2;
+            vignette = clamp(vignette, 0.0, 1.0);
+            finalColor = mix(activeFogColor * 0.5, finalColor, vignette);
+        }
 
         FragColor = vec4(finalColor, 1.0);
     }
@@ -102,10 +107,12 @@ void main() {
         finalColor *= pulse;
 
         // Vignette
-        vec2 d = abs(TexCoords - 0.5) * 2.0;
-        float vignette = 1.0 - dot(d, d) * 0.4;
-        vignette = clamp(vignette, 0.0, 1.0);
-        finalColor = mix(activeFogColor * 0.3, finalColor, vignette);
+        if (vignetteEnabled) {
+            vec2 d = abs(TexCoords - 0.5) * 2.0;
+            float vignette = 1.0 - dot(d, d) * 0.4;
+            vignette = clamp(vignette, 0.0, 1.0);
+            finalColor = mix(activeFogColor * 0.3, finalColor, vignette);
+        }
 
         FragColor = vec4(finalColor, 1.0);
     }
@@ -134,16 +141,25 @@ void main() {
         vec3 finalColor = mix(fogged, activeFogColor, 0.30);
 
         // Vignette
-        vec2 d = abs(TexCoords - 0.5) * 2.0;
-        float vignette = 1.0 - dot(d, d) * 0.2;
-        vignette = clamp(vignette, 0.0, 1.0);
-        finalColor = mix(activeFogColor * 0.5, finalColor, vignette);
+        if (vignetteEnabled) {
+            vec2 d = abs(TexCoords - 0.5) * 2.0;
+            float vignette = 1.0 - dot(d, d) * 0.2;
+            vignette = clamp(vignette, 0.0, 1.0);
+            finalColor = mix(activeFogColor * 0.5, finalColor, vignette);
+        }
 
         FragColor = vec4(finalColor, 1.0);
     }
     //---------------------------------------------------------------------------------
     else {
         vec4 color = texture(screenTexture, uv);
+        if (vignetteEnabled) {
+            vec2 d = abs(uv - 0.5) * 2.0;
+            float dist = length(d);
+            float vignette = 1.0 - smoothstep(0.6, 1.4, dist) * 0.4;
+            vignette = clamp(vignette, 0.0, 1.0);
+            color.rgb *= vignette;
+        }
         FragColor = color;
     }
 }

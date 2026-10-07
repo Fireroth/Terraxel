@@ -922,7 +922,8 @@ bool Chunk::needsTranslucentSort(const glm::dvec3& camPosWorld) const {
     if (translucentNeedsSort)
         return true;
 
-    glm::vec3 camPosLocal = glm::vec3(camPosWorld - glm::dvec3(chunkX * chunkWidth, 0.0f, chunkZ * chunkDepth));
+    const glm::dvec3 chunkOrigin(static_cast<double>(chunkX) * chunkWidth, 0.0, static_cast<double>(chunkZ) * chunkDepth);
+    glm::vec3 camPosLocal = glm::vec3(camPosWorld - chunkOrigin);
     glm::vec3 diff = camPosLocal - lastSortCamPosLocal;
     return glm::dot(diff, diff) > 1.0f;
 }
@@ -931,7 +932,8 @@ void Chunk::translucentSortFaces(const glm::dvec3& camPosWorld) {
     if (translucentIndexCount == 0 || translucentIndexDataCPU.empty())
         return;
 
-    glm::vec3 camPosLocal = glm::vec3(camPosWorld - glm::dvec3(chunkX * chunkWidth, 0.0f, chunkZ * chunkDepth));
+    const glm::dvec3 chunkOrigin(static_cast<double>(chunkX) * chunkWidth, 0.0, static_cast<double>(chunkZ) * chunkDepth);
+    glm::vec3 camPosLocal = glm::vec3(camPosWorld - chunkOrigin);
     lastSortCamPosLocal = camPosLocal;
     translucentNeedsSort = false;
 

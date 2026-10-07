@@ -644,17 +644,21 @@ void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frust
     std::vector<std::pair<float, Chunk*>> visible;
     std::vector<std::pair<float, Chunk*>> visibleNeedsSort;
 
+    auto chunkDist2 = [&camPos](int chunkX, int chunkZ) -> float {
+        const double cx = static_cast<double>(chunkX) * Chunk::chunkWidth + Chunk::chunkWidth * 0.5;
+        const double cz = static_cast<double>(chunkZ) * Chunk::chunkDepth + Chunk::chunkDepth * 0.5;
+        const float dx = static_cast<float>(cx - camPos.x);
+        const float dy = static_cast<float>(camPos.y);
+        const float dz = static_cast<float>(cz - camPos.z);
+        return dx*dx + dy*dy + dz*dz;
+    };
+
     {
         std::shared_lock<std::shared_mutex> lock(chunksMutex);
         visible.reserve(chunks.size());
 
         for (auto& [coord, chunk] : chunks) {
-            float cx = (coord.first * Chunk::chunkWidth) + (Chunk::chunkWidth * 0.5f);
-            float cz = (coord.second * Chunk::chunkDepth) + (Chunk::chunkDepth * 0.5f);
-            float dx = static_cast<float>(camPos.x - cx);
-            float dy = static_cast<float>(camPos.y);
-            float dz = static_cast<float>(camPos.z - cz);
-            float dist2 = dx*dx + dy*dy + dz*dz;
+            float dist2 = chunkDist2(coord.first, coord.second);
 
             if (isChunkInFrustum(coord.first, coord.second, frustum, camPos)) {
                 visible.emplace_back(dist2, chunk);
@@ -685,13 +689,7 @@ void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frust
                 for (auto& [coord, chunk] : chunks) {
                     if (!isChunkInFrustum(coord.first, coord.second, frustum, camPos)) {
                         if (chunk->needsTranslucentSort(camPos)) {
-                            float cx = (coord.first * Chunk::chunkWidth) + (Chunk::chunkWidth * 0.5f);
-                            float cz = (coord.second * Chunk::chunkDepth) + (Chunk::chunkDepth * 0.5f);
-                            float dx = static_cast<float>(camPos.x - cx);
-                            float dy = static_cast<float>(camPos.y);
-                            float dz = static_cast<float>(camPos.z - cz);
-                            float dist2 = dx*dx + dy*dy + dz*dz;
-                            nonVisibleNeedsSort.emplace_back(dist2, chunk);
+                            nonVisibleNeedsSort.emplace_back(chunkDist2(coord.first, coord.second), chunk);
                         }
                     }
                 }

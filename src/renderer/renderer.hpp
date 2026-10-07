@@ -2,6 +2,7 @@
 
 #include <string>
 #include "../world/world.hpp"
+#include "sky.hpp"
 
 class Renderer {
 public:
@@ -25,6 +26,9 @@ public:
     World world;
     float currentFov = 70.0f;
     bool fogEnabled = true;
+    bool vignetteEnabled = true;
+    int cloudsMode = 2; // 0 = OFF, 1 = 2D, 2 = 3D
+    int cloudRenderDistance = 50;
     bool lightingEnabled = true;
     float fogDensity = 0.30f;
     float fogStartDistance = 0.0f;
@@ -32,6 +36,7 @@ public:
     GLuint textureAtlas = 0;
     GLuint uiAtlas = 0;
     GLuint textureAtlas2D = 0;
+    Sky sky;
 
 private:
     int lastMipmapOption = -1;
@@ -59,6 +64,29 @@ private:
     GLint uPostProcessInvProjLoc = -1;
     GLint uPostProcessFogEnabledLoc = -1;
     GLint uPostProcessNormalFogStartLoc = -1;
+    GLint uPostProcessVignetteEnabledLoc = -1;
+
+    // Sky & Cloud Shader
+    GLuint skyShaderProgram = 0;
+    GLint uSkyRenderModeLoc = -1;
+    GLint uSkyProjLoc = -1;
+    GLint uSkyViewLoc = -1;
+    GLint uSkyInvProjLoc = -1;
+    GLint uSkyInvViewLoc = -1;
+    GLint uSkyCamPosLoc = -1;
+    GLint uSkyColorLoc = -1;
+    GLint uSkyHorizonColorLoc = -1;
+    GLint uSkyCloudNoiseTexLoc = -1;
+    GLint uSkyCloudColorLoc = -1;
+    GLint uSkyCloudHeightLoc = -1;
+    GLint uSkyCloudOriginFracLoc = -1;
+    GLint uSkyCloudBaseUVLoc = -1;
+    GLint uSkyCloudScaleLoc = -1;
+    GLint uSkyCloudThresholdLoc = -1;
+    GLint uSkyCloudPixelSizeLoc = -1;
+    GLint uSkyCloudThicknessLoc = -1;
+    GLint uSkyCloudOffsetLoc = -1;
+    GLint uSkyMaxCloudDistLoc = -1;
 
     void updateFBO(int width, int height);
 
