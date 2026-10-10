@@ -16,7 +16,7 @@ void generateCaves(Chunk& chunk) {
     constexpr float STEP_SIZE = 1.2f;
     constexpr float CAVE_SPAWN_PROBABILITY = 0.15f;
     constexpr int LAVA_LEVEL = 8;
-    constexpr int WATER_CHECK_RANGE = 4;
+    constexpr int WATER_CHECK_RANGE = 2;
 
     const int worldSeed = SaveManager::getActiveSeed();
     const int chunkX = chunk.chunkX;
@@ -101,7 +101,7 @@ void generateCaves(Chunk& chunk) {
 
                                         const uint16_t blockType = chunk.blocks[lx][wy][lz].type;
 
-                                        if (blockType == 0 || blockType == 6 || blockType == 9 || blockType == 10)
+                                        if (blockType == 0 || blockType == 6 || blockType == 9 || blockType == 10 || blockType == 69 || blockType == 164)
                                             continue;
 
                                         bool nearWater = false;
@@ -111,7 +111,7 @@ void generateCaves(Chunk& chunk) {
                                             const int checkUp  = std::min(chunkHeight - 1, wy + WATER_CHECK_RANGE);
                                             const int checkDn  = std::max(0, wy - WATER_CHECK_RANGE);
                                             for (int cy = checkDn; cy <= checkUp && !nearWater; ++cy)
-                                                if (chunk.blocks[lx][cy][lz].type == 9 || chunk.blocks[lx][cy][lz].type == 69)
+                                                if (chunk.blocks[lx][cy][lz].type == 9 || chunk.blocks[lx][cy][lz].type == 69 || chunk.blocks[lx][cy][lz].type == 164)
                                                     nearWater = true;
                                         }
 
@@ -120,7 +120,7 @@ void generateCaves(Chunk& chunk) {
                                             const int checkXMin = std::max(0, lx - WATER_CHECK_RANGE);
                                             const int checkXMax = std::min(chunkWidth-1, lx + WATER_CHECK_RANGE);
                                             for (int cx2 = checkXMin; cx2 <= checkXMax && !nearWater; ++cx2)
-                                                if (chunk.blocks[cx2][wy][lz].type == 9 || chunk.blocks[cx2][wy][lz].type == 69)
+                                                if (chunk.blocks[cx2][wy][lz].type == 9 || chunk.blocks[cx2][wy][lz].type == 69 || chunk.blocks[cx2][wy][lz].type == 164)
                                                     nearWater = true;
                                         }
 
@@ -129,7 +129,7 @@ void generateCaves(Chunk& chunk) {
                                             const int checkZMin = std::max(0, lz - WATER_CHECK_RANGE);
                                             const int checkZMax = std::min(chunkDepth-1, lz + WATER_CHECK_RANGE);
                                             for (int cz2 = checkZMin; cz2 <= checkZMax && !nearWater; ++cz2)
-                                                if (chunk.blocks[lx][wy][cz2].type == 9 || chunk.blocks[lx][wy][cz2].type == 69)
+                                                if (chunk.blocks[lx][wy][cz2].type == 9 || chunk.blocks[lx][wy][cz2].type == 69 || chunk.blocks[lx][wy][cz2].type == 164)
                                                     nearWater = true;
                                         }
                                         if (nearWater) continue;

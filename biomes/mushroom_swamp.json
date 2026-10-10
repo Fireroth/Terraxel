@@ -1,7 +1,7 @@
 {
     "name": "Mushroom Swamp",
     "id": "mushroom_swamp",
-    "waterBlock": 9,
+    "waterBlock": 164,
     "waterLevel": 63,
     "terrain": {
         "baseHeight": 59.0,
@@ -76,7 +76,7 @@
     "features": [
         {
             "type": "structure",
-            "structure": "witchHut",
+            "structure": "mushroomHut",
             "threshold": 0.99995,
             "allowedBlock": 23,
             "seedOffset": 0

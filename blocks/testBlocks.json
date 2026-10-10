@@ -1,80 +1,13 @@
-{
-    "model_test_block": {
-        "id": 65001,
-        "textures": [[1,14],[1,14],[1,14],[1,14],[1,14],[1,14]],
-        "textures2": [[2,14],[2,14],[2,14],[2,14],[2,14],[2,14]],
-        "textures3": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
-        "textures4": [[4,14],[4,14],[4,14],[4,14],[4,14],[4,14]],
-        "transparent": false,
-        "liquid": false,
-        "name": "Model Test Block",
-        "model": "testModel",
-        "renderFacesInBetween": false,
-        "tabName": "Internal"
-    },
-    
+{   
     "temp_stairs": {
-        "id": 65002,
-        "textures": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
-        "textures2": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
+        "id": 65001,
+        "textures": [[6,1],[6,1],[6,1],[6,1],[6,1],[6,1]],
+        "textures2": [[6,1],[6,1],[6,1],[6,1],[6,1],[6,1]],
         "transparent": false,
         "liquid": false,
         "name": "Temp stairs",
         "model": "stairs",
         "renderFacesInBetween": false,
         "tabName": "Internal"
-    },
-
-    "visual_indicator": {
-        "id": 65003,
-        "textures": [[0,9],[0,9],[0,9],[0,9],[0,9],[0,9]],
-        "transparent": false,
-        "liquid": false,
-        "name": "Visual Indicator",
-        "model": "cube",
-        "renderFacesInBetween": false,
-        "tabName": "Internal"
-    },
-
-    "combined_model": {
-        "id": 65004,
-        "textures": [[9,14]],
-        "textures2": [[9,14]],
-        "textures3": [[9,14]],
-        "textures4": [[9,14]],
-        "textures5": [[9,14]],
-        "textures6": [[9,14]],
-        "textures7": [[0,15],[0,15],[0,15],[0,15],[2,15],[1,15]],
-        "textures8": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
-        "transparent": false,
-        "liquid": false,
-        "name": "Combined Model Test",
-        "model": "testModel2",
-        "renderFacesInBetween": false,
-        "tabName": "Internal"
-    },
-
-    "stone_top_slab": {
-        "id": 65005,
-        "textures": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
-        "transparent": false,
-        "liquid": false,
-        "name": "Stone Top Slab",
-        "model": "testModel3",
-        "renderFacesInBetween": false,
-        "tabName": "Internal"
-    },
-
-    "torch2": {
-        "id": 65006,
-        "textures": [[11,12],[11,12],[11,12],[11,12],[11,12],[11,12]],
-        "transparent": false,
-        "liquid": false,
-        "drag": 0.0,
-        "name": "Torch2",
-        "model": "torch",
-        "renderFacesInBetween": false,
-        "tabName": "Internal",
-        "lightEmission": 10
     }
 }

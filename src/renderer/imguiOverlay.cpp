@@ -586,9 +586,9 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 world->reset();
             }
 
-            bool fasterTreesEnabled = getOptionInt("faster_trees", 0) != 0;
-            if (drawMenuToggle(layout, "Faster Trees", &fasterTreesEnabled, ImVec2(300, buttonSize.y))) {
-                setOption("faster_trees", static_cast<float>(fasterTreesEnabled ? 1 : 0));
+            bool fasterModelsEnabled = getOptionInt("faster_models", 0) != 0;
+            if (drawMenuToggle(layout, "Faster Models", &fasterModelsEnabled, ImVec2(300, buttonSize.y))) {
+                setOption("faster_models", static_cast<float>(fasterModelsEnabled ? 1 : 0));
                 world->reset();
                 BlockDB::init();
                 updateBlockDBItems();
@@ -974,8 +974,8 @@ void ImGuiOverlay::renderInventory() {
                         const auto* blockInfo = BlockDB::getBlockInfo(blockIds[i]);
                         int tileX = static_cast<int>(blockInfo->textureCoords[0].x);
                         int tileY = static_cast<int>(blockInfo->textureCoords[0].y);
-                        uv0 = ImVec2((tileX * 16) / 256.0f, ((tileY + 1) * 16) / 256.0f);
-                        uv1 = ImVec2(((tileX + 1) * 16) / 256.0f, (tileY * 16) / 256.0f);
+                        uv0 = ImVec2((tileX * 16) / 256.0f, ((16 - tileY) * 16) / 256.0f);
+                        uv1 = ImVec2(((tileX + 1) * 16) / 256.0f, ((15 - tileY) * 16) / 256.0f);
                     }
 
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.16f, 0.20f, 1.0f));
@@ -1105,8 +1105,8 @@ void ImGuiOverlay::renderHotbar() {
         } else {
             int tileX = static_cast<int>(blockInfo->textureCoords[0].x);
             int tileY = static_cast<int>(blockInfo->textureCoords[0].y);
-            uv0 = ImVec2((tileX * 16) / 256.0f, ((tileY + 1) * 16) / 256.0f);
-            uv1 = ImVec2(((tileX + 1) * 16) / 256.0f, (tileY * 16) / 256.0f);
+            uv0 = ImVec2((tileX * 16) / 256.0f, ((16 - tileY) * 16) / 256.0f);
+            uv1 = ImVec2(((tileX + 1) * 16) / 256.0f, ((15 - tileY) * 16) / 256.0f);
         }
 
         bool isSelected = (i == selectedHotbarIndex);

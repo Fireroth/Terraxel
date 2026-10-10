@@ -64,7 +64,7 @@ void BlockDB::init() {
                     if (!obj.contains(key) || !obj[key].is_array()) break;
 
                     std::array<glm::vec2,6> setArr;
-                    for (int i = 0; i < 6; i++) setArr[i] = glm::vec2(4.0f, 9.0f);
+                    for (int i = 0; i < 6; i++) setArr[i] = glm::vec2(4.0f, 6.0f);
 
                     int idx = 0;
                     for (const auto &tex : obj[key]) {
@@ -118,9 +118,9 @@ void BlockDB::init() {
     }
     }
 
-    bool fasterTrees = (getOptionInt("faster_trees", 0) != 0);
-    std::string preferred = fasterTrees ? "fast" : "slow";
-    std::string fallback  = fasterTrees ? "slow" : "fast";
+    bool fasterModels = (getOptionInt("faster_models", 0) != 0);
+    std::string preferred = fasterModels ? "fast" : "slow";
+    std::string fallback  = fasterModels ? "slow" : "fast";
 
     std::unordered_map<std::string, std::vector<TempEntry>> grouped;
     for (auto &te : tempEntries)
@@ -146,7 +146,7 @@ void BlockDB::init() {
 
     BlockInfo fallbackBlock;
     for (int t = 0; t < 6; t++) {
-        fallbackBlock.textureCoords[t] = glm::vec2(4.0f, 9.0f);
+        fallbackBlock.textureCoords[t] = glm::vec2(4.0f, 6.0f);
     }
     fallbackBlock.transparent = false;
     fallbackBlock.translucent = false;

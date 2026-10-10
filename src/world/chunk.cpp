@@ -369,7 +369,7 @@ void Chunk::computeMesh() {
         }
     }
 
-    bool fasterTrees = (getOptionInt("faster_trees", 0) != 0);
+    bool fasterModels = (getOptionInt("faster_models", 0) != 0);
     bool useAO = (getOptionInt("ambient_occlusion", 1) != 0);
     bool useLighting = (getOptionInt("enable_lighting", 1) != 0);
 
@@ -399,7 +399,7 @@ void Chunk::computeMesh() {
                         auto& targetIndices = (info->liquid || info->translucent) ? data.translucentIndices : data.indices;
                         unsigned int& targetOffset = (info->liquid || info->translucent) ? translucentIndexOffset : indexOffset;
                         for (int face = 0; face < 6; face++) {
-                            if (isBlockVisible(x, y, z, face, fasterTrees, info)) {
+                            if (isBlockVisible(x, y, z, face, fasterModels, info)) {
                                 for (size_t cuboidIndex = 0; cuboidIndex < m->cuboids.size(); cuboidIndex++) {
                                     addCuboidFace(targetVerts, targetIndices, x, y, z, face, cuboidIndex, info, targetOffset, useAO, useLighting);
                                 }

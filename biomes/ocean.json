@@ -10,7 +10,7 @@
                 "type": "OpenSimplex2",
                 "frequency": 0.005,
                 "seedOffset": 0,
-                "weight": 1.0,
+                "weight": 4.0,
                 "power": 1.0,
                 "operation": "add"
             },
@@ -18,7 +18,7 @@
                 "type": "OpenSimplex2S",
                 "frequency": 0.04,
                 "seedOffset": 1,
-                "weight": 1.2,
+                "weight": 3.0,
                 "power": 1.0,
                 "operation": "add"
             }

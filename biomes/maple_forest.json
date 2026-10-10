@@ -123,9 +123,33 @@
         {
             "type": "block",
             "block": 52,
-            "threshold": 0.93,
+            "threshold": 0.97,
             "allowedBlock": 1,
             "seedOffset": 7,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 149,
+            "threshold": 0.97,
+            "allowedBlock": 1,
+            "seedOffset": 8,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 150,
+            "threshold": 0.97,
+            "allowedBlock": 1,
+            "seedOffset": 9,
+            "yOffset": 0
+        },
+        {
+            "type": "block",
+            "block": 151,
+            "threshold": 0.97,
+            "allowedBlock": 1,
+            "seedOffset": 10,
             "yOffset": 0
         },
         {
@@ -133,7 +157,7 @@
             "structure": "greenMaple",
             "threshold": 0.99,
             "allowedBlock": 1,
-            "seedOffset": 8,
+            "seedOffset": 11,
             "yOffset": 0
         },
         {
@@ -141,7 +165,7 @@
             "block": 138,
             "threshold": 0.9,
             "allowedBlock": 3,
-            "seedOffset": 9,
+            "seedOffset": 12,
             "minCount": 4,
             "maxCount": 16,
             "yMin": 5,
@@ -153,7 +177,7 @@
             "block": 139,
             "threshold": 0.92,
             "allowedBlock": 3,
-            "seedOffset": 10,
+            "seedOffset": 13,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 10,
@@ -165,7 +189,7 @@
             "block": 140,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 11,
+            "seedOffset": 14,
             "minCount": 2,
             "maxCount": 8,
             "yMin": 2,
@@ -177,7 +201,7 @@
             "block": 141,
             "threshold": 0.97,
             "allowedBlock": 3,
-            "seedOffset": 12,
+            "seedOffset": 15,
             "minCount": 2,
             "maxCount": 6,
             "yMin": 2,
@@ -189,7 +213,7 @@
             "block": 142,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 13,
+            "seedOffset": 16,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,
@@ -201,7 +225,7 @@
             "block": 143,
             "threshold": 0.96,
             "allowedBlock": 3,
-            "seedOffset": 14,
+            "seedOffset": 17,
             "minCount": 35,
             "maxCount": 70,
             "yMin": 7,

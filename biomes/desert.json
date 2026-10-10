@@ -83,8 +83,7 @@
             "structure": "cactus",
             "threshold": 0.994,
             "allowedBlock": 4,
-            "seedOffset": 1,
-            "yOffset": 0
+            "seedOffset": 1
         },
         {
             "type": "block",
@@ -99,8 +98,7 @@
             "structure": "pyramid",
             "threshold": 0.99999,
             "allowedBlock": 4,
-            "seedOffset": 3,
-            "yOffset": -1
+            "seedOffset": 3
         },
         {
             "type": "structure",

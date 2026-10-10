@@ -42,14 +42,31 @@ bool rayAABBIntersect(const glm::dvec3& rayOrigin, const glm::dvec3& rayDir, con
 
 // Helper function that returns the face normal of the AABB that was hit
 glm::ivec3 getAABBHitNormal(const glm::dvec3& hitPoint, const glm::dvec3& boxMin, const glm::dvec3& boxMax) {
-    const double helper = 0.0001;
-    if (fabs(hitPoint.x - boxMin.x) < helper) return glm::ivec3(-1, 0, 0);
-    if (fabs(hitPoint.x - boxMax.x) < helper) return glm::ivec3(1, 0, 0);
-    if (fabs(hitPoint.y - boxMin.y) < helper) return glm::ivec3(0, -1, 0);
-    if (fabs(hitPoint.y - boxMax.y) < helper) return glm::ivec3(0, 1, 0);
-    if (fabs(hitPoint.z - boxMin.z) < helper) return glm::ivec3(0, 0, -1);
-    if (fabs(hitPoint.z - boxMax.z) < helper) return glm::ivec3(0, 0, 1);
-    return glm::ivec3(0, 0, 0); // fallback
+    double dists[6] = {
+        fabs(hitPoint.x - boxMin.x),
+        fabs(hitPoint.x - boxMax.x),
+        fabs(hitPoint.y - boxMin.y),
+        fabs(hitPoint.y - boxMax.y),
+        fabs(hitPoint.z - boxMin.z),
+        fabs(hitPoint.z - boxMax.z)
+    };
+    static const glm::ivec3 normals[6] = {
+        glm::ivec3(-1, 0, 0),
+        glm::ivec3(1, 0, 0),
+        glm::ivec3(0, -1, 0),
+        glm::ivec3(0, 1, 0),
+        glm::ivec3(0, 0, -1),
+        glm::ivec3(0, 0, 1)
+    };
+    int bestIdx = 0;
+    double bestDist = dists[0];
+    for (int i = 1; i < 6; i++) {
+        if (dists[i] < bestDist) {
+            bestDist = dists[i];
+            bestIdx = i;
+        }
+    }
+    return normals[bestIdx];
 }
 
 // Helper function for correct chunk coordinate calculation
@@ -225,9 +242,10 @@ void placeBreakBlockOnClick(World* world, const Camera& camera, char action, uin
                 hit.placeChunk->chunkZ * Chunk::chunkDepth + hit.placeBlockPos.z
             ) + glm::dvec3(p.second);
 
-            bool overlap = (blockWorldMin.x < playerAABBMax.x && blockWorldMax.x > playerAABBMin.x) &&
-                           (blockWorldMin.y < playerAABBMax.y && blockWorldMax.y > playerAABBMin.y) &&
-                           (blockWorldMin.z < playerAABBMax.z && blockWorldMax.z > playerAABBMin.z);
+            const double COLLISION_EPS = 1e-4;
+            bool overlap = (blockWorldMin.x < playerAABBMax.x - COLLISION_EPS && blockWorldMax.x > playerAABBMin.x + COLLISION_EPS) &&
+                           (blockWorldMin.y < playerAABBMax.y - COLLISION_EPS && blockWorldMax.y > playerAABBMin.y + COLLISION_EPS) &&
+                           (blockWorldMin.z < playerAABBMax.z - COLLISION_EPS && blockWorldMax.z > playerAABBMin.z + COLLISION_EPS);
             if (overlap) return;
         }
 

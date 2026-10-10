@@ -717,7 +717,7 @@ void Renderer::loadTextureAtlas(const std::string& path) {
                 memcpy(&tileData[y * tile_w * 4], &data[(srcY * width + srcX) * 4], tile_w * 4);
             }
             bleedTransparent(tileData.data(), tile_w, tile_h);
-            int layer = row * 16 + col;
+            int layer = (15 - row) * 16 + col;
             glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, tile_w, tile_h, 1, GL_RGBA, GL_UNSIGNED_BYTE, tileData.data());
         }
     }

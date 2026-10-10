@@ -4,6 +4,8 @@
 #include <cctype>
 #include <unordered_set>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include "console.hpp"
 #include "options.hpp"
 #include "logger.hpp"
@@ -264,6 +266,219 @@ void Console::init() {
                 } else {
                     write("Cannot spawn structure: chunk not loaded.");
                 }
+            }
+        },
+        {
+            "structurize",
+            "structurize <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <name>",
+            "Save a selected area as a structure file",
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+                if (args.size() < 7) {
+                    write("Invalid usage. Use: structurize <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <name>");
+                    return;
+                }
+
+                if (!world) {
+                    write("World not available.");
+                    return;
+                }
+
+                glm::dvec3 current = camera.getPositionDouble();
+                float eyeHeight = camera.getEyeHeight();
+                double currentFeetY = current.y - eyeHeight;
+
+                auto parseCoord = [](const std::string& token, double currentVal, bool& ok) -> int {
+                    ok = true;
+                    if (token[0] == '~') {
+                        if (token.size() == 1) return static_cast<int>(std::floor(currentVal));
+                        try {
+                            return static_cast<int>(std::floor(currentVal + std::stod(token.substr(1))));
+                        } catch (...) {
+                            ok = false;
+                            return 0;
+                        }
+                    }
+                    try {
+                        return std::stoi(token);
+                    } catch (...) {
+                        ok = false;
+                        return 0;
+                    }
+                };
+
+                bool okx1 = true, oky1 = true, okz1 = true;
+                bool okx2 = true, oky2 = true, okz2 = true;
+
+                int x1 = parseCoord(args[0], current.x, okx1);
+                int y1 = parseCoord(args[1], currentFeetY, oky1);
+                int z1 = parseCoord(args[2], current.z, okz1);
+
+                int x2 = parseCoord(args[3], current.x, okx2);
+                int y2 = parseCoord(args[4], currentFeetY, oky2);
+                int z2 = parseCoord(args[5], current.z, okz2);
+
+                if (!okx1 || !oky1 || !okz1 || !okx2 || !oky2 || !okz2) {
+                    write("Invalid coordinates. Example: structurize ~ ~ ~ ~5 ~5 ~5 my_structure");
+                    return;
+                }
+
+                std::string structName = args[6];
+                for (size_t i = 7; i < args.size(); ++i) {
+                    structName += "_" + args[i];
+                }
+
+                if (structName.size() >= 5 && structName.substr(structName.size() - 5) == ".json") {
+                    structName = structName.substr(0, structName.size() - 5);
+                }
+
+                if (structName.empty()) {
+                    write("Invalid structure name.");
+                    return;
+                }
+
+                for (char c : structName) {
+                    if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+                        write("Invalid structure name. Cannot contain characters: / \\ : * ? \" < > |");
+                        return;
+                    }
+                }
+
+                int minX = std::min(x1, x2);
+                int maxX = std::max(x1, x2);
+                int minY = std::min(y1, y2);
+                int maxY = std::max(y1, y2);
+                int minZ = std::min(z1, z2);
+                int maxZ = std::max(z1, z2);
+
+                if (minY < 0 || maxY >= Chunk::chunkHeight) {
+                    write("Structure Y coordinate is out of bounds (must be between 0 and 255).");
+                    return;
+                }
+
+                int sizeX = maxX - minX + 1;
+                int sizeY = maxY - minY + 1;
+                int sizeZ = maxZ - minZ + 1;
+
+                long long volume = static_cast<long long>(sizeX) *
+                                   static_cast<long long>(sizeY) *
+                                   static_cast<long long>(sizeZ);
+                if (volume > 500000) {
+                    char buf[256];
+                    snprintf(buf, sizeof(buf), "Too many blocks in specified area (%lld > 500000)", volume);
+                    write(buf);
+                    return;
+                }
+
+                int minChunkX = worldToChunkCoord(minX, Chunk::chunkWidth);
+                int maxChunkX = worldToChunkCoord(maxX, Chunk::chunkWidth);
+                int minChunkZ = worldToChunkCoord(minZ, Chunk::chunkDepth);
+                int maxChunkZ = worldToChunkCoord(maxZ, Chunk::chunkDepth);
+
+                for (int cx = minChunkX; cx <= maxChunkX; ++cx) {
+                    for (int cz = minChunkZ; cz <= maxChunkZ; ++cz) {
+                        if (!world->getChunk(cx, cz)) {
+                            char buf[256];
+                            snprintf(buf, sizeof(buf), "Cannot structurize: chunk (%d, %d) is not loaded.", cx, cz);
+                            write(buf);
+                            return;
+                        }
+                    }
+                }
+
+                int defaultXOffset = sizeX / 2;
+                int defaultYOffset = 0;
+                int defaultZOffset = sizeZ / 2;
+
+                std::vector<std::vector<std::vector<uint32_t>>> layers(
+                    sizeY, std::vector<std::vector<uint32_t>>(
+                        sizeZ, std::vector<uint32_t>(sizeX, 0)
+                    )
+                );
+
+                int nonAirCount = 0;
+
+                for (int z = 0; z < sizeZ; ++z) {
+                    int worldZ = minZ + z;
+                    int chunkZ = worldToChunkCoord(worldZ, Chunk::chunkDepth);
+                    int localZ = worldZ - chunkZ * Chunk::chunkDepth;
+
+                    for (int x = 0; x < sizeX; ++x) {
+                        int worldX = minX + x;
+                        int chunkX = worldToChunkCoord(worldX, Chunk::chunkWidth);
+                        int localX = worldX - chunkX * Chunk::chunkWidth;
+
+                        Chunk* chunk = world->getChunk(chunkX, chunkZ);
+                        if (!chunk) continue;
+
+                        for (int y = 0; y < sizeY; ++y) {
+                            int worldY = minY + y;
+                            uint16_t bType = chunk->blocks[localX][worldY][localZ].type;
+                            layers[y][z][x] = static_cast<uint32_t>(bType);
+                            if (bType != 0) {
+                                nonAirCount++;
+                            }
+                        }
+                    }
+                }
+
+                namespace fs = std::filesystem;
+                fs::path structuresDir = fs::current_path() / "structures";
+                std::error_code ec;
+                if (!fs::exists(structuresDir)) {
+                    fs::create_directories(structuresDir, ec);
+                    if (ec) {
+                        write("Failed to create structures directory: " + ec.message());
+                        return;
+                    }
+                }
+
+                fs::path filePath = structuresDir / (structName + ".json");
+                std::ofstream outFile(filePath);
+                if (!outFile.is_open()) {
+                    write("Failed to open file for writing: " + filePath.string());
+                    return;
+                }
+
+                outFile << "{\n";
+                outFile << "  \"name\": \"" << structName << "\",\n";
+                outFile << "  \"defaultXOffset\": " << defaultXOffset << ",\n";
+                outFile << "  \"defaultYOffset\": " << defaultYOffset << ",\n";
+                outFile << "  \"defaultZOffset\": " << defaultZOffset << ",\n";
+                outFile << "  \"layers\": [\n";
+
+                for (int y = 0; y < sizeY; ++y) {
+                    outFile << "    [\n";
+                    for (int z = 0; z < sizeZ; ++z) {
+                        outFile << "      [";
+                        for (int x = 0; x < sizeX; ++x) {
+                            outFile << layers[y][z][x];
+                            if (x + 1 < sizeX) {
+                                outFile << ", ";
+                            }
+                        }
+                        outFile << "]";
+                        if (z + 1 < sizeZ) {
+                            outFile << ",";
+                        }
+                        outFile << "\n";
+                    }
+                    outFile << "    ]";
+                    if (y + 1 < sizeY) {
+                        outFile << ",";
+                    }
+                    outFile << "\n";
+                }
+
+                outFile << "  ]\n";
+                outFile << "}\n";
+                outFile.close();
+
+                StructureDB::init();
+
+                char buf[256];
+                snprintf(buf, sizeof(buf), "Saved structure '%s' to structures/%s.json (%dx%dx%d, %d non-empty blocks)",
+                         structName.c_str(), structName.c_str(), sizeX, sizeY, sizeZ, nonAirCount);
+                write(buf);
             }
         },
         {

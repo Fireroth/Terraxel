@@ -123,7 +123,7 @@ void BlockPreviewRenderer::buildBlockMesh(uint16_t blockId, std::vector<float>& 
                 glm::vec3 pos = faceVerts[i];
                 float local_u = (i == 1 || i == 2) ? faceData.uvTo.x : faceData.uvFrom.x;
                 float local_v = (i == 2 || i == 3) ? faceData.uvTo.y : faceData.uvFrom.y;
-                glm::vec2 uv = (atlasOffset + glm::vec2(local_u, local_v)) / atlasSize;
+                glm::vec2 uv = glm::vec2(atlasOffset.x + local_u, 15.0f - atlasOffset.y + local_v) / atlasSize;
                 vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, uv.x, uv.y, static_cast<float>(face)});
             }
 
@@ -181,7 +181,7 @@ void BlockPreviewRenderer::buildBlockMesh(uint16_t blockId, std::vector<float>& 
             }
             float local_u = (i == 1 || i == 2) ? faceData.uvTo.x : faceData.uvFrom.x;
             float local_v = (i == 2 || i == 3) ? faceData.uvTo.y : faceData.uvFrom.y;
-            glm::vec2 uv = (atlasOffset + glm::vec2(local_u, local_v)) / atlasSize;
+            glm::vec2 uv = glm::vec2(atlasOffset.x + local_u, 15.0f - atlasOffset.y + local_v) / atlasSize;
             vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, uv.x, uv.y, 0.0f});
         }
 

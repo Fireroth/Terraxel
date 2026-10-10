@@ -5,7 +5,7 @@ in vec2 TexCoords;
 
 uniform sampler2D screenTexture;
 uniform sampler2D depthTexture;
-uniform int effectType; // 9 = water, 10 = lava, 69 = warm water
+uniform int effectType; // 9 = water, 10 = lava, 69 = warm water, 164 = muddy water
 uniform float time;
 uniform mat4 invProjection;
 uniform bool fogEnabled;
@@ -119,6 +119,40 @@ void main() {
     //---------------------------------------------------------------------------------
     else if (effectType == 69) {
         activeFogColor         = vec3(0.145, 0.525, 0.80);
+        activeFogDensity       = 0.03;
+        activeFogStartDistance = 0.0;
+
+        // Chromatic aberration and blur
+        float dist = viewDepth(uv);
+        float caAmount = 0.004 + smoothstep(0.0, 12.0, dist) * 0.006;
+        vec3 aberrated = chromaticAberration(screenTexture, uv, caAmount);
+        vec4 blurred = blur(screenTexture, uv, 2.0);
+        vec3 scene = mix(blurred.rgb, aberrated, 0.6);
+
+        // Depth-based color absorption
+        float absorption = clamp(dist * 0.035, 0.0, 0.7);
+        scene.r *= exp(-absorption * 2.8);
+        scene.g *= exp(-absorption * 0.9);
+
+        // Depth fog
+        vec3 fogged = applyFog(scene, uv, activeFogColor, activeFogDensity, activeFogStartDistance);
+
+        // Base water tint
+        vec3 finalColor = mix(fogged, activeFogColor, 0.30);
+
+        // Vignette
+        if (vignetteEnabled) {
+            vec2 d = abs(TexCoords - 0.5) * 2.0;
+            float vignette = 1.0 - dot(d, d) * 0.2;
+            vignette = clamp(vignette, 0.0, 1.0);
+            finalColor = mix(activeFogColor * 0.5, finalColor, vignette);
+        }
+
+        FragColor = vec4(finalColor, 1.0);
+    }
+    //---------------------------------------------------------------------------------
+    else if (effectType == 164) {
+        activeFogColor         = vec3(0.255, 0.341, 0.259);
         activeFogDensity       = 0.03;
         activeFogStartDistance = 0.0;
 

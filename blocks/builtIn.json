@@ -2,7 +2,7 @@
     "grass_block": {
         "id": 1,
         "texture positions (comment)": ["front","back","left","right","top","bottom"],
-        "textures": [[0,15],[0,15],[0,15],[0,15],[2,15],[1,15]],
+        "textures": [[0,0],[0,0],[0,0],[0,0],[2,0],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Grass Block",
@@ -13,7 +13,7 @@
 
     "dirt": {
         "id": 2,
-        "textures": [[1,15],[1,15],[1,15],[1,15],[1,15],[1,15]],
+        "textures": [[1,0],[1,0],[1,0],[1,0],[1,0],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Dirt",
@@ -24,7 +24,7 @@
 
     "stone": {
         "id": 3,
-        "textures": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
+        "textures": [[3,0],[3,0],[3,0],[3,0],[3,0],[3,0]],
         "transparent": false,
         "liquid": false,
         "name": "Stone",
@@ -35,7 +35,7 @@
 
     "sand": {
         "id": 4,
-        "textures": [[4,15],[4,15],[4,15],[4,15],[4,15],[4,15]],
+        "textures": [[4,0],[4,0],[4,0],[4,0],[4,0],[4,0]],
         "transparent": false,
         "liquid": false,
         "name": "Sand",
@@ -46,7 +46,7 @@
 
     "oak _log": {
         "id": 5,
-        "textures": [[2,14],[2,14],[2,14],[2,14],[3,14],[3,14]],
+        "textures": [[2,1],[2,1],[2,1],[2,1],[3,1],[3,1]],
         "transparent": false,
         "liquid": false,
         "name": "Oak Log",
@@ -57,7 +57,7 @@
 
     "bedrock": {
         "id": 6,
-        "textures": [[1,14],[1,14],[1,14],[1,14],[1,14],[1,14]],
+        "textures": [[1,1],[1,1],[1,1],[1,1],[1,1],[1,1]],
         "transparent": false,
         "liquid": false,
         "name": "Bedrock",
@@ -68,7 +68,7 @@
 
     "gravel": {
         "id": 7,
-        "textures": [[5,15],[5,15],[5,15],[5,15],[5,15],[5,15]],
+        "textures": [[5,0],[5,0],[5,0],[5,0],[5,0],[5,0]],
         "transparent": false,
         "liquid": false,
         "name": "Gravel",
@@ -79,7 +79,7 @@
 
     "bricks": {
         "id": 8,
-        "textures": [[4,14],[4,14],[4,14],[4,14],[4,14],[4,14]],
+        "textures": [[4,1],[4,1],[4,1],[4,1],[4,1],[4,1]],
         "transparent": false,
         "liquid": false,
         "name": "Bricks",
@@ -90,7 +90,7 @@
 
     "water": {
         "id": 9,
-        "textures": [[0,13],[0,13],[0,13],[0,13],[0,13],[0,13]],
+        "textures": [[0,2],[0,2],[0,2],[0,2],[0,2],[0,2]],
         "transparent": true,
         "liquid": true,
         "drag": 3.0,
@@ -102,7 +102,7 @@
 
     "lava": {
         "id": 10,
-        "textures": [[1,13],[1,13],[1,13],[1,13],[1,13],[1,13]],
+        "textures": [[1,2],[1,2],[1,2],[1,2],[1,2],[1,2]],
         "transparent": true,
         "liquid": true,
         "drag": 10.0,
@@ -115,7 +115,7 @@
 
     "leaves:slow": {
         "id": 11,
-        "textures": [[5,14],[5,14],[5,14],[5,14],[5,14],[5,14]],
+        "textures": [[5,1],[5,1],[5,1],[5,1],[5,1],[5,1]],
         "transparent": true,
         "liquid": false,
         "name": "Leaves",
@@ -126,7 +126,7 @@
 
     "leaves:fast": {
         "id": 11,
-        "textures": [[6,15],[6,15],[6,15],[6,15],[6,15],[6,15]],
+        "textures": [[6,0],[6,0],[6,0],[6,0],[6,0],[6,0]],
         "transparent": false,
         "liquid": false,
         "name": "Leaves",
@@ -137,7 +137,7 @@
 
     "cactus": {
         "id": 12,
-        "textures": [[7,15],[7,15],[7,15],[7,15],[7,14],[8,15]],
+        "textures": [[7,0],[7,0],[7,0],[7,0],[7,1],[8,0]],
         "transparent": false,
         "liquid": false,
         "name": "Cactus",
@@ -148,7 +148,7 @@
 
     "stone_slab": {
         "id": 13,
-        "textures": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
+        "textures": [[3,0],[3,0],[3,0],[3,0],[3,0],[3,0]],
         "transparent": false,
         "liquid": false,
         "name": "Stone Slab",
@@ -159,7 +159,7 @@
 
     "oak_plank": {
         "id": 14,
-        "textures": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
+        "textures": [[6,1],[6,1],[6,1],[6,1],[6,1],[6,1]],
         "transparent": false,
         "liquid": false,
         "name": "Oak Plank",
@@ -170,7 +170,7 @@
 
     "oak_plank_slab": {
         "id": 15,
-        "textures": [[6,14],[6,14],[6,14],[6,14],[6,14],[6,14]],
+        "textures": [[6,1],[6,1],[6,1],[6,1],[6,1],[6,1]],
         "transparent": false,
         "liquid": false,
         "name": "Oak Plank Slab",
@@ -181,7 +181,7 @@
 
     "glass": {
         "id": 16,
-        "textures": [[8,14],[8,14],[8,14],[8,14],[8,14],[8,14]],
+        "textures": [[8,1],[8,1],[8,1],[8,1],[8,1],[8,1]],
         "transparent": true,
         "liquid": false,
         "name": "Glass",
@@ -192,7 +192,7 @@
 
     "medium _grass": {
         "id": 17,
-        "textures": [[2,13]],
+        "textures": [[2,2]],
         "transparent": true,
         "liquid": false,
         "name": "Medium Grass",
@@ -203,7 +203,7 @@
 
     "short_grass": {
         "id": 18,
-        "textures": [[3,13]],
+        "textures": [[3,2]],
         "transparent": true,
         "liquid": false,
         "name": "Short Grass",
@@ -214,7 +214,7 @@
 
     "dead_bush": {
         "id": 19,
-        "textures": [[4,13]],
+        "textures": [[4,2]],
         "transparent": true,
         "liquid": false,
         "name": "Dead Bush",
@@ -225,7 +225,7 @@
 
     "poppy": {
         "id": 20,
-        "textures": [[5,13]],
+        "textures": [[5,2]],
         "transparent": true,
         "liquid": false,
         "name": "Poppy",
@@ -236,7 +236,7 @@
 
     "dandelion": {
         "id": 21,
-        "textures": [[6,13]],
+        "textures": [[6,2]],
         "transparent": true,
         "liquid": false,
         "name": "Dandelion",
@@ -247,7 +247,7 @@
 
     "fir_leaves:slow": {
         "id": 22,
-        "textures": [[7,13],[7,13],[7,13],[7,13],[7,13],[7,13]],
+        "textures": [[7,2],[7,2],[7,2],[7,2],[7,2],[7,2]],
         "transparent": true,
         "liquid": false,
         "name": "Fir Leaves",
@@ -258,7 +258,7 @@
         
     "fir_leaves:fast": {
         "id": 22,
-        "textures": [[8,13],[8,13],[8,13],[8,13],[8,13],[8,13]],
+        "textures": [[8,2],[8,2],[8,2],[8,2],[8,2],[8,2]],
         "transparent": false,
         "liquid": false,
         "name": "Fir Leaves",
@@ -269,7 +269,7 @@
 
     "dark_grass_block": {
         "id": 23,
-        "textures": [[1,12],[1,12],[1,12],[1,12],[2,12],[1,15]],
+        "textures": [[1,3],[1,3],[1,3],[1,3],[2,3],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Dark Grass Block",
@@ -280,7 +280,7 @@
 
     "dark_medium_grass": {
         "id": 24,
-        "textures": [[3,12]],
+        "textures": [[3,3]],
         "transparent": true,
         "liquid": false,
         "name": "Dark Medium Grass",
@@ -291,7 +291,7 @@
 
     "pebble": {
         "id": 25,
-        "textures": [[3,15],[3,15],[3,15],[3,15],[3,15],[3,15]],
+        "textures": [[3,0],[3,0],[3,0],[3,0],[3,0],[3,0]],
         "transparent": false,
         "liquid": false,
         "name": "Pebble",
@@ -302,7 +302,7 @@
 
     "dark_short_grass": {
         "id": 26,
-        "textures": [[4,12]],
+        "textures": [[4,3]],
         "transparent": true,
         "liquid": false,
         "name": "Dark Short Grass",
@@ -313,7 +313,7 @@
 
     "fir_log": {
         "id": 27,
-        "textures": [[5,12],[5,12],[5,12],[5,12],[6,12],[6,12]],
+        "textures": [[5,3],[5,3],[5,3],[5,3],[6,3],[6,3]],
         "transparent": false,
         "liquid": false,
         "name": "Fir Log",
@@ -324,7 +324,7 @@
 
     "blue_sage": {
         "id": 28,
-        "textures": [[7,12]],
+        "textures": [[7,3]],
         "transparent": true,
         "liquid": false,
         "name": "Blue Sage",
@@ -335,7 +335,7 @@
 
     "pink_anemone": {
         "id": 29,
-        "textures": [[8,12]],
+        "textures": [[8,3]],
         "transparent": true,
         "liquid": false,
         "name": "Pink Anemone",
@@ -346,7 +346,7 @@
 
     "bistort": {
         "id": 30,
-        "textures": [[7,11]],
+        "textures": [[7,4]],
         "transparent": true,
         "liquid": false,
         "name": "Bistort",
@@ -357,7 +357,7 @@
 
     "fir_plank": {
         "id": 31,
-        "textures": [[6,11],[6,11],[6,11],[6,11],[6,11],[6,11]],
+        "textures": [[6,4],[6,4],[6,4],[6,4],[6,4],[6,4]],
         "transparent": false,
         "liquid": false,
         "name": "Fir Plank",
@@ -368,7 +368,7 @@
 
     "fir_plank_slab": {
         "id": 32,
-        "textures": [[6,11],[6,11],[6,11],[6,11],[6,11],[6,11]],
+        "textures": [[6,4],[6,4],[6,4],[6,4],[6,4],[6,4]],
         "transparent": false,
         "liquid": false,
         "name": "Fir Plank Slab",
@@ -379,7 +379,7 @@
 
     "crocus": {
         "id": 33,
-        "textures": [[8,11]],
+        "textures": [[8,4]],
         "transparent": true,
         "liquid": false,
         "name": "Crocus",
@@ -390,7 +390,7 @@
 
     "lavender": {
         "id": 34,
-        "textures": [[9,12]],
+        "textures": [[9,3]],
         "transparent": true,
         "liquid": false,
         "name": "Lavender",
@@ -401,7 +401,7 @@
 
     "red_maple_leaves:slow": {
         "id": 35,
-        "textures": [[3,11],[3,11],[3,11],[3,11],[3,11],[3,11]],
+        "textures": [[3,4],[3,4],[3,4],[3,4],[3,4],[3,4]],
         "transparent": true,
         "liquid": false,
         "name": "Red Maple Leaves",
@@ -412,7 +412,7 @@
 
     "red_maple_leaves:fast": {
         "id": 35,
-        "textures": [[3,10],[3,10],[3,10],[3,10],[3,10],[3,10]],
+        "textures": [[3,5],[3,5],[3,5],[3,5],[3,5],[3,5]],
         "transparent": false,
         "liquid": false,
         "name": "Red Maple Leaves",
@@ -423,7 +423,7 @@
 
     "orange _maple_leaves:slow": {
         "id": 36,
-        "textures": [[4,11],[4,11],[4,11],[4,11],[4,11],[4,11]],
+        "textures": [[4,4],[4,4],[4,4],[4,4],[4,4],[4,4]],
         "transparent": true,
         "liquid": false,
         "name": "Orange Maple Leaves",
@@ -434,7 +434,7 @@
 
     "orange _maple_leaves:fast": {
         "id": 36,
-        "textures": [[4,10],[4,10],[4,10],[4,10],[4,10],[4,10]],
+        "textures": [[4,5],[4,5],[4,5],[4,5],[4,5],[4,5]],
         "transparent": false,
         "liquid": false,
         "name": "Orange Maple Leaves",
@@ -445,7 +445,7 @@
 
     "yellow_maple_leaves:slow": {
         "id": 37,
-        "textures": [[5,11],[5,11],[5,11],[5,11],[5,11],[5,11]],
+        "textures": [[5,4],[5,4],[5,4],[5,4],[5,4],[5,4]],
         "transparent": true,
         "liquid": false,
         "name": "Yellow Maple Leaves",
@@ -456,7 +456,7 @@
 
     "yellow_maple_leaves:fast": {
         "id": 37,
-        "textures": [[5,10],[5,10],[5,10],[5,10],[5,10],[5,10]],
+        "textures": [[5,5],[5,5],[5,5],[5,5],[5,5],[5,5]],
         "transparent": false,
         "liquid": false,
         "name": "Yellow Maple Leaves",
@@ -467,7 +467,7 @@
 
     "maple_log": {
         "id": 38,
-        "textures": [[0,11],[0,11],[0,11],[0,11],[1,11],[1,11]],
+        "textures": [[0,4],[0,4],[0,4],[0,4],[1,4],[1,4]],
         "transparent": false,
         "liquid": false,
         "name": "Maple Log",
@@ -478,7 +478,7 @@
 
     "maple_plank": {
         "id": 39,
-        "textures": [[2,11],[2,11],[2,11],[2,11],[2,11],[2,11]],
+        "textures": [[2,4],[2,4],[2,4],[2,4],[2,4],[2,4]],
         "transparent": false,
         "liquid": false,
         "name": "Maple Plank",
@@ -489,7 +489,7 @@
 
     "maple_plank_slab": {
         "id": 40,
-        "textures": [[2,11],[2,11],[2,11],[2,11],[2,11],[2,11]],
+        "textures": [[2,4],[2,4],[2,4],[2,4],[2,4],[2,4]],
         "transparent": false,
         "liquid": false,
         "name": "Maple Plank Slab",
@@ -500,7 +500,7 @@
 
     "leaves_carpet": {
         "id": 41,
-        "textures": [[5,14],[5,14],[5,14],[5,14],[5,14],[5,14]],
+        "textures": [[5,1],[5,1],[5,1],[5,1],[5,1],[5,1]],
         "transparent": false,
         "liquid": false,
         "name": "Leaves Carpet",
@@ -511,7 +511,7 @@
 
     "stone_bricks": {
         "id": 42,
-        "textures": [[0,14],[0,14],[0,14],[0,14],[0,14],[0,14]],
+        "textures": [[0,1],[0,1],[0,1],[0,1],[0,1],[0,1]],
         "transparent": false,
         "liquid": false,
         "name": "Stone Bricks",
@@ -522,7 +522,7 @@
 
     "stone_brick_slab": {
         "id": 43,
-        "textures": [[0,14],[0,14],[0,14],[0,14],[0,14],[0,14]],
+        "textures": [[0,1],[0,1],[0,1],[0,1],[0,1],[0,1]],
         "transparent": false,
         "liquid": false,
         "name": "Stone Brick Slab",
@@ -533,7 +533,7 @@
 
     "structure_air": {
         "id": 44,
-        "textures": [[0,12],[0,12],[0,12],[0,12],[0,12],[0,12]],
+        "textures": [[0,3],[0,3],[0,3],[0,3],[0,3],[0,3]],
         "transparent": false,
         "liquid": false,
         "name": "Structure Air",
@@ -544,7 +544,7 @@
 
     "sand_slab": {
         "id": 45,
-        "textures": [[4,15],[4,15],[4,15],[4,15],[4,15],[4,15]],
+        "textures": [[4,0],[4,0],[4,0],[4,0],[4,0],[4,0]],
         "transparent": false,
         "liquid": false,
         "name": "Sand Slab",
@@ -555,7 +555,7 @@
 
     "grass_block_slab": {
         "id": 46,
-        "textures": [[2,15],[2,15],[2,15],[2,15],[2,15],[1,15]],
+        "textures": [[2,0],[2,0],[2,0],[2,0],[2,0],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Grass Block Slab",
@@ -566,7 +566,7 @@
 
     "dark_grass_block_slab": {
         "id": 47,
-        "textures": [[2,12],[2,12],[2,12],[2,12],[2,12],[1,15]],
+        "textures": [[2,3],[2,3],[2,3],[2,3],[2,3],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Dark Grass Block Slab",
@@ -577,7 +577,7 @@
 
     "grass_block_all_sides": {
         "id": 48,
-        "textures": [[2,15],[2,15],[2,15],[2,15],[2,15],[1,15]],
+        "textures": [[2,0],[2,0],[2,0],[2,0],[2,0],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Grass Block (all sides)",
@@ -588,7 +588,7 @@
 
     "dark_grass_block_all_sides": {
         "id": 49,
-        "textures": [[2,12],[2,12],[2,12],[2,12],[2,12],[1,15]],
+        "textures": [[2,3],[2,3],[2,3],[2,3],[2,3],[1,0]],
         "transparent": false,
         "liquid": false,
         "name": "Dark Grass Block (all sides)",
@@ -599,7 +599,7 @@
 
     "sand_bricks": {
         "id": 50,
-        "textures": [[9,15],[9,15],[9,15],[9,15],[9,15],[9,15]],
+        "textures": [[9,0],[9,0],[9,0],[9,0],[9,0],[9,0]],
         "transparent": false,
         "liquid": false,
         "name": "Sand Bricks",
@@ -610,7 +610,7 @@
 
     "green_maple_leaves:slow": {
         "id": 51,
-        "textures": [[1,10],[1,10],[1,10],[1,10],[1,10],[1,10]],
+        "textures": [[1,5],[1,5],[1,5],[1,5],[1,5],[1,5]],
         "transparent": true,
         "liquid": false,
         "name": "Green Maple Leaves",
@@ -621,7 +621,7 @@
 
     "green_maple_leaves:fast": {
         "id": 51,
-        "textures": [[2,10],[2,10],[2,10],[2,10],[2,10],[2,10]],
+        "textures": [[2,5],[2,5],[2,5],[2,5],[2,5],[2,5]],
         "transparent": false,
         "liquid": false,
         "name": "Green Maple Leaves",
@@ -632,7 +632,7 @@
 
     "green_maple_leaves_carpet": {
         "id": 52,
-        "textures": [[1,10],[1,10],[1,10],[1,10],[1,10],[1,10]],
+        "textures": [[1,5],[1,5],[1,5],[1,5],[1,5],[1,5]],
         "transparent": false,
         "liquid": false,
         "name": "Green Maple Leaves Carpet",
@@ -643,7 +643,7 @@
 
     "wheat": {
         "id": 54,
-        "textures": [[9,14]],
+        "textures": [[9,1]],
         "transparent": true,
         "liquid": false,
         "name": "Wheat",
@@ -654,7 +654,7 @@
 
     "red_rose": {
         "id": 55,
-        "textures": [[9,11]],
+        "textures": [[9,4]],
         "transparent": true,
         "liquid": false,
         "name": "Red Rose",
@@ -665,7 +665,7 @@
 
     "lily_pad": {
         "id": 56,
-        "textures": [[9,13]],
+        "textures": [[9,2]],
         "transparent": true,
         "liquid": false,
         "name": "Lily Pad",
@@ -676,7 +676,7 @@
 
     "flowering_cactus": {
         "id": 57,
-        "textures": [[6,10],[6,10],[6,10],[6,10],[7,14],[8,15]],
+        "textures": [[6,5],[6,5],[6,5],[6,5],[7,1],[8,0]],
         "transparent": true,
         "liquid": false,
         "name": "Flowering Cactus",
@@ -687,7 +687,7 @@
 
     "cactus_flower": {
         "id": 58,
-        "textures": [[7,10]],
+        "textures": [[7,5]],
         "transparent": true,
         "liquid": false,
         "name": "Cactus Flower",
@@ -698,7 +698,7 @@
 
     "dead_grass": {
         "id": 59,
-        "textures": [[0,10]],
+        "textures": [[0,5]],
         "transparent": true,
         "liquid": false,
         "name": "Dead Grass",
@@ -707,9 +707,9 @@
         "tabName": "Plants"
     },
 
-    "brown_mushroom": {
+    "brown_mushroom:fast": {
         "id": 60,
-        "textures": [[8,10]],
+        "textures": [[8,5]],
         "transparent": false,
         "liquid": false,
         "name": "Brown Mushroom",
@@ -718,9 +718,9 @@
         "tabName": "Plants"
     },
 
-    "red_mushroom": {
+    "red_mushroom:fast": {
         "id": 61,
-        "textures": [[9,10]],
+        "textures": [[9,5]],
         "transparent": false,
         "liquid": false,
         "name": "Red Mushroom",
@@ -729,9 +729,34 @@
         "tabName": "Plants"
     },
 
+    "brown_mushroom:slow": {
+        "id": 60,
+        "textures": [[12,5],[12,5],[12,5],[12,5],[12,5],[12,5]],
+        "textures2": [[12,5],[12,5],[12,5],[12,5],[12,5],[12,5]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Brown Mushroom",
+        "model": "flat_mushroom",
+        "renderFacesInBetween": false,
+        "tabName": "Plants"
+    },
+
+    "red_mushroom:slow": {
+        "id": 61,
+        "textures": [[12,5],[12,5],[12,5],[12,5],[12,5],[12,5]],
+        "textures2": [[12,5],[12,5],[12,5],[12,5],[12,5],[12,5]],
+        "textures3": [[12,5],[12,5],[12,5],[12,5],[12,5],[12,5]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Red Mushroom",
+        "model": "round_mushroom",
+        "renderFacesInBetween": false,
+        "tabName": "Plants"
+    },
+    
     "grassy_stone": {
         "id": 62,
-        "textures": [[10,14],[10,14],[10,14],[10,14],[10,15],[3,15]],
+        "textures": [[10,1],[10,1],[10,1],[10,1],[10,0],[3,0]],
         "transparent": false,
         "liquid": false,
         "name": "Grassy Stone",
@@ -742,7 +767,7 @@
 
     "palm_log": {
         "id": 63,
-        "textures": [[10,13],[10,13],[10,13],[10,13],[10,12],[10,12]],
+        "textures": [[10,2],[10,2],[10,2],[10,2],[10,3],[10,3]],
         "transparent": false,
         "liquid": false,
         "name": "Palm Log",
@@ -753,7 +778,7 @@
 
     "palm_leaves:slow": {
         "id": 64,
-        "textures": [[10,11],[10,11],[10,11],[10,11],[10,11],[10,11]],
+        "textures": [[10,4],[10,4],[10,4],[10,4],[10,4],[10,4]],
         "transparent": true,
         "liquid": false,
         "name": "Palm Leaves",
@@ -764,7 +789,7 @@
 
     "palm_leaves:fast": {
         "id": 64,
-        "textures": [[10,10],[10,10],[10,10],[10,10],[10,10],[10,10]],
+        "textures": [[10,5],[10,5],[10,5],[10,5],[10,5],[10,5]],
         "transparent": false,
         "liquid": false,
         "name": "Palm Leaves",
@@ -775,7 +800,7 @@
 
     "palm_plank": {
         "id": 65,
-        "textures": [[11,15],[11,15],[11,15],[11,15],[11,15],[11,15]],
+        "textures": [[11,0],[11,0],[11,0],[11,0],[11,0],[11,0]],
         "transparent": false,
         "liquid": false,
         "name": "Palm Plank",
@@ -786,7 +811,7 @@
 
     "palm_plank_slab": {
         "id": 66,
-        "textures": [[11,15],[11,15],[11,15],[11,15],[11,15],[11,15]],
+        "textures": [[11,0],[11,0],[11,0],[11,0],[11,0],[11,0]],
         "transparent": false,
         "liquid": false,
         "name": "Palm Plank Slab",
@@ -797,7 +822,7 @@
 
     "cobblestone": {
         "id": 67,
-        "textures": [[11,14],[11,14],[11,14],[11,14],[11,14],[11,14]],
+        "textures": [[11,1],[11,1],[11,1],[11,1],[11,1],[11,1]],
         "transparent": false,
         "liquid": false,
         "name": "Cobblestone",
@@ -808,7 +833,7 @@
 
     "cobblestone_slab": {
         "id": 68,
-        "textures": [[11,14],[11,14],[11,14],[11,14],[11,14],[11,14]],
+        "textures": [[11,1],[11,1],[11,1],[11,1],[11,1],[11,1]],
         "transparent": false,
         "liquid": false,
         "name": "Cobblestone Slab",
@@ -819,7 +844,7 @@
     
     "warm_water": {
         "id": 69,
-        "textures": [[11,13],[11,13],[11,13],[11,13],[11,13],[11,13]],
+        "textures": [[11,2],[11,2],[11,2],[11,2],[11,2],[11,2]],
         "transparent": true,
         "liquid": true,
         "drag": 3.0,
@@ -831,7 +856,7 @@
 
     "blue_sand": {
         "id": 70,
-        "textures": [[1,9],[1,9],[1,9],[1,9],[1,9],[1,9]],
+        "textures": [[1,6],[1,6],[1,6],[1,6],[1,6],[1,6]],
         "transparent": false,
         "liquid": false,
         "name": "Blue Sand",
@@ -842,7 +867,7 @@
 
     "purple_sand": {
         "id": 71,
-        "textures": [[3,9],[3,9],[3,9],[3,9],[3,9],[3,9]],
+        "textures": [[3,6],[3,6],[3,6],[3,6],[3,6],[3,6]],
         "transparent": false,
         "liquid": false,
         "name": "Purple Sand",
@@ -853,7 +878,7 @@
 
     "pink_sand": {
         "id": 72,
-        "textures": [[2,9],[2,9],[2,9],[2,9],[2,9],[2,9]],
+        "textures": [[2,6],[2,6],[2,6],[2,6],[2,6],[2,6]],
         "transparent": false,
         "liquid": false,
         "name": "Pink Sand",
@@ -864,7 +889,7 @@
 
     "white_concrete": {
         "id": 73,
-        "textures": [[0,8],[0,8],[0,8],[0,8],[0,8],[0,8]],
+        "textures": [[0,7],[0,7],[0,7],[0,7],[0,7],[0,7]],
         "transparent": false,
         "liquid": false,
         "name": "White Concrete",
@@ -875,7 +900,7 @@
 
     "red_concrete": {
         "id": 74,
-        "textures": [[1,8],[1,8],[1,8],[1,8],[1,8],[1,8]],
+        "textures": [[1,7],[1,7],[1,7],[1,7],[1,7],[1,7]],
         "transparent": false,
         "liquid": false,
         "name": "Red Concrete",
@@ -886,7 +911,7 @@
 
     "orange_concrete": {
         "id": 75,
-        "textures": [[2,8],[2,8],[2,8],[2,8],[2,8],[2,8]],
+        "textures": [[2,7],[2,7],[2,7],[2,7],[2,7],[2,7]],
         "transparent": false,
         "liquid": false,
         "name": "Orange Concrete",
@@ -897,7 +922,7 @@
 
     "pink_concrete": {
         "id": 76,
-        "textures": [[3,8],[3,8],[3,8],[3,8],[3,8],[3,8]],
+        "textures": [[3,7],[3,7],[3,7],[3,7],[3,7],[3,7]],
         "transparent": false,
         "liquid": false,
         "name": "Pink Concrete",
@@ -908,7 +933,7 @@
 
     "yellow_concrete": {
         "id": 77,
-        "textures": [[4,8],[4,8],[4,8],[4,8],[4,8],[4,8]],
+        "textures": [[4,7],[4,7],[4,7],[4,7],[4,7],[4,7]],
         "transparent": false,
         "liquid": false,
         "name": "Yellow Concrete",
@@ -919,7 +944,7 @@
 
     "lime_concrete": {
         "id": 78,
-        "textures": [[5,8],[5,8],[5,8],[5,8],[5,8],[5,8]],
+        "textures": [[5,7],[5,7],[5,7],[5,7],[5,7],[5,7]],
         "transparent": false,
         "liquid": false,
         "name": "Lime Concrete",
@@ -930,7 +955,7 @@
 
     "green_concrete": {
         "id": 79,
-        "textures": [[6,8],[6,8],[6,8],[6,8],[6,8],[6,8]],
+        "textures": [[6,7],[6,7],[6,7],[6,7],[6,7],[6,7]],
         "transparent": false,
         "liquid": false,
         "name": "Green Concrete",
@@ -941,7 +966,7 @@
 
     "light_blue_concrete": {
         "id": 80,
-        "textures": [[7,8],[7,8],[7,8],[7,8],[7,8],[7,8]],
+        "textures": [[7,7],[7,7],[7,7],[7,7],[7,7],[7,7]],
         "transparent": false,
         "liquid": false,
         "name": "Light Blue Concrete",
@@ -952,7 +977,7 @@
 
     "cyan_concrete": {
         "id": 81,
-        "textures": [[8,8],[8,8],[8,8],[8,8],[8,8],[8,8]],
+        "textures": [[8,7],[8,7],[8,7],[8,7],[8,7],[8,7]],
         "transparent": false,
         "liquid": false,
         "name": "Cyan Concrete",
@@ -963,7 +988,7 @@
 
     "blue_concrete": {
         "id": 82,
-        "textures": [[9,8],[9,8],[9,8],[9,8],[9,8],[9,8]],
+        "textures": [[9,7],[9,7],[9,7],[9,7],[9,7],[9,7]],
         "transparent": false,
         "liquid": false,
         "name": "Blue Concrete",
@@ -974,7 +999,7 @@
 
     "magenta_concrete": {
         "id": 83,
-        "textures": [[10,8],[10,8],[10,8],[10,8],[10,8],[10,8]],
+        "textures": [[10,7],[10,7],[10,7],[10,7],[10,7],[10,7]],
         "transparent": false,
         "liquid": false,
         "name": "Magenta Concrete",
@@ -985,7 +1010,7 @@
 
     "purple_concrete": {
         "id": 84,
-        "textures": [[11,8],[11,8],[11,8],[11,8],[11,8],[11,8]],
+        "textures": [[11,7],[11,7],[11,7],[11,7],[11,7],[11,7]],
         "transparent": false,
         "liquid": false,
         "name": "Purple Concrete",
@@ -996,7 +1021,7 @@
 
     "brown_concrete": {
         "id": 85,
-        "textures": [[12,8],[12,8],[12,8],[12,8],[12,8],[12,8]],
+        "textures": [[12,7],[12,7],[12,7],[12,7],[12,7],[12,7]],
         "transparent": false,
         "liquid": false,
         "name": "Brown Concrete",
@@ -1007,7 +1032,7 @@
 
     "dark_grey_concrete": {
         "id": 86,
-        "textures": [[13,8],[13,8],[13,8],[13,8],[13,8],[13,8]],
+        "textures": [[13,7],[13,7],[13,7],[13,7],[13,7],[13,7]],
         "transparent": false,
         "liquid": false,
         "name": "Dark Gray Concrete",
@@ -1018,7 +1043,7 @@
 
     "light_grey_concrete": {
         "id": 87,
-        "textures": [[14,8],[14,8],[14,8],[14,8],[14,8],[14,8]],
+        "textures": [[14,7],[14,7],[14,7],[14,7],[14,7],[14,7]],
         "transparent": false,
         "liquid": false,
         "name": "Light Gray Concrete",
@@ -1029,7 +1054,7 @@
 
     "black_concrete": {
         "id": 88,
-        "textures": [[15,8],[15,8],[15,8],[15,8],[15,8],[15,8]],
+        "textures": [[15,7],[15,7],[15,7],[15,7],[15,7],[15,7]],
         "transparent": false,
         "liquid": false,
         "name": "Black Concrete",
@@ -1040,7 +1065,7 @@
 
     "white_wool": {
         "id": 89,
-        "textures": [[0,7],[0,7],[0,7],[0,7],[0,7],[0,7]],
+        "textures": [[0,8],[0,8],[0,8],[0,8],[0,8],[0,8]],
         "transparent": false,
         "liquid": false,
         "name": "White Wool",
@@ -1051,7 +1076,7 @@
 
     "red_wool": {
         "id": 90,
-        "textures": [[1,7],[1,7],[1,7],[1,7],[1,7],[1,7]],
+        "textures": [[1,8],[1,8],[1,8],[1,8],[1,8],[1,8]],
         "transparent": false,
         "liquid": false,
         "name": "Red Wool",
@@ -1062,7 +1087,7 @@
 
     "orange_wool": {
         "id": 91,
-        "textures": [[2,7],[2,7],[2,7],[2,7],[2,7],[2,7]],
+        "textures": [[2,8],[2,8],[2,8],[2,8],[2,8],[2,8]],
         "transparent": false,
         "liquid": false,
         "name": "Orange Wool",
@@ -1073,7 +1098,7 @@
 
     "pink_wool": {
         "id": 92,
-        "textures": [[3,7],[3,7],[3,7],[3,7],[3,7],[3,7]],
+        "textures": [[3,8],[3,8],[3,8],[3,8],[3,8],[3,8]],
         "transparent": false,
         "liquid": false,
         "name": "Pink Wool",
@@ -1084,7 +1109,7 @@
 
     "yellow_wool": {
         "id": 93,
-        "textures": [[4,7],[4,7],[4,7],[4,7],[4,7],[4,7]],
+        "textures": [[4,8],[4,8],[4,8],[4,8],[4,8],[4,8]],
         "transparent": false,
         "liquid": false,
         "name": "Yellow Wool",
@@ -1095,7 +1120,7 @@
 
     "lime_wool": {
         "id": 94,
-        "textures": [[5,7],[5,7],[5,7],[5,7],[5,7],[5,7]],
+        "textures": [[5,8],[5,8],[5,8],[5,8],[5,8],[5,8]],
         "transparent": false,
         "liquid": false,
         "name": "Lime Wool",
@@ -1106,7 +1131,7 @@
 
     "green_wool": {
         "id": 95,
-        "textures": [[6,7],[6,7],[6,7],[6,7],[6,7],[6,7]],
+        "textures": [[6,8],[6,8],[6,8],[6,8],[6,8],[6,8]],
         "transparent": false,
         "liquid": false,
         "name": "Green Wool",
@@ -1117,7 +1142,7 @@
 
     "light_blue_wool": {
         "id": 96,
-        "textures": [[7,7],[7,7],[7,7],[7,7],[7,7],[7,7]],
+        "textures": [[7,8],[7,8],[7,8],[7,8],[7,8],[7,8]],
         "transparent": false,
         "liquid": false,
         "name": "Light Blue Wool",
@@ -1128,7 +1153,7 @@
 
     "cyan_wool": {
         "id": 97,
-        "textures": [[8,7],[8,7],[8,7],[8,7],[8,7],[8,7]],
+        "textures": [[8,8],[8,8],[8,8],[8,8],[8,8],[8,8]],
         "transparent": false,
         "liquid": false,
         "name": "Cyan Wool",
@@ -1139,7 +1164,7 @@
 
     "blue_wool": {
         "id": 98,
-        "textures": [[9,7],[9,7],[9,7],[9,7],[9,7],[9,7]],
+        "textures": [[9,8],[9,8],[9,8],[9,8],[9,8],[9,8]],
         "transparent": false,
         "liquid": false,
         "name": "Blue Wool",
@@ -1150,7 +1175,7 @@
 
     "magenta_wool": {
         "id": 99,
-        "textures": [[10,7],[10,7],[10,7],[10,7],[10,7],[10,7]],
+        "textures": [[10,8],[10,8],[10,8],[10,8],[10,8],[10,8]],
         "transparent": false,
         "liquid": false,
         "name": "Magenta Wool",
@@ -1161,7 +1186,7 @@
 
     "purple_wool": {
         "id": 100,
-        "textures": [[11,7],[11,7],[11,7],[11,7],[11,7],[11,7]],
+        "textures": [[11,8],[11,8],[11,8],[11,8],[11,8],[11,8]],
         "transparent": false,
         "liquid": false,
         "name": "Purple Wool",
@@ -1172,7 +1197,7 @@
 
     "brown_wool": {
         "id": 101,
-        "textures": [[12,7],[12,7],[12,7],[12,7],[12,7],[12,7]],
+        "textures": [[12,8],[12,8],[12,8],[12,8],[12,8],[12,8]],
         "transparent": false,
         "liquid": false,
         "name": "Brown Wool",
@@ -1183,7 +1208,7 @@
 
     "dark_grey_wool": {
         "id": 102,
-        "textures": [[13,7],[13,7],[13,7],[13,7],[13,7],[13,7]],
+        "textures": [[13,8],[13,8],[13,8],[13,8],[13,8],[13,8]],
         "transparent": false,
         "liquid": false,
         "name": "Dark Gray Wool",
@@ -1194,7 +1219,7 @@
 
     "light_grey_wool": {
         "id": 103,
-        "textures": [[14,7],[14,7],[14,7],[14,7],[14,7],[14,7]],
+        "textures": [[14,8],[14,8],[14,8],[14,8],[14,8],[14,8]],
         "transparent": false,
         "liquid": false,
         "name": "Light Gray Wool",
@@ -1205,7 +1230,7 @@
 
     "black_wool": {
         "id": 104,
-        "textures": [[15,7],[15,7],[15,7],[15,7],[15,7],[15,7]],
+        "textures": [[15,8],[15,8],[15,8],[15,8],[15,8],[15,8]],
         "transparent": false,
         "liquid": false,
         "name": "Black Wool",
@@ -1216,7 +1241,7 @@
 
     "white_wool_carpet": {
         "id": 105,
-        "textures": [[0,7],[0,7],[0,7],[0,7],[0,7],[0,7]],
+        "textures": [[0,8],[0,8],[0,8],[0,8],[0,8],[0,8]],
         "transparent": false,
         "liquid": false,
         "name": "White Wool Carpet",
@@ -1227,7 +1252,7 @@
 
     "red_wool_carpet": {
         "id": 106,
-        "textures": [[1,7],[1,7],[1,7],[1,7],[1,7],[1,7]],
+        "textures": [[1,8],[1,8],[1,8],[1,8],[1,8],[1,8]],
         "transparent": false,
         "liquid": false,
         "name": "Red Wool Carpet",
@@ -1238,7 +1263,7 @@
 
     "orange_wool_carpet": {
         "id": 107,
-        "textures": [[2,7],[2,7],[2,7],[2,7],[2,7],[2,7]],
+        "textures": [[2,8],[2,8],[2,8],[2,8],[2,8],[2,8]],
         "transparent": false,
         "liquid": false,
         "name": "Orange Wool Carpet",
@@ -1249,7 +1274,7 @@
 
     "pink_wool_carpet": {
         "id": 108,
-        "textures": [[3,7],[3,7],[3,7],[3,7],[3,7],[3,7]],
+        "textures": [[3,8],[3,8],[3,8],[3,8],[3,8],[3,8]],
         "transparent": false,
         "liquid": false,
         "name": "Pink Wool Carpet",
@@ -1260,7 +1285,7 @@
 
     "yellow_wool_carpet": {
         "id": 109,
-        "textures": [[4,7],[4,7],[4,7],[4,7],[4,7],[4,7]],
+        "textures": [[4,8],[4,8],[4,8],[4,8],[4,8],[4,8]],
         "transparent": false,
         "liquid": false,
         "name": "Yellow Wool Carpet",
@@ -1271,7 +1296,7 @@
 
     "lime_wool_carpet": {
         "id": 110,
-        "textures": [[5,7],[5,7],[5,7],[5,7],[5,7],[5,7]],
+        "textures": [[5,8],[5,8],[5,8],[5,8],[5,8],[5,8]],
         "transparent": false,
         "liquid": false,
         "name": "Lime Wool Carpet",
@@ -1282,7 +1307,7 @@
 
     "green_wool_carpet": {
         "id": 111,
-        "textures": [[6,7],[6,7],[6,7],[6,7],[6,7],[6,7]],
+        "textures": [[6,8],[6,8],[6,8],[6,8],[6,8],[6,8]],
         "transparent": false,
         "liquid": false,
         "name": "Green Wool Carpet",
@@ -1293,7 +1318,7 @@
 
     "light_blue_wool_carpet": {
         "id": 112,
-        "textures": [[7,7],[7,7],[7,7],[7,7],[7,7],[7,7]],
+        "textures": [[7,8],[7,8],[7,8],[7,8],[7,8],[7,8]],
         "transparent": false,
         "liquid": false,
         "name": "Light Blue Wool Carpet",
@@ -1304,7 +1329,7 @@
 
     "cyan_wool_carpet": {
         "id": 113,
-        "textures": [[8,7],[8,7],[8,7],[8,7],[8,7],[8,7]],
+        "textures": [[8,8],[8,8],[8,8],[8,8],[8,8],[8,8]],
         "transparent": false,
         "liquid": false,
         "name": "Cyan Wool Carpet",
@@ -1315,7 +1340,7 @@
 
     "blue_wool_carpet": {
         "id": 114,
-        "textures": [[9,7],[9,7],[9,7],[9,7],[9,7],[9,7]],
+        "textures": [[9,8],[9,8],[9,8],[9,8],[9,8],[9,8]],
         "transparent": false,
         "liquid": false,
         "name": "Blue Wool Carpet",
@@ -1326,7 +1351,7 @@
 
     "magenta_wool_carpet": {
         "id": 115,
-        "textures": [[10,7],[10,7],[10,7],[10,7],[10,7],[10,7]],
+        "textures": [[10,8],[10,8],[10,8],[10,8],[10,8],[10,8]],
         "transparent": false,
         "liquid": false,
         "name": "Magenta Wool Carpet",
@@ -1337,7 +1362,7 @@
 
     "purple_wool_carpet": {
         "id": 116,
-        "textures": [[11,7],[11,7],[11,7],[11,7],[11,7],[11,7]],
+        "textures": [[11,8],[11,8],[11,8],[11,8],[11,8],[11,8]],
         "transparent": false,
         "liquid": false,
         "name": "Purple Wool Carpet",
@@ -1348,7 +1373,7 @@
 
     "brown_wool_carpet": {
         "id": 117,
-        "textures": [[12,7],[12,7],[12,7],[12,7],[12,7],[12,7]],
+        "textures": [[12,8],[12,8],[12,8],[12,8],[12,8],[12,8]],
         "transparent": false,
         "liquid": false,
         "name": "Brown Wool Carpet",
@@ -1359,7 +1384,7 @@
 
     "dark_grey_wool_carpet": {
         "id": 118,
-        "textures": [[13,7],[13,7],[13,7],[13,7],[13,7],[13,7]],
+        "textures": [[13,8],[13,8],[13,8],[13,8],[13,8],[13,8]],
         "transparent": false,
         "liquid": false,
         "name": "Dark Gray Wool Carpet",
@@ -1370,7 +1395,7 @@
 
     "light_grey_wool_carpet": {
         "id": 119,
-        "textures": [[14,7],[14,7],[14,7],[14,7],[14,7],[14,7]],
+        "textures": [[14,8],[14,8],[14,8],[14,8],[14,8],[14,8]],
         "transparent": false,
         "liquid": false,
         "name": "Light Gray Wool Carpet",
@@ -1381,7 +1406,7 @@
 
     "black_wool_carpet": {
         "id": 120,
-        "textures": [[15,7],[15,7],[15,7],[15,7],[15,7],[15,7]],
+        "textures": [[15,8],[15,8],[15,8],[15,8],[15,8],[15,8]],
         "transparent": false,
         "liquid": false,
         "name": "Black Wool Carpet",
@@ -1392,7 +1417,7 @@
 
     "white_stained_glass": {
         "id": 121,
-        "textures": [[0,6],[0,6],[0,6],[0,6],[0,6],[0,6]],
+        "textures": [[0,9],[0,9],[0,9],[0,9],[0,9],[0,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1404,7 +1429,7 @@
 
     "red_stained_glass": {
         "id": 122,
-        "textures": [[1,6],[1,6],[1,6],[1,6],[1,6],[1,6]],
+        "textures": [[1,9],[1,9],[1,9],[1,9],[1,9],[1,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1416,7 +1441,7 @@
 
     "orange_stained_glass": {
         "id": 123,
-        "textures": [[2,6],[2,6],[2,6],[2,6],[2,6],[2,6]],
+        "textures": [[2,9],[2,9],[2,9],[2,9],[2,9],[2,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1428,7 +1453,7 @@
 
     "pink_stained_glass": {
         "id": 124,
-        "textures": [[3,6],[3,6],[3,6],[3,6],[3,6],[3,6]],
+        "textures": [[3,9],[3,9],[3,9],[3,9],[3,9],[3,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1440,7 +1465,7 @@
 
     "yellow_stained_glass": {
         "id": 125,
-        "textures": [[4,6],[4,6],[4,6],[4,6],[4,6],[4,6]],
+        "textures": [[4,9],[4,9],[4,9],[4,9],[4,9],[4,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1452,7 +1477,7 @@
 
     "lime_stained_glass": {
         "id": 126,
-        "textures": [[5,6],[5,6],[5,6],[5,6],[5,6],[5,6]],
+        "textures": [[5,9],[5,9],[5,9],[5,9],[5,9],[5,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1464,7 +1489,7 @@
 
     "green_stained_glass": {
         "id": 127,
-        "textures": [[6,6],[6,6],[6,6],[6,6],[6,6],[6,6]],
+        "textures": [[6,9],[6,9],[6,9],[6,9],[6,9],[6,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1476,7 +1501,7 @@
 
     "light_blue_stained_glass": {
         "id": 128,
-        "textures": [[7,6],[7,6],[7,6],[7,6],[7,6],[7,6]],
+        "textures": [[7,9],[7,9],[7,9],[7,9],[7,9],[7,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1488,7 +1513,7 @@
 
     "cyan_stained_glass": {
         "id": 129,
-        "textures": [[8,6],[8,6],[8,6],[8,6],[8,6],[8,6]],
+        "textures": [[8,9],[8,9],[8,9],[8,9],[8,9],[8,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1500,7 +1525,7 @@
 
     "blue_stained_glass": {
         "id": 130,
-        "textures": [[9,6],[9,6],[9,6],[9,6],[9,6],[9,6]],
+        "textures": [[9,9],[9,9],[9,9],[9,9],[9,9],[9,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1512,7 +1537,7 @@
 
     "magenta_stained_glass": {
         "id": 131,
-        "textures": [[10,6],[10,6],[10,6],[10,6],[10,6],[10,6]],
+        "textures": [[10,9],[10,9],[10,9],[10,9],[10,9],[10,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1524,7 +1549,7 @@
 
     "purple_stained_glass": {
         "id": 132,
-        "textures": [[11,6],[11,6],[11,6],[11,6],[11,6],[11,6]],
+        "textures": [[11,9],[11,9],[11,9],[11,9],[11,9],[11,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1536,7 +1561,7 @@
 
     "brown_stained_glass": {
         "id": 133,
-        "textures": [[12,6],[12,6],[12,6],[12,6],[12,6],[12,6]],
+        "textures": [[12,9],[12,9],[12,9],[12,9],[12,9],[12,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1548,7 +1573,7 @@
 
     "dark_grey_stained_glass": {
         "id": 134,
-        "textures": [[13,6],[13,6],[13,6],[13,6],[13,6],[13,6]],
+        "textures": [[13,9],[13,9],[13,9],[13,9],[13,9],[13,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1560,7 +1585,7 @@
 
     "light_grey_stained_glass": {
         "id": 135,
-        "textures": [[14,6],[14,6],[14,6],[14,6],[14,6],[14,6]],
+        "textures": [[14,9],[14,9],[14,9],[14,9],[14,9],[14,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1572,7 +1597,7 @@
 
     "black_stained_glass": {
         "id": 136,
-        "textures": [[15,6],[15,6],[15,6],[15,6],[15,6],[15,6]],
+        "textures": [[15,9],[15,9],[15,9],[15,9],[15,9],[15,9]],
         "transparent": true,
         "translucent": true,
         "liquid": false,
@@ -1584,7 +1609,7 @@
 
     "torch": {
         "id": 137,
-        "textures": [[11,12],[11,12],[11,12],[11,12],[11,12],[11,12]],
+        "textures": [[11,3],[11,3],[11,3],[11,3],[11,3],[11,3]],
         "transparent": false,
         "liquid": false,
         "drag": 0.0,
@@ -1597,7 +1622,7 @@
 
     "coal_ore": {
         "id": 138,
-        "textures": [[5,9],[5,9],[5,9],[5,9],[5,9],[5,9]],
+        "textures": [[5,6],[5,6],[5,6],[5,6],[5,6],[5,6]],
         "transparent": false,
         "liquid": false,
         "name": "Coal Ore",
@@ -1608,7 +1633,7 @@
 
     "iron_ore": {
         "id": 139,
-        "textures": [[6,9],[6,9],[6,9],[6,9],[6,9],[6,9]],
+        "textures": [[6,6],[6,6],[6,6],[6,6],[6,6],[6,6]],
         "transparent": false,
         "liquid": false,
         "name": "Iron Ore",
@@ -1619,7 +1644,7 @@
 
     "gold_ore": {
         "id": 140,
-        "textures": [[7,9],[7,9],[7,9],[7,9],[7,9],[7,9]],
+        "textures": [[7,6],[7,6],[7,6],[7,6],[7,6],[7,6]],
         "transparent": false,
         "liquid": false,
         "name": "Gold Ore",
@@ -1630,7 +1655,7 @@
 
     "diamond_ore": {
         "id": 141,
-        "textures": [[8,9],[8,9],[8,9],[8,9],[8,9],[8,9]],
+        "textures": [[8,6],[8,6],[8,6],[8,6],[8,6],[8,6]],
         "transparent": false,
         "liquid": false,
         "name": "Diamond Ore",
@@ -1641,7 +1666,7 @@
 
     "diorite": {
         "id": 142,
-        "textures": [[12,15],[12,15],[12,15],[12,15],[12,15],[12,15]],
+        "textures": [[12,0],[12,0],[12,0],[12,0],[12,0],[12,0]],
         "transparent": false,
         "liquid": false,
         "name": "Diorite",
@@ -1652,7 +1677,7 @@
 
     "granite": {
         "id": 143,
-        "textures": [[12,14],[12,14],[12,14],[12,14],[12,14],[12,14]],
+        "textures": [[12,1],[12,1],[12,1],[12,1],[12,1],[12,1]],
         "transparent": false,
         "liquid": false,
         "name": "Granite",
@@ -1663,7 +1688,7 @@
 
     "snow": {
         "id": 144,
-        "textures": [[12,13],[12,13],[12,13],[12,13],[12,13],[12,13]],
+        "textures": [[12,2],[12,2],[12,2],[12,2],[12,2],[12,2]],
         "transparent": false,
         "liquid": false,
         "name": "Snow",
@@ -1674,7 +1699,7 @@
 
     "red_mushroom_block": {
         "id": 145,
-        "textures": [[12,12],[12,12],[12,12],[12,12],[12,12],[12,12]],
+        "textures": [[12,3],[12,3],[12,3],[12,3],[12,3],[12,3]],
         "transparent": false,
         "liquid": false,
         "name": "Red Mushroom Block",
@@ -1685,7 +1710,7 @@
 
     "brown_mushroom_block": {
         "id": 146,
-        "textures": [[11,11],[11,11],[11,11],[11,11],[11,11],[11,11]],
+        "textures": [[11,4],[11,4],[11,4],[11,4],[11,4],[11,4]],
         "transparent": false,
         "liquid": false,
         "name": "Brown Mushroom Block",
@@ -1696,7 +1721,7 @@
 
     "mushroom_pores_block": {
         "id": 147,
-        "textures": [[12,11],[12,11],[12,11],[12,11],[12,11],[12,11]],
+        "textures": [[12,4],[12,4],[12,4],[12,4],[12,4],[12,4]],
         "transparent": false,
         "liquid": false,
         "name": "Mushroom Pores Block",
@@ -1707,13 +1732,201 @@
 
     "mushroom_stem_block": {
         "id": 148,
-        "textures": [[11,10],[11,10],[11,10],[11,10],[12,11],[12,11]],
+        "textures": [[11,5],[11,5],[11,5],[11,5],[12,4],[12,4]],
         "transparent": false,
         "liquid": false,
         "name": "Mushroom Stem Block",
         "model": "cube",
         "renderFacesInBetween": false,
         "tabName": "Blocks"
+    },
+
+    "red_maple_leaves_carpet": {
+        "id": 149,
+        "textures": [[3,4],[3,4],[3,4],[3,4],[3,4],[3,4]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Red Maple Leaves Carpet",
+        "model": "carpet",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "orange_maple_leaves_carpet": {
+        "id": 150,
+        "textures": [[4,4],[4,4],[4,4],[4,4],[4,4],[4,4]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Orange Maple Leaves Carpet",
+        "model": "carpet",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "yellow_maple_leaves_carpet": {
+        "id": 151,
+        "textures": [[5,4],[5,4],[5,4],[5,4],[5,4],[5,4]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Yellow Maple Leaves Carpet",
+        "model": "carpet",
+        "renderFacesInBetween": false,
+        "tabName": "Blocks"
+    },
+
+    "stone_slab_top": {
+        "id": 152,
+        "textures": [[3,0],[3,0],[3,0],[3,0],[3,0],[3,0]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Stone Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "oak_plank_slab_top": {
+        "id": 153,
+        "textures": [[6,1],[6,1],[6,1],[6,1],[6,1],[6,1]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Oak Plank Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "fir_plank_slab_top": {
+        "id": 154,
+        "textures": [[6,4],[6,4],[6,4],[6,4],[6,4],[6,4]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Fir Plank Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "maple_plank_slab_top": {
+        "id": 155,
+        "textures": [[2,4],[2,4],[2,4],[2,4],[2,4],[2,4]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Maple Plank Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "stone_brick_slab_top": {
+        "id": 156,
+        "textures": [[0,1],[0,1],[0,1],[0,1],[0,1],[0,1]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Stone Brick Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "sand_slab_top": {
+        "id": 157,
+        "textures": [[4,0],[4,0],[4,0],[4,0],[4,0],[4,0]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Sand Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "grass_block_slab_top": {
+        "id": 158,
+        "textures": [[2,0],[2,0],[2,0],[2,0],[2,0],[1,0]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Grass Block Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "dark_grass_block_slab_top": {
+        "id": 159,
+        "textures": [[2,3],[2,3],[2,3],[2,3],[2,3],[1,0]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Dark Grass Block Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "palm_plank_slab_top": {
+        "id": 160,
+        "textures": [[11,0],[11,0],[11,0],[11,0],[11,0],[11,0]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Palm Plank Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "cobblestone_slab_top": {
+        "id": 161,
+        "textures": [[11,1],[11,1],[11,1],[11,1],[11,1],[11,1]],
+        "transparent": false,
+        "liquid": false,
+        "name": "Cobblestone Top Slab",
+        "model": "slab_top",
+        "renderFacesInBetween": false,
+        "tabName": "Slabs"
+    },
+
+    "palm_leaves_carpet": {
+        "id": 162,
+        "textures": [[10,4],[10,4],[10,4],[10,4],[10,4],[10,4]],
+        "transparent": true,
+        "liquid": false,
+        "name": "Palm Leaves Carpet",
+        "model": "carpet",
+        "renderFacesInBetween": true,
+        "tabName": "Blocks"
+    },
+
+    "fir_leaves_carpet": {
+        "id": 163,
+        "textures": [[7,2],[7,2],[7,2],[7,2],[7,2],[7,2]],
+        "transparent": true,
+        "liquid": false,
+        "name": "Fir Leaves Carpet",
+        "model": "carpet",
+        "renderFacesInBetween": true,
+        "tabName": "Blocks"
+    },
+
+    "muddy_water": {
+        "id": 164,
+        "textures": [[0,6],[0,6],[0,6],[0,6],[0,6],[0,6]],
+        "transparent": true,
+        "liquid": true,
+        "drag": 3.0,
+        "name": "Muddy Water",
+        "model": "liquid",
+        "renderFacesInBetween": false,
+        "tabName": "Liquids"
+    },
+
+    "bush": {
+        "id": 165,
+        "textures":  [[9,6],[9,6],[9,6],[9,6],[9,6],[9,6]],
+        "transparent": true,
+        "liquid": false,
+        "name": "Bush",
+        "model": "bush",
+        "renderFacesInBetween": true,
+        "tabName": "Plants"
     }
 
 }
