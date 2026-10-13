@@ -7,14 +7,12 @@
 class Renderer {
 public:
     GLint uModelLoc = -1, uViewLoc = -1, uProjLoc = -1, uAtlasLoc = -1, uCrosshairAspectLoc = -1;
-    GLint uCrossModelLoc = -1, uCrossViewLoc = -1, uCrossProjLoc = -1, uCrossAtlasLoc = -1;
     GLint uTranslucentModelLoc = -1, uTranslucentViewLoc = -1, uTranslucentProjLoc = -1, uTranslucentAtlasLoc = -1;
     GLint uBorderModelLoc = -1, uBorderViewLoc = -1, uBorderProjLoc = -1;
     GLint uTranslucentTimeLoc = -1;
     GLint uOpaqueFogEnabledLoc = -1, uOpaqueFogDensityLoc = -1, uOpaqueFogStartLoc = -1, uOpaqueFogColorLoc = -1;
-    GLint uCrossFogEnabledLoc = -1, uCrossFogDensityLoc = -1, uCrossFogStartLoc = -1, uCrossFogColorLoc = -1;
     GLint uTranslucentFogEnabledLoc = -1, uTranslucentFogDensityLoc = -1, uTranslucentFogStartLoc = -1, uTranslucentFogColorLoc = -1;
-    GLint uOpaqueLightingEnabledLoc = -1, uCrossLightingEnabledLoc = -1, uTranslucentLightingEnabledLoc = -1;
+    GLint uOpaqueLightingEnabledLoc = -1, uTranslucentLightingEnabledLoc = -1;
     Renderer();
     ~Renderer();
 
@@ -43,7 +41,6 @@ private:
     int lastMipmapLevels = -1;
     float lastLodBias = -10.0f;
     GLuint shaderProgram = 0;
-    GLuint crossShaderProgram = 0;
     GLuint translucentShaderProgram = 0;
     GLuint crosshairVAO = 0, crosshairVBO = 0, crosshairShaderProgram = 0;
     GLuint borderVAO = 0, borderVBO = 0, borderEBO = 0, borderShaderProgram = 0;

@@ -24,7 +24,7 @@ public:
     void generateChunks(int radius);
     void generateChunks(int radius, int originX, int originZ);
     void render(const Camera& camera, GLint uModelLoc, const Frustum& frustum);
-    void renderCross(const Camera& camera, GLint uCrossModelLoc, const Frustum& frustum);
+    void renderCross(const Camera& camera, GLint uModelLoc, const Frustum& frustum);
     void renderTranslucent(const Camera& camera, GLint uModelLoc, const Frustum& frustum);
 
     void updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bool force = false);

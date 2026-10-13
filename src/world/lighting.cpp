@@ -5,33 +5,67 @@
 
 #include <array>
 #include <unordered_map>
+#include <algorithm>
+#include <atomic>
+#include <mutex>
 
 namespace VoxelLighting {
-    std::mutex lightingMutex;
+    static constexpr size_t SPATIAL_GRID_SIZE = 32;
+    static constexpr size_t SPATIAL_MUTEX_COUNT = SPATIAL_GRID_SIZE * SPATIAL_GRID_SIZE;
+    static std::recursive_mutex s_spatialMutexes[SPATIAL_MUTEX_COUNT];
+
+    inline size_t getSpatialMutexIndex(int cx, int cz) {
+        size_t mx = static_cast<size_t>(cx & (SPATIAL_GRID_SIZE - 1));
+        size_t mz = static_cast<size_t>(cz & (SPATIAL_GRID_SIZE - 1));
+        return (mx * SPATIAL_GRID_SIZE) + mz;
+    }
+
+    class SpatialLockGuard {
+    public:
+        explicit SpatialLockGuard(int cx, int cz) {
+            size_t count = 0;
+            for (int dx = -1; dx <= 1; ++dx) {
+                for (int dz = -1; dz <= 1; ++dz) {
+                    indices_[count++] = getSpatialMutexIndex(cx + dx, cz + dz);
+                }
+            }
+            std::sort(indices_.begin(), indices_.end());
+            auto last = std::unique(indices_.begin(), indices_.end());
+            uniqueCount_ = static_cast<size_t>(std::distance(indices_.begin(), last));
+
+            for (size_t i = 0; i < uniqueCount_; ++i) {
+                s_spatialMutexes[indices_[i]].lock();
+            }
+        }
+
+        ~SpatialLockGuard() {
+            for (size_t i = uniqueCount_; i > 0; --i) {
+                s_spatialMutexes[indices_[i - 1]].unlock();
+            }
+        }
+
+        SpatialLockGuard(const SpatialLockGuard&) = delete;
+        SpatialLockGuard& operator=(const SpatialLockGuard&) = delete;
+
+    private:
+        std::array<size_t, 9> indices_;
+        size_t uniqueCount_ = 0;
+    };
 
     bool isLightPassable(uint16_t blockType) {
         if (blockType == 0) return true;
 
-        static std::array<int8_t, 65536> cache = [] {
-            std::array<int8_t, 65536> c;
-            c.fill(-1); // -1 = not yet computed
-            return c;
-        }();
+        static std::atomic<uint8_t> cache[65536]{};
 
-        int8_t& cached = cache[blockType];
-        if (cached != -1) {
-            return cached != 0;
+        uint8_t cached = cache[blockType].load(std::memory_order_relaxed);
+        if (cached != 0) {
+            return cached == 2;
         }
 
         const BlockDB::BlockInfo* info = BlockDB::getBlockInfo(blockType);
-        bool result;
-        if (!info) {
-            result = true;
-        } else {
-            result = info->transparent || info->translucent || info->liquid || (info->modelName != "cube");
-        }
+        bool result = (!info) || (info->transparent || info->translucent || info->liquid || (info->modelName != "cube"));
 
-        cached = result ? 1 : 0;
+        cache[blockType].store(result ? 2 : 1, std::memory_order_relaxed);
         return result;
     }
 
@@ -295,7 +329,7 @@ namespace VoxelLighting {
             return {};
         }
 
-        std::lock_guard<std::mutex> lock(lightingMutex);
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         chunkData->isLightCalculated.store(false, std::memory_order_release);
         chunkData->clearLight();
 
@@ -514,7 +548,7 @@ namespace VoxelLighting {
 
     std::set<Chunk*> addSkyLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
         if (getOptionInt("enable_lighting", 1) == 0) return {};
-        std::lock_guard<std::mutex> lock(lightingMutex);
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
         markChunkAndNeighborsForRemesh(chunkData, x, z, chunksToRemesh, neighbors);
@@ -589,7 +623,7 @@ namespace VoxelLighting {
 
     std::set<Chunk*> removeSkyLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
         if (getOptionInt("enable_lighting", 1) == 0) return {};
-        std::lock_guard<std::mutex> lock(lightingMutex);
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
         markChunkAndNeighborsForRemesh(chunkData, x, z, chunksToRemesh, neighbors);
@@ -624,7 +658,7 @@ namespace VoxelLighting {
 
     std::set<Chunk*> addLightEmitter(World* world, Chunk* chunkData, int x, int y, int z, int lightLevel) {
         if (getOptionInt("enable_lighting", 1) == 0) return {};
-        std::lock_guard<std::mutex> lock(lightingMutex);
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
         markChunkAndNeighborsForRemesh(chunkData, x, z, chunksToRemesh, neighbors);
@@ -639,7 +673,7 @@ namespace VoxelLighting {
 
     std::set<Chunk*> removeLightEmitter(World* world, Chunk* chunkData, int x, int y, int z) {
         if (getOptionInt("enable_lighting", 1) == 0) return {};
-        std::lock_guard<std::mutex> lock(lightingMutex);
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
         markChunkAndNeighborsForRemesh(chunkData, x, z, chunksToRemesh, neighbors);
@@ -725,6 +759,7 @@ namespace VoxelLighting {
 
     std::set<Chunk*> addLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
         if (getOptionInt("enable_lighting", 1) == 0) return {};
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         int lightLevel = chunkData->getBlockLight(x, y, z);
         if (lightLevel > 0) {
             return removeLightEmitter(world, chunkData, x, y, z);
@@ -734,6 +769,7 @@ namespace VoxelLighting {
 
     std::set<Chunk*> removeLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
         if (getOptionInt("enable_lighting", 1) == 0) return {};
+        SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         static const int dx[6] = {-1,  1,  0,  0,  0,  0};
         static const int dy[6] = { 0,  0, -1,  1,  0,  0};
         static const int dz[6] = { 0,  0,  0,  0, -1,  1};

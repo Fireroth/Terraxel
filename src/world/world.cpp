@@ -620,7 +620,7 @@ void World::render(const Camera& camera, GLint uModelLoc, const Frustum& frustum
     }
 }
 
-void World::renderCross(const Camera& camera, GLint uCrossModelLoc, const Frustum& frustum) {
+void World::renderCross(const Camera& camera, GLint uModelLoc, const Frustum& frustum) {
     std::vector<Chunk*> activeChunks;
     {
         std::shared_lock<std::shared_mutex> lock(chunksMutex);
@@ -633,7 +633,7 @@ void World::renderCross(const Camera& camera, GLint uCrossModelLoc, const Frustu
     glm::dvec3 camPos = camera.getPositionDouble();
     for (Chunk* chunk : activeChunks) {
         if (isChunkInFrustum(chunk->chunkX, chunk->chunkZ, frustum, camPos))
-            chunk->renderCross(camera, uCrossModelLoc);
+            chunk->renderCross(camera, uModelLoc);
     }
 }
 

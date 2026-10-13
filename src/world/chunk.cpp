@@ -414,7 +414,6 @@ void Chunk::computeMesh() {
     // Compute face centroids for sorting
     data.translucentFaceCentroids.clear();
     data.translucentFaceCentroids.reserve(data.translucentIndices.size() / 6);
-    const size_t stride = 11;
     for (size_t i = 0; i + 5 < data.translucentIndices.size(); i += 6) {
         unsigned int base = data.translucentIndices[i + 0];
         for (size_t k = 1; k < 6; ++k) {
@@ -427,22 +426,17 @@ void Chunk::computeMesh() {
         unsigned int ic = base + 2;
         unsigned int id = base + 3;
 
-        float ya = data.translucentVertices[ia * stride + 1];
-        float yb = data.translucentVertices[ib * stride + 1];
-        float yc = data.translucentVertices[ic * stride + 1];
-        float yd = data.translucentVertices[id * stride + 1];
+        glm::vec3 a = data.translucentVertices[ia].getPosition();
+        glm::vec3 b = data.translucentVertices[ib].getPosition();
+        glm::vec3 c = data.translucentVertices[ic].getPosition();
+        glm::vec3 d = data.translucentVertices[id].getPosition();
 
-        if (data.translucentVertices[ia * stride + 7] > 0.5f) ya -= 0.18f;
-        if (data.translucentVertices[ib * stride + 7] > 0.5f) yb -= 0.18f;
-        if (data.translucentVertices[ic * stride + 7] > 0.5f) yc -= 0.18f;
-        if (data.translucentVertices[id * stride + 7] > 0.5f) yd -= 0.18f;
+        if (data.translucentVertices[ia].isTop()) a.y -= 0.18f;
+        if (data.translucentVertices[ib].isTop()) b.y -= 0.18f;
+        if (data.translucentVertices[ic].isTop()) c.y -= 0.18f;
+        if (data.translucentVertices[id].isTop()) d.y -= 0.18f;
 
-        glm::vec3 a(data.translucentVertices[ia * stride + 0], ya, data.translucentVertices[ia * stride + 2]);
-        glm::vec3 b(data.translucentVertices[ib * stride + 0], yb, data.translucentVertices[ib * stride + 2]);
-        glm::vec3 c(data.translucentVertices[ic * stride + 0], yc, data.translucentVertices[ic * stride + 2]);
-        glm::vec3 d(data.translucentVertices[id * stride + 0], yd, data.translucentVertices[id * stride + 2]);
-
-        data.translucentFaceCentroids.push_back((a + b + c + d) / 4.0f);
+        data.translucentFaceCentroids.push_back((a + b + c + d) * 0.25f);
     }
 
     // Clear neighbor cache
@@ -484,29 +478,21 @@ void Chunk::uploadMesh() {
         glBindVertexArray(VAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(float), data.vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(PackedVertex), data.vertices.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int), data.indices.data(), GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
+        glVertexAttribIPointer(0, 2, GL_UNSIGNED_INT, sizeof(PackedVertex), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
-        glEnableVertexAttribArray(3);
-        glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(8 * sizeof(float)));
-        glEnableVertexAttribArray(4);
 
         glBindVertexArray(0);
     } else {
         glBindVertexArray(VAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(float), nullptr, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, data.vertices.size() * sizeof(float), data.vertices.data());
+        glBufferData(GL_ARRAY_BUFFER, data.vertices.size() * sizeof(PackedVertex), nullptr, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, data.vertices.size() * sizeof(PackedVertex), data.vertices.data());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices.size() * sizeof(unsigned int), nullptr, GL_STATIC_DRAW);
@@ -525,25 +511,21 @@ void Chunk::uploadMesh() {
         glBindVertexArray(crossVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
-        glBufferData(GL_ARRAY_BUFFER, data.crossVertices.size() * sizeof(float), data.crossVertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, data.crossVertices.size() * sizeof(PackedVertex), data.crossVertices.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, crossEBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.crossIndices.size() * sizeof(unsigned int), data.crossIndices.data(), GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glVertexAttribIPointer(0, 2, GL_UNSIGNED_INT, sizeof(PackedVertex), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
     } else {
         glBindVertexArray(crossVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
-        glBufferData(GL_ARRAY_BUFFER, data.crossVertices.size() * sizeof(float), nullptr, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, data.crossVertices.size() * sizeof(float), data.crossVertices.data());
+        glBufferData(GL_ARRAY_BUFFER, data.crossVertices.size() * sizeof(PackedVertex), nullptr, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, data.crossVertices.size() * sizeof(PackedVertex), data.crossVertices.data());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, crossEBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.crossIndices.size() * sizeof(unsigned int), nullptr, GL_STATIC_DRAW);
@@ -562,31 +544,21 @@ void Chunk::uploadMesh() {
         glBindVertexArray(translucentVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, translucentVBO);
-        glBufferData(GL_ARRAY_BUFFER, data.translucentVertices.size() * sizeof(float), data.translucentVertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, data.translucentVertices.size() * sizeof(PackedVertex), data.translucentVertices.data(), GL_DYNAMIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.translucentIndices.size() * sizeof(unsigned int), data.translucentIndices.data(), GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
+        glVertexAttribIPointer(0, 2, GL_UNSIGNED_INT, sizeof(PackedVertex), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(7 * sizeof(float)));
-        glEnableVertexAttribArray(3);
-        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(8 * sizeof(float)));
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(9 * sizeof(float)));
-        glEnableVertexAttribArray(5);
 
         glBindVertexArray(0);
     } else {
         glBindVertexArray(translucentVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, translucentVBO);
-        glBufferData(GL_ARRAY_BUFFER, data.translucentVertices.size() * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, data.translucentVertices.size() * sizeof(float), data.translucentVertices.data());
+        glBufferData(GL_ARRAY_BUFFER, data.translucentVertices.size() * sizeof(PackedVertex), nullptr, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, data.translucentVertices.size() * sizeof(PackedVertex), data.translucentVertices.data());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, translucentEBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.translucentIndices.size() * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
@@ -665,7 +637,36 @@ bool Chunk::isBlockVisible(int x, int y, int z, int face, bool fasterTrees, cons
     return false;
 }
 
-void Chunk::addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useLighting) {
+static inline PackedVertex packVertex(
+    const glm::vec3& pos,
+    float u, float v,
+    float layer,
+    int face,
+    float ao,
+    float skyLight, float blockLight,
+    bool isTop
+) {
+    uint32_t px = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(pos.x * 16.0f))), 0u, 511u);
+    uint32_t py = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(pos.y * 16.0f))), 0u, 16383u);
+    uint32_t pz = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(pos.z * 16.0f))), 0u, 511u);
+    uint32_t d0 = px | (py << 9u) | (pz << 23u);
+
+    uint32_t pu = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(u * 16.0f))), 0u, 31u);
+    uint32_t pv = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(v * 16.0f))), 0u, 31u);
+    uint32_t player = std::clamp(static_cast<uint32_t>(std::max(0.0f, layer)), 0u, 255u);
+    uint32_t pface = std::clamp(static_cast<uint32_t>(face), 0u, 7u);
+    uint32_t pao = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(ao))), 0u, 3u);
+    uint32_t psky = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(skyLight))), 0u, 15u);
+    uint32_t pblk = std::clamp(static_cast<uint32_t>(std::max(0.0f, std::round(blockLight))), 0u, 15u);
+    uint32_t ptop = isTop ? 1u : 0u;
+
+    uint32_t d1 = pu | (pv << 5u) | (player << 10u) | (pface << 18u) |
+                  (pao << 21u) | (psky << 23u) | (pblk << 27u) | (ptop << 31u);
+
+    return {d0, d1};
+}
+
+void Chunk::addPlaneFace(std::vector<PackedVertex>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useLighting) {
     const Model* model = ModelDB::getModel(blockInfo->modelName);
     if (!model || planeIndex < 0 || planeIndex >= (int)model->planes.size()) return;
 
@@ -723,14 +724,14 @@ void Chunk::addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>
         if (blockInfo->lightEmission > 0) {
             light.y = std::max(light.y, static_cast<float>(blockInfo->lightEmission));
         }
-        vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, light.x, light.y});
+        vertices.push_back(packVertex(pos, local_u, local_v, layer, /*face=*/6, /*ao=*/3.0f, light.x, light.y, /*isTop=*/false));
     }
 
     indices.insert(indices.end(), {offset, offset + 1, offset + 2, offset + 2, offset + 3, offset});
     offset += 4;
 }
 
-void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO, bool useLighting) {
+void Chunk::addCuboidFace(std::vector<PackedVertex>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO, bool useLighting) {
     const Model* model = ModelDB::getModel(blockInfo->modelName);
     if (!model || cuboidIndex >= model->cuboids.size()) return;
 
@@ -848,22 +849,18 @@ void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int
         float local_v = (i == 2 || i == 3) ? faceData.uvTo.y : faceData.uvFrom.y;
         float layer = atlasOffset.y * 16.0f + atlasOffset.x;
 
-        if (isLiquid || blockInfo->translucent) {
-            float isTop = 0.0f;
-            if (isLiquid) {
-                if (!liquidAbove) {
-                    bool isTopFace = (face == 4);
-                    if (isTopFace || (face <= 3 && std::abs(faceVerts[i].y - faceMaxY) < eps))
-                        isTop = 1.0f;
-                }
-                if (lowerBottom && face <= 3 && faceVerts[i].y < eps) {
-                    isTop = 1.0f;
-                }
+        bool isTop = false;
+        if (isLiquid) {
+            if (!liquidAbove) {
+                bool isTopFace = (face == 4);
+                if (isTopFace || (face <= 3 && std::abs(faceVerts[i].y - faceMaxY) < eps))
+                    isTop = true;
             }
-            vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), isTop, ao[i], vertLight[i].x, vertLight[i].y});
-        } else {
-            vertices.insert(vertices.end(), {pos.x, pos.y, pos.z, local_u, local_v, layer, static_cast<float>(face), ao[i], vertLight[i].x, vertLight[i].y});
+            if (lowerBottom && face <= 3 && faceVerts[i].y < eps) {
+                isTop = true;
+            }
         }
+        vertices.push_back(packVertex(pos, local_u, local_v, layer, face, ao[i], vertLight[i].x, vertLight[i].y, isTop));
     }
 
     bool flipDiagonal = (ao[0] + ao[2] < ao[1] + ao[3]);
@@ -894,6 +891,8 @@ void Chunk::addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int
 }
 
 void Chunk::render(const Camera& camera, GLint uModelLoc) {
+    if (indexCount == 0 || VAO == 0) return;
+
     glm::dvec3 chunkWorldPos = glm::dvec3(chunkX * chunkWidth, 0, chunkZ * chunkDepth);
     glm::dvec3 relativePos = chunkWorldPos - camera.getPositionDouble();
     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(relativePos));
@@ -904,11 +903,13 @@ void Chunk::render(const Camera& camera, GLint uModelLoc) {
     glBindVertexArray(0);
 }
 
-void Chunk::renderCross(const Camera& camera, GLint uCrossModelLoc) {
+void Chunk::renderCross(const Camera& camera, GLint uModelLoc) {
+    if (crossIndexCount == 0 || crossVAO == 0) return;
+
     glm::dvec3 chunkWorldPos = glm::dvec3(chunkX * chunkWidth, 0, chunkZ * chunkDepth);
     glm::dvec3 relativePos = chunkWorldPos - camera.getPositionDouble();
     glm::mat4 crossModel = glm::translate(glm::mat4(1.0f), glm::vec3(relativePos));
-    glUniformMatrix4fv(uCrossModelLoc, 1, GL_FALSE, &crossModel[0][0]);
+    glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, &crossModel[0][0]);
 
     glBindVertexArray(crossVAO);
     glDrawElements(GL_TRIANGLES, crossIndexCount, GL_UNSIGNED_INT, 0);
@@ -973,14 +974,13 @@ void Chunk::translucentSortFaces(const glm::dvec3& camPosWorld) {
 }
 
 void Chunk::renderTranslucent(const Camera& camera, GLint uModelLoc) {
+    if (translucentIndexCount == 0 || translucentVAO == 0 || translucentIndexDataCPU.empty()) 
+        return;
+
     glm::dvec3 chunkWorldPos = glm::dvec3(chunkX * chunkWidth, 0, chunkZ * chunkDepth);
     glm::dvec3 relativePos = chunkWorldPos - camera.getPositionDouble();
     glm::mat4 translucentModel = glm::translate(glm::mat4(1.0f), glm::vec3(relativePos));
     glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, &translucentModel[0][0]);
-
-    // If there are no translucent indices, nothing to do
-    if (translucentIndexCount == 0 || translucentIndexDataCPU.empty()) 
-        return;
 
     glBindVertexArray(translucentVAO);
     glDrawElements(GL_TRIANGLES, translucentIndexCount, GL_UNSIGNED_INT, 0);

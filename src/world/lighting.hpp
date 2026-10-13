@@ -9,7 +9,6 @@ class Chunk;
 class World;
 
 namespace VoxelLighting {
-    extern std::mutex lightingMutex;
 
     struct LightNode {
         int x;

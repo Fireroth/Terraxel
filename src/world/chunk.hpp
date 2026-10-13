@@ -16,12 +16,29 @@ class World;
 
 void clearPendingBlockPlacements();
 
+struct PackedVertex {
+    uint32_t data0;
+    uint32_t data1;
+
+    inline glm::vec3 getPosition() const {
+        float x = static_cast<float>(data0 & 0x1FFu) / 16.0f;
+        float y = static_cast<float>((data0 >> 9u) & 0x3FFFu) / 16.0f;
+        float z = static_cast<float>((data0 >> 23u) & 0x1FFu) / 16.0f;
+        return glm::vec3(x, y, z);
+    }
+
+    inline bool isTop() const {
+        return ((data1 >> 31u) & 0x1u) != 0;
+    }
+};
+static_assert(sizeof(PackedVertex) == 8, "PackedVertex must be exactly 8 bytes");
+
 struct ChunkMeshData {
-    std::vector<float> vertices;
+    std::vector<PackedVertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<float> crossVertices;
+    std::vector<PackedVertex> crossVertices;
     std::vector<unsigned int> crossIndices;
-    std::vector<float> translucentVertices;
+    std::vector<PackedVertex> translucentVertices;
     std::vector<unsigned int> translucentIndices;
     std::vector<glm::vec3> translucentFaceCentroids;
     bool hasData = false;
@@ -110,8 +127,8 @@ private:
     bool translucentNeedsSort;
     glm::vec3 lastSortCamPosLocal;
 
-    void addPlaneFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useLighting);
-    void addCuboidFace(std::vector<float>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO, bool useLighting);
+    void addPlaneFace(std::vector<PackedVertex>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int planeIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useLighting);
+    void addCuboidFace(std::vector<PackedVertex>& vertices, std::vector<unsigned int>& indices, int x, int y, int z, int face, size_t cuboidIndex, const BlockDB::BlockInfo* blockInfo, unsigned int& offset, bool useAO, bool useLighting);
 
     bool isBlockVisible(int x, int y, int z, int face, bool fasterTrees, const BlockDB::BlockInfo* thisInfo) const;
     bool isOpaque(int x, int y, int z) const;

@@ -39,9 +39,10 @@ void main() {
         case 3: brightness = 0.75; break; // Right
         case 4: brightness = 1.00; break; // Top
         case 5: brightness = 0.60; break; // Bottom
+        default: brightness = 1.00; break; // FaceID >= 6 (Cross/plane blocks)
     }
 
-    float aoFactor = 0.5 + 0.5 * (AO / 3.0);
+    float aoFactor = (faceIndex >= 6) ? 1.0 : (0.5 + 0.5 * (AO / 3.0));
 
     vec3 light = vec3(1.0);
     if (lightingEnabled) {

@@ -25,7 +25,6 @@ Renderer::~Renderer() {
     glDeleteTextures(1, &uiAtlas);
     glDeleteTextures(1, &textureAtlas2D);
     glDeleteProgram(shaderProgram);
-    glDeleteProgram(crossShaderProgram);
     glDeleteProgram(translucentShaderProgram);
 
     glDeleteVertexArrays(1, &crosshairVAO);
@@ -61,10 +60,6 @@ void Renderer::init() {
     std::string fragmentSource = loadShaderSource("shaders/fragment.glsl");
     shaderProgram = createShaderProgram(vertexSource.c_str(), fragmentSource.c_str());
 
-    std::string crossVertexSource = loadShaderSource("shaders/cross_vertex.glsl");
-    std::string crossFragmentSource = loadShaderSource("shaders/cross_fragment.glsl");
-    crossShaderProgram = createShaderProgram(crossVertexSource.c_str(), crossFragmentSource.c_str());
-
     std::string translucentVertexSource = loadShaderSource("shaders/translucent_vertex.glsl");
     std::string translucentFragmentSource = loadShaderSource("shaders/translucent_fragment.glsl");
     translucentShaderProgram = createShaderProgram(translucentVertexSource.c_str(), translucentFragmentSource.c_str());
@@ -87,11 +82,6 @@ void Renderer::init() {
 
     uCrosshairAspectLoc = glGetUniformLocation(crosshairShaderProgram, "aspectRatio");
 
-    uCrossModelLoc = glGetUniformLocation(crossShaderProgram, "model");
-    uCrossViewLoc = glGetUniformLocation(crossShaderProgram, "view");
-    uCrossProjLoc = glGetUniformLocation(crossShaderProgram, "projection");
-    uCrossAtlasLoc = glGetUniformLocation(crossShaderProgram, "atlas");
-
     uTranslucentModelLoc = glGetUniformLocation(translucentShaderProgram, "model");
     uTranslucentViewLoc = glGetUniformLocation(translucentShaderProgram, "view");
     uTranslucentProjLoc = glGetUniformLocation(translucentShaderProgram, "projection");
@@ -112,12 +102,6 @@ void Renderer::init() {
     uOpaqueFogStartLoc = glGetUniformLocation(shaderProgram, "fogStartDistance");
     uOpaqueFogColorLoc = glGetUniformLocation(shaderProgram, "fogColor");
     uOpaqueLightingEnabledLoc = glGetUniformLocation(shaderProgram, "lightingEnabled");
-
-    uCrossFogEnabledLoc = glGetUniformLocation(crossShaderProgram, "fogEnabled");
-    uCrossFogDensityLoc = glGetUniformLocation(crossShaderProgram, "fogDensity");
-    uCrossFogStartLoc = glGetUniformLocation(crossShaderProgram, "fogStartDistance");
-    uCrossFogColorLoc = glGetUniformLocation(crossShaderProgram, "fogColor");
-    uCrossLightingEnabledLoc = glGetUniformLocation(crossShaderProgram, "lightingEnabled");
 
     uTranslucentFogEnabledLoc = glGetUniformLocation(translucentShaderProgram, "fogEnabled");
     uTranslucentFogDensityLoc = glGetUniformLocation(translucentShaderProgram, "fogDensity");
@@ -381,19 +365,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
 
     // -------------------------------- Render cross --------------------------------
 
-    glUseProgram(crossShaderProgram);
     glDisable(GL_CULL_FACE);
-
-    glUniformMatrix4fv(uCrossViewLoc, 1, GL_FALSE, &view[0][0]);
-    glUniformMatrix4fv(uCrossProjLoc, 1, GL_FALSE, &projection[0][0]);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
-    glUniform1i(uCrossAtlasLoc, 0);
-    
-    uploadEnvironmentUniforms(uCrossFogEnabledLoc, uCrossFogDensityLoc, uCrossFogStartLoc, uCrossFogColorLoc, uCrossLightingEnabledLoc);
-
-    world.renderCross(camera, uCrossModelLoc, frustum);
+    world.renderCross(camera, uModelLoc, frustum);
+    glEnable(GL_CULL_FACE);
 
     // -------------------------------- Render Clouds --------------------------------
     if (cloudsMode > 0) {
