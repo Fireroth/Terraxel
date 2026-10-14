@@ -171,7 +171,7 @@ void BiomeDB::init() {
     int currentSeed = SaveManager::getActiveSeed();
 
     namespace fs = std::filesystem;
-    fs::path biomesDir = fs::current_path() / "biomes";
+    fs::path biomesDir = fs::current_path() / "assets/biomes";
     bool hasBiomesDir = fs::exists(biomesDir) && fs::is_directory(biomesDir);
 
     if (!hasBiomesDir) {

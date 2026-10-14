@@ -34,7 +34,7 @@ public:
     }
 
     void loadLogLevel() {
-        std::ifstream cfg("options.txt");
+        std::ifstream cfg("config/options.txt");
         if (!cfg.is_open()) {
             log(LogLevel::LVL_WARN, __FILE__, __LINE__, "Logger: options.txt not found. Using default LogLevel::LVL_TRACE");
             return;

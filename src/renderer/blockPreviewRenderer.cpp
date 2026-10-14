@@ -24,8 +24,8 @@ static const std::set<std::string> flatRenderModels = {
 };
 
 GLuint BlockPreviewRenderer::createPreviewShader() {
-    std::string vertSrc = loadShaderSource("shaders/preview_vertex.glsl");
-    std::string fragSrc = loadShaderSource("shaders/preview_fragment.glsl");
+    std::string vertSrc = loadShaderSource("assets/shaders/preview_vertex.glsl");
+    std::string fragSrc = loadShaderSource("assets/shaders/preview_fragment.glsl");
     return createShaderProgram(vertSrc.c_str(), fragSrc.c_str());
 }
 

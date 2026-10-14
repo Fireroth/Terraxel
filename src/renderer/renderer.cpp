@@ -56,28 +56,28 @@ void Renderer::init() {
     glLineWidth(2.0f);
 
     LOG_INFO("Renderer: Loading and compiling shaders");
-    std::string vertexSource = loadShaderSource("shaders/vertex.glsl");
-    std::string fragmentSource = loadShaderSource("shaders/fragment.glsl");
+    std::string vertexSource = loadShaderSource("assets/shaders/vertex.glsl");
+    std::string fragmentSource = loadShaderSource("assets/shaders/fragment.glsl");
     shaderProgram = createShaderProgram(vertexSource.c_str(), fragmentSource.c_str());
 
-    std::string translucentVertexSource = loadShaderSource("shaders/translucent_vertex.glsl");
-    std::string translucentFragmentSource = loadShaderSource("shaders/translucent_fragment.glsl");
+    std::string translucentVertexSource = loadShaderSource("assets/shaders/translucent_vertex.glsl");
+    std::string translucentFragmentSource = loadShaderSource("assets/shaders/translucent_fragment.glsl");
     translucentShaderProgram = createShaderProgram(translucentVertexSource.c_str(), translucentFragmentSource.c_str());
     
-    std::string crosshairVertexSource = loadShaderSource("shaders/crosshair_vertex.glsl");
-    std::string crosshairFragmentSource = loadShaderSource("shaders/crosshair_fragment.glsl");
+    std::string crosshairVertexSource = loadShaderSource("assets/shaders/crosshair_vertex.glsl");
+    std::string crosshairFragmentSource = loadShaderSource("assets/shaders/crosshair_fragment.glsl");
     crosshairShaderProgram = createShaderProgram(crosshairVertexSource.c_str(), crosshairFragmentSource.c_str());
 
-    std::string borderVertexSource = loadShaderSource("shaders/border_vertex.glsl");
-    std::string borderFragmentSource = loadShaderSource("shaders/border_fragment.glsl");
+    std::string borderVertexSource = loadShaderSource("assets/shaders/border_vertex.glsl");
+    std::string borderFragmentSource = loadShaderSource("assets/shaders/border_fragment.glsl");
     borderShaderProgram = createShaderProgram(borderVertexSource.c_str(), borderFragmentSource.c_str());
 
-    std::string postProcessVertexSource = loadShaderSource("shaders/postprocess_vertex.glsl");
-    std::string postProcessFragmentSource = loadShaderSource("shaders/postprocess_fragment.glsl");
+    std::string postProcessVertexSource = loadShaderSource("assets/shaders/postprocess_vertex.glsl");
+    std::string postProcessFragmentSource = loadShaderSource("assets/shaders/postprocess_fragment.glsl");
     postProcessShaderProgram = createShaderProgram(postProcessVertexSource.c_str(), postProcessFragmentSource.c_str());
 
-    std::string skyVertexSource = loadShaderSource("shaders/sky_vertex.glsl");
-    std::string skyFragmentSource = loadShaderSource("shaders/sky_fragment.glsl");
+    std::string skyVertexSource = loadShaderSource("assets/shaders/sky_vertex.glsl");
+    std::string skyFragmentSource = loadShaderSource("assets/shaders/sky_fragment.glsl");
     skyShaderProgram = createShaderProgram(skyVertexSource.c_str(), skyFragmentSource.c_str());
 
     uCrosshairAspectLoc = glGetUniformLocation(crosshairShaderProgram, "aspectRatio");
@@ -139,9 +139,9 @@ void Renderer::init() {
     uSkyMaxCloudDistLoc = glGetUniformLocation(skyShaderProgram, "maxCloudDist");
 
     LOG_INFO("Renderer: Loading texture assets");
-    loadTextureAtlas("textures/blocks.png");
-    textureAtlas2D = loadTexture2D("textures/blocks.png");
-    uiAtlas = loadTexture2D("textures/ui.png", true);
+    loadTextureAtlas("assets/textures/blocks.png");
+    textureAtlas2D = loadTexture2D("assets/textures/blocks.png");
+    uiAtlas = loadTexture2D("assets/textures/ui.png", true);
 
     LOG_INFO("Renderer: Finishing initialization");
     initCrosshair();
@@ -761,7 +761,7 @@ void Renderer::reloadTextureAtlases() {
         textureAtlas2D = 0;
     }
 
-    loadTextureAtlas("textures/blocks.png");
-    textureAtlas2D = loadTexture2D("textures/blocks.png");
+    loadTextureAtlas("assets/textures/blocks.png");
+    textureAtlas2D = loadTexture2D("assets/textures/blocks.png");
     LOG_INFO("Renderer: Texture atlases reloaded");
 }

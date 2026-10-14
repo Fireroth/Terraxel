@@ -17,7 +17,7 @@ void StructureDB::init() {
     structures.clear();
 
     namespace fs = std::filesystem;
-    fs::path structuresDir = fs::current_path() / "structures";
+    fs::path structuresDir = fs::current_path() / "assets/structures";
 
     if (!fs::exists(structuresDir) || !fs::is_directory(structuresDir)) {
         LOG_ERROR("StructureDB: could not find 'structures' directory at ", structuresDir.string());

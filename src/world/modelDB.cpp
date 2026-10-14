@@ -14,7 +14,7 @@ void ModelDB::init() {
     LOG_INFO("ModelDB: Initializing...");
     models.clear();
 
-    fs::path modelsDir = fs::current_path() / "models";
+    fs::path modelsDir = fs::current_path() / "assets/models";
     if (!fs::exists(modelsDir) || !fs::is_directory(modelsDir)) {
         LOG_ERROR("ModelDB: could not find 'models' directory at ", modelsDir);
         return;

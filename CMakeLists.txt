@@ -77,29 +77,29 @@ add_custom_command(
     OUTPUT ${ASSET_STAMP}
 
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/textures ${OUTPUT_DIR}/textures
+            ${CMAKE_SOURCE_DIR}/textures ${OUTPUT_DIR}/assets/textures
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/saves ${OUTPUT_DIR}/saves
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/shaders ${OUTPUT_DIR}/shaders
+            ${CMAKE_SOURCE_DIR}/shaders ${OUTPUT_DIR}/assets/shaders
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/sounds ${OUTPUT_DIR}/sounds
+            ${CMAKE_SOURCE_DIR}/sounds ${OUTPUT_DIR}/assets/sounds
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/structures ${OUTPUT_DIR}/structures
+            ${CMAKE_SOURCE_DIR}/structures ${OUTPUT_DIR}/assets/structures
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/models ${OUTPUT_DIR}/models
+            ${CMAKE_SOURCE_DIR}/models ${OUTPUT_DIR}/assets/models
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/blocks ${OUTPUT_DIR}/blocks
+            ${CMAKE_SOURCE_DIR}/blocks ${OUTPUT_DIR}/assets/blocks
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/biomes ${OUTPUT_DIR}/biomes
+            ${CMAKE_SOURCE_DIR}/biomes ${OUTPUT_DIR}/assets/biomes
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_SOURCE_DIR}/sky.json" "${OUTPUT_DIR}/sky.json"
+            "${CMAKE_SOURCE_DIR}/sky.json" "${OUTPUT_DIR}/assets/sky.json"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_SOURCE_DIR}/options.txt" "${OUTPUT_DIR}/options.txt"
+            "${CMAKE_SOURCE_DIR}/options.txt" "${OUTPUT_DIR}/config/options.txt"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_SOURCE_DIR}/controls.txt" "${OUTPUT_DIR}/controls.txt"
+            "${CMAKE_SOURCE_DIR}/controls.txt" "${OUTPUT_DIR}/config/controls.txt"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_SOURCE_DIR}/Font.ttf" "${OUTPUT_DIR}/Font.ttf"
+            "${CMAKE_SOURCE_DIR}/Font.ttf" "${OUTPUT_DIR}/assets/Font.ttf"
 
     COMMAND ${CMAKE_COMMAND} -E touch ${ASSET_STAMP}
     DEPENDS ${ASSET_FILES}

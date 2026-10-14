@@ -14,7 +14,7 @@ void BlockDB::init() {
     LOG_INFO("BlockDB: Initializing...");
     blockData.clear();
 
-    fs::path blocksDir = fs::current_path() / "blocks";
+    fs::path blocksDir = fs::current_path() / "assets/blocks";
     bool hasBlocksDir = fs::exists(blocksDir) && fs::is_directory(blocksDir);
     if (!hasBlocksDir) {
         LOG_ERROR("BlockDB: could not find 'blocks' directory at ", blocksDir);

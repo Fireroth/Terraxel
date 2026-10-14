@@ -62,7 +62,7 @@ void Window::init() {
         exit(EXIT_FAILURE);
     }
 
-    setIcon("textures/icon.png");
+    setIcon("assets/textures/icon.png");
 
     glfwMakeContextCurrent(window);
 
@@ -138,7 +138,7 @@ void Window::toggleFullscreen() {
                 glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
                 LOG_INFO("Window: Toggled to fullscreen (", mode->width, "x", mode->height, ")");
                 setOption("fullscreen", 1.0f);
-                saveOptionsToFile("options.txt");
+                saveOptionsToFile("config/options.txt");
             }
         }
     } else {
@@ -146,7 +146,7 @@ void Window::toggleFullscreen() {
         glfwSetWindowMonitor(window, nullptr, windowedX, windowedY, windowedWidth, windowedHeight, 0);
         LOG_INFO("Window: Toggled to windowed mode (", windowedWidth, "x", windowedHeight, ")");
         setOption("fullscreen", 0.0f);
-        saveOptionsToFile("options.txt");
+        saveOptionsToFile("config/options.txt");
     }
 
     // Restore VSync setting

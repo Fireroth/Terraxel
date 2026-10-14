@@ -46,10 +46,7 @@ static BiomeNoise parseNoiseJson(const nlohmann::json& noiseJson) {
 void Sky::init(int seed) {
     currentSeed = seed;
 
-    fs::path skyPath = fs::current_path() / "sky.json";
-    if (!fs::exists(skyPath)) {
-        skyPath = fs::current_path() / "biomes" / "sky.json";
-    }
+    fs::path skyPath = fs::current_path() / "assets/sky.json";
 
     if (fs::exists(skyPath)) {
         loadJson(skyPath.string());

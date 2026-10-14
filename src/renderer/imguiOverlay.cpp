@@ -217,6 +217,7 @@ bool ImGuiOverlay::init(GLFWwindow* window, GLuint textureAtlas, GLuint uiAtlasT
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = "./config/imgui.ini";
     io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -234,9 +235,9 @@ bool ImGuiOverlay::init(GLFWwindow* window, GLuint textureAtlas, GLuint uiAtlasT
     Console::init();
 
     LOG_INFO("ImGuiOverlay: Loading font");
-    ImFont* Font = io.Fonts->AddFontFromFileTTF("./Font.ttf", 25.0f);
+    ImFont* Font = io.Fonts->AddFontFromFileTTF("assets/Font.ttf", 25.0f);
     if (!Font) {
-        LOG_ERROR("ImGuiOverlay: Failed to load font from ./Font.ttf");
+        LOG_ERROR("ImGuiOverlay: Failed to load font from ./assets/Font.ttf");
     }
 
     return true;
@@ -672,7 +673,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             layout.useCustomX = false;
 
             if (drawMenuButton(layout, "Back", buttonSize)) {
-                saveOptionsToFile("options.txt");
+                saveOptionsToFile("config/options.txt");
                 pauseScreenPage = PauseMenuPage::Settings;
             }
         } break;
@@ -772,8 +773,8 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             }
             ImGui::SameLine(0.0f, btnGap);
             if (ImGui::Button("Save & Back", ImVec2(btnW, bottomBtnH))) {
-                saveControlsToFile("controls.txt");
-                saveOptionsToFile("options.txt");
+                saveControlsToFile("config/controls.txt");
+                saveOptionsToFile("config/options.txt");
                 pauseScreenPage = PauseMenuPage::Settings;
             }
             ImGui::SameLine(0.0f, btnGap);

@@ -422,7 +422,7 @@ void Console::init() {
                 }
 
                 namespace fs = std::filesystem;
-                fs::path structuresDir = fs::current_path() / "structures";
+                fs::path structuresDir = fs::current_path() / "assets/structures";
                 std::error_code ec;
                 if (!fs::exists(structuresDir)) {
                     fs::create_directories(structuresDir, ec);
@@ -751,7 +751,7 @@ void Console::init() {
                         write("Option '" + name + "' set to: " + valStr);
                     }
                 }
-                saveOptionsToFile("options.txt");
+                saveOptionsToFile("config/options.txt");
             }
         },
         {

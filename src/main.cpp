@@ -35,8 +35,8 @@ const char* banner = R"(Welcome to Terraxel!
 int main() {
     LOG_INFO(banner);
 
-    loadOptionsFromFile("options.txt");
-    loadControlsFromFile("controls.txt");
+    loadOptionsFromFile("config/options.txt");
+    loadControlsFromFile("config/controls.txt");
 
     int windowWidth = getOptionInt("window_width", 1280);
     int windowHeight = getOptionInt("window_height", 720);

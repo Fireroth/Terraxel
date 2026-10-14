@@ -54,7 +54,7 @@ void saveOptionsToFile(const std::string& filename) {
 }
 
 int getOptionInt(const std::string& key, const int defaultValue) {
-    if (!loaded) loadOptionsFromFile("options.txt");
+    if (!loaded) loadOptionsFromFile("assets/options.txt");
     auto iterator = optionsMap.find(key);
     if (iterator != optionsMap.end()) {
         try {
@@ -72,7 +72,7 @@ int getOptionInt(const std::string& key, const int defaultValue) {
 }
 
 float getOptionFloat(const std::string& key, const float defaultValue) {
-    if (!loaded) loadOptionsFromFile("options.txt");
+    if (!loaded) loadOptionsFromFile("assets/options.txt");
     auto iterator = optionsMap.find(key);
     if (iterator != optionsMap.end()) {
         try {
@@ -88,7 +88,7 @@ float getOptionFloat(const std::string& key, const float defaultValue) {
 }
 
 std::string getOptionString(const std::string& key, const std::string& defaultValue) {
-    if (!loaded) loadOptionsFromFile("options.txt");
+    if (!loaded) loadOptionsFromFile("assets/options.txt");
     auto iterator = optionsMap.find(key);
     if (iterator != optionsMap.end()) return iterator->second;
     else {
@@ -99,6 +99,6 @@ std::string getOptionString(const std::string& key, const std::string& defaultVa
 }
 
 bool optionExists(const std::string& key) {
-    if (!loaded) loadOptionsFromFile("options.txt");
+    if (!loaded) loadOptionsFromFile("assets/options.txt");
     return optionsMap.find(key) != optionsMap.end();
 }
