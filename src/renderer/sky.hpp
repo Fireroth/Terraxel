@@ -14,9 +14,27 @@ struct CloudVertex {
 class Sky {
 public:
     std::string name = "Sky";
+    glm::vec3 baseSkyColor = glm::vec3(0.45f, 0.68f, 1.0f);
+    glm::vec3 baseHorizonColor = glm::vec3(0.72f, 0.84f, 0.95f);
+    glm::vec3 baseFogColor = glm::vec3(0.72f, 0.84f, 0.95f);
+    glm::vec3 baseCloudColor = glm::vec3(1.0f, 1.0f, 1.0f);
+
     glm::vec3 skyColor = glm::vec3(0.45f, 0.68f, 1.0f);
     glm::vec3 horizonColor = glm::vec3(0.72f, 0.84f, 0.95f);
     glm::vec3 fogColor = glm::vec3(0.72f, 0.84f, 0.95f);
+
+    glm::vec3 nightSkyColor = glm::vec3(0.015f, 0.02f, 0.06f);
+    glm::vec3 nightHorizonColor = glm::vec3(0.03f, 0.04f, 0.09f);
+    glm::vec3 nightFogColor = glm::vec3(0.02f, 0.03f, 0.07f);
+    glm::vec3 nightCloudColor = glm::vec3(0.12f, 0.14f, 0.20f);
+
+    glm::vec3 sunsetSkyColor = glm::vec3(0.85f, 0.45f, 0.25f);
+    glm::vec3 sunsetHorizonColor = glm::vec3(0.95f, 0.60f, 0.20f);
+
+    float minSunIntensity = 0.08f;
+    float cycleSpeed = 20.0f;
+
+    float sunIntensity = 1.0f;
 
     float cloudHeight = 190.1f;
     float cloudSpeed = 0.0015f;
@@ -46,6 +64,7 @@ public:
     void updateSeed(int seed);
     void update3DMesh(const glm::dvec3& camPos, double time);
     void compute2DCloudOrigin(const glm::dvec3& camPos, double time, glm::vec2& outOriginFrac, glm::vec2& outBaseUV) const;
+    void updateColors(float timeOfDay);
     void cleanup();
 
 private:

@@ -164,7 +164,7 @@ void SaveManager::clearActiveWorld() {
     hasActiveWorld = false;
 }
 
-bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled, bool isSneaking) {
+bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled, bool isSneaking, float timeOfDay, bool dayCycleEnabled) {
     if (!hasActiveWorld) {
         return false;
     }
@@ -182,6 +182,8 @@ bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float p
         j["flyEnabled"] = flyEnabled;
         j["isSneaking"] = isSneaking;
         j["hotbar"] = hotbar;
+        j["timeOfDay"] = timeOfDay;
+        j["dayCycleEnabled"] = dayCycleEnabled;
 
         std::ofstream file(playerPath);
         if (!file.is_open()) {
@@ -197,7 +199,7 @@ bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float p
     }
 }
 
-bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled, bool& isSneaking) {
+bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch, std::array<uint16_t, 9>& hotbar, bool& flyEnabled, bool& isSneaking, float& timeOfDay, bool& dayCycleEnabled) {
     if (!hasActiveWorld) {
         return false;
     }
@@ -233,6 +235,8 @@ bool SaveManager::loadPlayerState(glm::dvec3& position, float& yaw, float& pitch
         pitch = j.at("pitch").get<float>();
         flyEnabled = j.at("flyEnabled").get<bool>();
         isSneaking = j.value("isSneaking", false);
+        timeOfDay = j.value("timeOfDay", 6000.0f);
+        dayCycleEnabled = j.value("dayCycleEnabled", true);
         for (size_t i = 0; i < hotbar.size(); i++) {
             hotbar[i] = hotbarJson[i].get<uint16_t>();
         }

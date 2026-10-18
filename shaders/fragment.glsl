@@ -14,6 +14,7 @@ uniform float fogDensity;
 uniform float fogStartDistance;
 uniform vec3 fogColor;
 uniform bool lightingEnabled;
+uniform float sunIntensity;
 
 vec3 applyFog(vec3 color) {
     if (!fogEnabled) return color;
@@ -52,7 +53,8 @@ void main() {
         float skyFactor = pow(skyNorm, 1.4);
         float blockFactor = pow(blockNorm, 1.4);
 
-        vec3 skyColor = vec3(1.0, 1.0, 1.0) * skyFactor;
+        float sunInt = (sunIntensity > 0.0) ? sunIntensity : 1.0;
+        vec3 skyColor = vec3(1.0, 1.0, 1.0) * skyFactor * sunInt;
         vec3 blockColor = vec3(1.05, 0.85, 0.60) * blockFactor;
         vec3 totalLight = max(skyColor, blockColor);
         light = max(vec3(0.06), totalLight);

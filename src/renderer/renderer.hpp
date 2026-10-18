@@ -13,6 +13,9 @@ public:
     GLint uOpaqueFogEnabledLoc = -1, uOpaqueFogDensityLoc = -1, uOpaqueFogStartLoc = -1, uOpaqueFogColorLoc = -1;
     GLint uTranslucentFogEnabledLoc = -1, uTranslucentFogDensityLoc = -1, uTranslucentFogStartLoc = -1, uTranslucentFogColorLoc = -1;
     GLint uOpaqueLightingEnabledLoc = -1, uTranslucentLightingEnabledLoc = -1;
+    GLint uOpaqueSunIntensityLoc = -1, uTranslucentSunIntensityLoc = -1;
+    float timeOfDay = 6000.0f;
+    bool dayCycleEnabled = true;
     Renderer();
     ~Renderer();
 
@@ -73,6 +76,7 @@ private:
     GLint uSkyCamPosLoc = -1;
     GLint uSkyColorLoc = -1;
     GLint uSkyHorizonColorLoc = -1;
+    GLint uSkyTimeOfDayLoc = -1;
     GLint uSkyCloudNoiseTexLoc = -1;
     GLint uSkyCloudColorLoc = -1;
     GLint uSkyCloudHeightLoc = -1;

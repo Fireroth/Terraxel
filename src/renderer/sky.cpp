@@ -78,13 +78,46 @@ void Sky::loadJson(const std::string& path) {
 
         name = j.value("name", name);
         if (j.contains("skyColor") && j["skyColor"].is_array() && j["skyColor"].size() >= 3)
-            skyColor = glm::vec3(j["skyColor"][0], j["skyColor"][1], j["skyColor"][2]);
+            baseSkyColor = glm::vec3(j["skyColor"][0], j["skyColor"][1], j["skyColor"][2]);
         if (j.contains("horizonColor") && j["horizonColor"].is_array() && j["horizonColor"].size() >= 3)
-            horizonColor = glm::vec3(j["horizonColor"][0], j["horizonColor"][1], j["horizonColor"][2]);
+            baseHorizonColor = glm::vec3(j["horizonColor"][0], j["horizonColor"][1], j["horizonColor"][2]);
         if (j.contains("fogColor") && j["fogColor"].is_array() && j["fogColor"].size() >= 3)
-            fogColor = glm::vec3(j["fogColor"][0], j["fogColor"][1], j["fogColor"][2]);
+            baseFogColor = glm::vec3(j["fogColor"][0], j["fogColor"][1], j["fogColor"][2]);
         else
-            fogColor = horizonColor;
+            baseFogColor = baseHorizonColor;
+
+        skyColor = baseSkyColor;
+        horizonColor = baseHorizonColor;
+        fogColor = baseFogColor;
+
+        auto parseVec3 = [](const nlohmann::json& obj, const std::string& key, glm::vec3 defaultVal) -> glm::vec3 {
+            if (obj.contains(key) && obj[key].is_array() && obj[key].size() >= 3) {
+                return glm::vec3(obj[key][0], obj[key][1], obj[key][2]);
+            }
+            return defaultVal;
+        };
+
+        if (j.contains("night") && j["night"].is_object()) {
+            auto& n = j["night"];
+            nightSkyColor = parseVec3(n, "skyColor", nightSkyColor);
+            nightHorizonColor = parseVec3(n, "horizonColor", nightHorizonColor);
+            nightFogColor = parseVec3(n, "fogColor", nightHorizonColor);
+            nightCloudColor = parseVec3(n, "cloudColor", nightCloudColor);
+        }
+
+        if (j.contains("sunset") && j["sunset"].is_object()) {
+            auto& s = j["sunset"];
+            sunsetSkyColor = parseVec3(s, "skyColor", sunsetSkyColor);
+            sunsetHorizonColor = parseVec3(s, "horizonColor", sunsetHorizonColor);
+        }
+
+        if (j.contains("dayCycle") && j["dayCycle"].is_object()) {
+            auto& dc = j["dayCycle"];
+            minSunIntensity = dc.value("minSunIntensity", minSunIntensity);
+            if (dc.contains("dayLengthSeconds") && dc["dayLengthSeconds"].is_number() && dc["dayLengthSeconds"].get<float>() > 0.0f) {
+                cycleSpeed = 24000.0f / dc["dayLengthSeconds"].get<float>();
+            }
+        }
 
         if (j.contains("clouds") && j["clouds"].is_object()) {
             auto& c = j["clouds"];
@@ -100,8 +133,10 @@ void Sky::loadJson(const std::string& path) {
             cloudTextureSize = c.value("textureSize", cloudTextureSize);
             if (cloudTextureSize < 16) cloudTextureSize = 16;
             if (cloudTextureSize > 4096) cloudTextureSize = 4096;
-            if (c.contains("color") && c["color"].is_array() && c["color"].size() >= 3)
-                cloudColor = glm::vec3(c["color"][0], c["color"][1], c["color"][2]);
+            if (c.contains("color") && c["color"].is_array() && c["color"].size() >= 3) {
+                baseCloudColor = glm::vec3(c["color"][0], c["color"][1], c["color"][2]);
+                cloudColor = baseCloudColor;
+            }
 
             if (c.contains("noises") && c["noises"].is_array()) {
                 noises.clear();
@@ -426,4 +461,28 @@ void Sky::cleanup() {
     cloud3DVertexCount = 0;
     lastCenterCX = -999999;
     lastCenterCZ = -999999;
+}
+
+void Sky::updateColors(float timeOfDay) {
+    // 24000 ticks per day
+    float t = std::fmod(timeOfDay, 24000.0f);
+    if (t < 0.0f) t += 24000.0f;
+
+    float angle = (t / 24000.0f) * 2.0f * 3.1415926535f;
+    float sinElev = std::sin(angle);
+    float dayFactor = glm::clamp((sinElev + 0.2f) / 0.4f, 0.0f, 1.0f);
+    float sunsetFactor = glm::clamp(1.0f - std::abs(sinElev) * 4.0f, 0.0f, 1.0f);
+
+    skyColor = glm::mix(nightSkyColor, baseSkyColor, dayFactor);
+    horizonColor = glm::mix(nightHorizonColor, baseHorizonColor, dayFactor);
+    fogColor = glm::mix(nightFogColor, baseFogColor, dayFactor);
+    cloudColor = glm::mix(nightCloudColor, baseCloudColor, dayFactor);
+
+    if (sunsetFactor > 0.0f) {
+        skyColor = glm::mix(skyColor, sunsetSkyColor, sunsetFactor * 0.45f);
+        horizonColor = glm::mix(horizonColor, sunsetHorizonColor, sunsetFactor * 0.70f);
+        fogColor = glm::mix(fogColor, sunsetHorizonColor, sunsetFactor * 0.50f);
+    }
+
+    sunIntensity = glm::mix(minSunIntensity, 1.0f, dayFactor);
 }

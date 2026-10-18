@@ -44,6 +44,7 @@ public:
         Main,
         Settings,
         Video,
+        World,
         ControlsCustomize
     };
 
@@ -76,11 +77,11 @@ private:
     static const float fpsRefreshInterval;
 
     void renderMainMenu(Camera& camera, World* world, Renderer* renderer);
-    void enterWorld(const struct WorldInfo& info, World* world, Camera& camera);
+    void enterWorld(const struct WorldInfo& info, World* world, Camera& camera, Renderer* renderer);
     void renderMessage(float deltaTime);
     void renderPauseMenu(Camera& camera, World* world, Renderer* renderer);
-    void renderDebugWindow(Camera& camera, World* world, float deltaTime);
+    void renderDebugWindow(Camera& camera, World* world, Renderer* renderer, float deltaTime);
     void renderInventory();
     void renderHotbar();
-    void renderConsole(Camera& camera, World* world);
+    void renderConsole(Camera& camera, World* world, Renderer* renderer);
 };

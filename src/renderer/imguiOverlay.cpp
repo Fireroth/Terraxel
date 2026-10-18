@@ -303,7 +303,7 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
 
     // Debug window
     if (debugOpen) {
-        renderDebugWindow(camera, world, deltaTime);
+        renderDebugWindow(camera, world, renderer, deltaTime);
     }
 
     // Inventory window
@@ -318,7 +318,7 @@ void ImGuiOverlay::render(float deltaTime, Camera& camera, World* world, Rendere
 
     // Console window
     if (consoleOpen) {
-        renderConsole(camera, world);
+        renderConsole(camera, world, renderer);
     }
 
     prevConsoleOpen = consoleOpen;
@@ -417,7 +417,7 @@ static int parseSeed(const char* seedBuf) {
     }
 }
 
-void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camera) {
+void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camera, Renderer* renderer) {
     SaveManager::setActiveWorld(info);
     world->reset();
 
@@ -427,8 +427,10 @@ void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camer
     std::array<uint16_t, 9> hotbar;
     bool flyEnabled = false;
     bool isSneaking = false;
+    float savedTimeOfDay = 6000.0f;
+    bool savedDayCycleEnabled = true;
 
-    if (SaveManager::loadPlayerState(position, yaw, pitch, hotbar, flyEnabled, isSneaking)) {
+    if (SaveManager::loadPlayerState(position, yaw, pitch, hotbar, flyEnabled, isSneaking, savedTimeOfDay, savedDayCycleEnabled)) {
         int playerChunkX = static_cast<int>(std::floor(position.x / Chunk::chunkWidth));
         int playerChunkZ = static_cast<int>(std::floor(position.z / Chunk::chunkDepth));
         world->generateChunks(2, playerChunkX, playerChunkZ);
@@ -437,10 +439,18 @@ void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camer
         camera.setSneaking(isSneaking, world, true);
         setHotbarBlocks(hotbar);
         setFlyMode(flyEnabled);
+        if (renderer) {
+            renderer->timeOfDay = savedTimeOfDay;
+            renderer->dayCycleEnabled = savedDayCycleEnabled;
+        }
     } else {
         setHotbarBlocks({1, 2, 3, 4, 5, 14, 7, 8, 16});
         camera.setPosition(world->findSpawnPosition());
         setFlyMode(false);
+        if (renderer) {
+            renderer->timeOfDay = 6000.0f;
+            renderer->dayCycleEnabled = true;
+        }
     }
 
     mainMenuOpen = false;
@@ -505,7 +515,9 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                     camera.getPitch(),
                     getHotbarBlocks(),
                     getFlyMode(),
-                    camera.getIsSneaking()
+                    camera.getIsSneaking(),
+                    renderer->timeOfDay,
+                    renderer->dayCycleEnabled
                 );
                 world->reset();
                 SaveManager::clearActiveWorld();
@@ -520,13 +532,16 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
         } break;
 
         case PauseMenuPage::Settings: {
-            float totalH = titleH + spacing + 3 * buttonSize.y + 2 * spacing;
+            float totalH = titleH + spacing + 4 * buttonSize.y + 3 * spacing;
             MenuLayout layout(totalH, spacing);
 
             drawMenuTitle(layout, "Settings");
 
             if (drawMenuButton(layout, "Video", buttonSize))
                 pauseScreenPage = PauseMenuPage::Video;
+
+            if (drawMenuButton(layout, "World", buttonSize))
+                pauseScreenPage = PauseMenuPage::World;
 
             if (drawMenuButton(layout, "Controls", buttonSize))
                 pauseScreenPage = PauseMenuPage::ControlsCustomize;
@@ -678,6 +693,30 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             }
         } break;
 
+        case PauseMenuPage::World: {
+            float sliderHeight = buttonSize.y;
+            float totalH = titleH + spacing + 2 * (sliderHeight + spacing) + buttonSize.y;
+            MenuLayout layout(totalH, spacing);
+
+            drawMenuTitle(layout, "World Settings");
+
+            if (renderer) {
+                float currentTime = renderer->timeOfDay;
+                if (drawMenuSliderFloat(layout, "Time", "##WorldTimeOfDay", &currentTime, 0.0f, 24000.0f, 300.0f, "%.0f")) {
+                    renderer->timeOfDay = currentTime;
+                }
+
+                bool cycleEnabled = renderer->dayCycleEnabled;
+                if (drawMenuToggle(layout, "Day Cycle", &cycleEnabled, ImVec2(300, buttonSize.y))) {
+                    renderer->dayCycleEnabled = cycleEnabled;
+                }
+            }
+
+            if (drawMenuButton(layout, "Back", buttonSize)) {
+                pauseScreenPage = PauseMenuPage::Settings;
+            }
+        } break;
+
         case PauseMenuPage::ControlsCustomize: {
             ImGuiIO& io = ImGui::GetIO();
             ImVec2 winSize = ImGui::GetWindowSize();
@@ -792,7 +831,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
     ImGui::PopStyleColor();
 }
 
-void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTime) {
+void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, Renderer* renderer, float deltaTime) {
     ImGui::SetNextWindowSize(ImVec2(450, 0));
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     
@@ -857,6 +896,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, float deltaTi
 
     ImGui::Text("FPS: %.1f", fpsDisplay);
     ImGui::Text("Pos: %.2f / %.2f / %.2f", feetPos.x-0.5, feetPos.y, feetPos.z-0.5);
+    ImGui::Text("Time: %.0f", renderer ? renderer->timeOfDay : 0.0f);
     ImGui::Text("Delta Time: %.2f ms", deltaTime*1000);
     ImGui::Text("Chunk: %d, %d", chunkX, chunkZ);
     ImGui::Text("Message elapsed time: %.5f", g_toast.elapsed);
@@ -1150,7 +1190,7 @@ void ImGuiOverlay::renderHotbar() {
     ImGui::PopStyleColor(2);
 }
 
-void ImGuiOverlay::renderConsole(Camera& camera, World* world) {
+void ImGuiOverlay::renderConsole(Camera& camera, World* world, Renderer* renderer) {
     ImGuiIO& io = ImGui::GetIO();
     float consoleWidth = io.DisplaySize.x;
     float consoleHeight = io.DisplaySize.y * 0.6f;
@@ -1198,7 +1238,7 @@ void ImGuiOverlay::renderConsole(Camera& camera, World* world) {
     if (enterPressed) {
         std::string input(inputBuffer);
         if (!input.empty()) {
-            Console::execute(input, camera, world);
+            Console::execute(input, camera, world, renderer);
             inputBuffer[0] = '\0';
             scrollToBottom = true;
         }
@@ -1295,7 +1335,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.55f, 0.20f, 0.95f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.45f, 0.18f, 1.0f));
                     if (ImGui::Button("Play", ImVec2(btnW, btnH))) {
-                        enterWorld(w, world, camera);
+                        enterWorld(w, world, camera, renderer);
                     }
                     ImGui::PopStyleColor(3);
 
@@ -1402,7 +1442,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
                 if (name.empty()) name = "New World";
                 int seed = parseSeed(worldSeedBuf);
                 WorldInfo info = SaveManager::createWorld(name, seed);
-                enterWorld(info, world, camera);
+                enterWorld(info, world, camera, renderer);
                 mainMenuPage = MainMenuPage::WorldList;
             }
 

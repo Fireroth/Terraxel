@@ -11,6 +11,7 @@
 #include "logger.hpp"
 #include "input.hpp"
 #include "../renderer/imguiOverlay.hpp"
+#include "../renderer/renderer.hpp"
 #include "../world/world.hpp"
 #include "../world/chunk.hpp"
 #include "../world/blockDB.hpp"
@@ -32,7 +33,7 @@ void Console::init() {
             "say",
             "say <message>",
             "Print a message",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (argString.empty()) {
                     write("Usage: say <message>");
                 } else {
@@ -44,7 +45,7 @@ void Console::init() {
             "clear",
             "clear",
             "Clear the console window",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 clear();
             }
         },
@@ -52,7 +53,7 @@ void Console::init() {
             "help",
             "help",
             "Show this help page",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 write("Commands:");
                 for (const auto& cmd : commands) {
                     char buf[256];
@@ -65,7 +66,7 @@ void Console::init() {
             "msg",
             "msg <message>",
             "Show a temporary message above the hotbar",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (argString.empty()) {
                     write("Invalid usage. Use: msg <message>");
                 } else {
@@ -77,7 +78,7 @@ void Console::init() {
             "tp",
             "tp <x> <y> <z>",
             "Teleport to coordinates (~ for relative position)",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.size() < 3) {
                     write("Invalid usage. Use: tp <x> <y> <z> (~ for current position)");
                     return;
@@ -123,7 +124,7 @@ void Console::init() {
             "edgelands",
             "edgelands",
             "Teleport to the edge of the world",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 camera.setPosition(glm::dvec3(2147483635.0, 100.0, 0));
                 write("Do not step on blocks right at the edge (game will crash)");
             }
@@ -132,7 +133,7 @@ void Console::init() {
             "give",
             "give <block_id>",
             "Give yourself a block",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.empty()) {
                     write("Invalid usage. Use: give <block_id>");
                     return;
@@ -158,7 +159,7 @@ void Console::init() {
             "anchor",
             "anchor",
             "Spawn a block below your feet",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 glm::dvec3 pos = camera.getPositionDouble();
                 float eyeHeight = camera.getEyeHeight();
                 glm::dvec3 feetPos = glm::dvec3(pos.x, pos.y - eyeHeight, pos.z);
@@ -199,7 +200,7 @@ void Console::init() {
             "structure",
             "structure <x> <y> <z> <structure_name>",
             "Spawn a structure",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.size() < 4) {
                     write("Invalid usage. Use: structure <x> <y> <z> <structure_name>");
                     return;
@@ -272,7 +273,7 @@ void Console::init() {
             "structurize",
             "structurize <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <name>",
             "Save a selected area as a structure file",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.size() < 7) {
                     write("Invalid usage. Use: structurize <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <name>");
                     return;
@@ -485,7 +486,7 @@ void Console::init() {
             "fill",
             "fill <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <block_id>",
             "Fill a region with blocks",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.size() < 7) {
                     write("Invalid usage. Use: fill <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <block id>");
                     return;
@@ -682,7 +683,7 @@ void Console::init() {
             "option",
             "option <name> <value>",
             "Set an option value",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.size() < 2) {
                     write("Invalid usage. Use: option <name> <value>");
                     return;
@@ -758,7 +759,7 @@ void Console::init() {
             "yaw",
             "yaw <value>",
             "Set the camera yaw",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.empty()) {
                     write("Invalid usage. Use: yaw <value>");
                     return;
@@ -771,7 +772,7 @@ void Console::init() {
             "pitch",
             "pitch <value>",
             "Set the camera pitch",
-            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world) {
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 if (args.empty()) {
                     write("Invalid usage. Use: pitch <value>");
                     return;
@@ -784,7 +785,7 @@ void Console::init() {
     LOG_INFO("Console: Loaded ", commands.size(), " built-in commands");
 }
 
-void Console::execute(const std::string& input, Camera& camera, World* world) {
+void Console::execute(const std::string& input, Camera& camera, World* world, Renderer* renderer) {
     if (input.empty()) return;
 
     // Tokenize by whitespace
@@ -819,7 +820,7 @@ void Console::execute(const std::string& input, Camera& camera, World* world) {
     bool found = false;
     for (const auto& cmd : commands) {
         if (cmd.name == cmdName) {
-            cmd.handler(args, argString, camera, world);
+            cmd.handler(args, argString, camera, world, renderer);
             found = true;
             break;
         }

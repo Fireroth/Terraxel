@@ -102,12 +102,14 @@ void Renderer::init() {
     uOpaqueFogStartLoc = glGetUniformLocation(shaderProgram, "fogStartDistance");
     uOpaqueFogColorLoc = glGetUniformLocation(shaderProgram, "fogColor");
     uOpaqueLightingEnabledLoc = glGetUniformLocation(shaderProgram, "lightingEnabled");
+    uOpaqueSunIntensityLoc = glGetUniformLocation(shaderProgram, "sunIntensity");
 
     uTranslucentFogEnabledLoc = glGetUniformLocation(translucentShaderProgram, "fogEnabled");
     uTranslucentFogDensityLoc = glGetUniformLocation(translucentShaderProgram, "fogDensity");
     uTranslucentFogStartLoc = glGetUniformLocation(translucentShaderProgram, "fogStartDistance");
     uTranslucentFogColorLoc = glGetUniformLocation(translucentShaderProgram, "fogColor");
     uTranslucentLightingEnabledLoc = glGetUniformLocation(translucentShaderProgram, "lightingEnabled");
+    uTranslucentSunIntensityLoc = glGetUniformLocation(translucentShaderProgram, "sunIntensity");
 
     uPostProcessTextureLoc = glGetUniformLocation(postProcessShaderProgram, "screenTexture");
     uPostProcessEffectTypeLoc = glGetUniformLocation(postProcessShaderProgram, "effectType");
@@ -126,6 +128,7 @@ void Renderer::init() {
     uSkyCamPosLoc = glGetUniformLocation(skyShaderProgram, "cameraPos");
     uSkyColorLoc = glGetUniformLocation(skyShaderProgram, "skyColor");
     uSkyHorizonColorLoc = glGetUniformLocation(skyShaderProgram, "horizonColor");
+    uSkyTimeOfDayLoc = glGetUniformLocation(skyShaderProgram, "timeOfDay");
     uSkyCloudNoiseTexLoc = glGetUniformLocation(skyShaderProgram, "cloudNoiseTexture");
     uSkyCloudColorLoc = glGetUniformLocation(skyShaderProgram, "cloudColor");
     uSkyCloudHeightLoc = glGetUniformLocation(skyShaderProgram, "cloudHeight");
@@ -271,6 +274,13 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
         effectType = eyeBlock;
     }
 
+    if (dayCycleEnabled) {
+        timeOfDay += sky.cycleSpeed * deltaTime;
+        if (timeOfDay >= 24000.0f) timeOfDay -= 24000.0f;
+    }
+    sky.updateColors(timeOfDay);
+    fogColor = sky.fogColor;
+
     fogStartDistance = ((getOptionFloat("render_distance", 7) + 1) * 16) - 20;
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glViewport(0, 0, width, height);
@@ -319,12 +329,13 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
 
     glm::vec3 camPos = camera.getPosition();
 
-    auto uploadEnvironmentUniforms = [&](GLint fogEnLoc, GLint fogDensLoc, GLint fogStartLoc, GLint fogColLoc, GLint lightEnLoc) {
+    auto uploadEnvironmentUniforms = [&](GLint fogEnLoc, GLint fogDensLoc, GLint fogStartLoc, GLint fogColLoc, GLint lightEnLoc, GLint sunIntLoc = -1) {
         if (fogEnLoc != -1) glUniform1i(fogEnLoc, fogEnabled ? 1 : 0);
         if (fogDensLoc != -1) glUniform1f(fogDensLoc, fogDensity);
         if (fogStartLoc != -1) glUniform1f(fogStartLoc, fogStartDistance);
         if (fogColLoc != -1) glUniform3fv(fogColLoc, 1, &fogColor[0]);
         if (lightEnLoc != -1) glUniform1i(lightEnLoc, lightingEnabled ? 1 : 0);
+        if (sunIntLoc != -1) glUniform1f(sunIntLoc, sky.sunIntensity);
     };
 
     // -------------------------------- Render Sky Background --------------------------------
@@ -339,6 +350,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glUniformMatrix4fv(uSkyInvViewLoc, 1, GL_FALSE, glm::value_ptr(invView));
     glUniform3fv(uSkyColorLoc, 1, glm::value_ptr(sky.skyColor));
     glUniform3fv(uSkyHorizonColorLoc, 1, glm::value_ptr(sky.horizonColor));
+    glUniform1f(uSkyTimeOfDayLoc, timeOfDay);
 
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -359,7 +371,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glBindTexture(GL_TEXTURE_2D_ARRAY, textureAtlas);
     glUniform1i(uAtlasLoc, 0);
 
-    uploadEnvironmentUniforms(uOpaqueFogEnabledLoc, uOpaqueFogDensityLoc, uOpaqueFogStartLoc, uOpaqueFogColorLoc, uOpaqueLightingEnabledLoc);
+    uploadEnvironmentUniforms(uOpaqueFogEnabledLoc, uOpaqueFogDensityLoc, uOpaqueFogStartLoc, uOpaqueFogColorLoc, uOpaqueLightingEnabledLoc, uOpaqueSunIntensityLoc);
 
     world.render(camera, uModelLoc, frustum);
 
@@ -447,7 +459,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glUniform1i(uTranslucentAtlasLoc, 0);
     glUniform1f(uTranslucentTimeLoc, currentFrame);
 
-    uploadEnvironmentUniforms(uTranslucentFogEnabledLoc, uTranslucentFogDensityLoc, uTranslucentFogStartLoc, uTranslucentFogColorLoc, uTranslucentLightingEnabledLoc);
+    uploadEnvironmentUniforms(uTranslucentFogEnabledLoc, uTranslucentFogDensityLoc, uTranslucentFogStartLoc, uTranslucentFogColorLoc, uTranslucentLightingEnabledLoc, uTranslucentSunIntensityLoc);
 
     world.renderTranslucent(camera, uTranslucentModelLoc, frustum);
 

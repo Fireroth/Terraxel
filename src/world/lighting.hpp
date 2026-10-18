@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <set>
-#include <mutex>
 #include <glm/glm.hpp>
 
 class Chunk;

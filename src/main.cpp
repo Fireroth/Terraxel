@@ -134,7 +134,9 @@ int main() {
         camera.getPitch(),
         getHotbarBlocks(),
         getFlyMode(),
-        camera.getIsSneaking()
+        camera.getIsSneaking(),
+        renderer.timeOfDay,
+        renderer.dayCycleEnabled
     );
 
     renderer.world.reset();
