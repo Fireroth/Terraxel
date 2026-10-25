@@ -24,6 +24,12 @@ uniform float cloudPixelSize;
 uniform float maxCloudDist;
 uniform vec2 cloudBaseUV;
 
+// Dither to break up color banding
+float dither(vec2 screenPos) {
+    // https://blog.demofox.org/2022/01/01/interleaved-gradient-noise-a-different-kind-of-low-discrepancy-sequence/
+    return fract(52.9829189 * fract(dot(screenPos, vec2(0.06711056, 0.00583715))));
+}
+
 // Helper for procedural stars
 float hash21(vec2 p) {
     p = fract(p * vec2(234.34, 435.345));
@@ -117,6 +123,9 @@ void main() {
                 color = mix(color, moonColor, alpha);
             }
         }
+
+        float dit = (dither(gl_FragCoord.xy) - 0.5) / 255.0;
+        color += dit;
 
         FragColor = vec4(color, 1.0);
     } else if (renderMode == 1) {

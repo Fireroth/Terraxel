@@ -14,6 +14,7 @@ public:
     GLint uTranslucentFogEnabledLoc = -1, uTranslucentFogDensityLoc = -1, uTranslucentFogStartLoc = -1, uTranslucentFogColorLoc = -1;
     GLint uOpaqueLightingEnabledLoc = -1, uTranslucentLightingEnabledLoc = -1;
     GLint uOpaqueSunIntensityLoc = -1, uTranslucentSunIntensityLoc = -1;
+    GLint uOpaqueMinBrightnessLoc = -1, uTranslucentMinBrightnessLoc = -1;
     float timeOfDay = 6000.0f;
     bool dayCycleEnabled = true;
     Renderer();
@@ -31,6 +32,7 @@ public:
     int cloudsMode = 2; // 0 = OFF, 1 = 2D, 2 = 3D
     int cloudRenderDistance = 50;
     bool lightingEnabled = true;
+    float minBrightness = 0.0f;
     float fogDensity = 0.30f;
     float fogStartDistance = 0.0f;
     glm::vec3 fogColor = glm::vec3(0.6f, 1.0f, 1.0f);

@@ -12,6 +12,12 @@ uniform bool fogEnabled;
 uniform float normalFogStartDistance;
 uniform bool vignetteEnabled;
 
+// Dither to break up color banding
+float dither(vec2 screenPos) {
+    // https://blog.demofox.org/2022/01/01/interleaved-gradient-noise-a-different-kind-of-low-discrepancy-sequence/
+    return fract(52.9829189 * fract(dot(screenPos, vec2(0.06711056, 0.00583715))));
+}
+
 vec4 blur(sampler2D tex, vec2 coords, float radius) {
     vec2 texelSize = 1.0 / vec2(textureSize(tex, 0));
     vec4 sum = vec4(0.0);
@@ -190,9 +196,12 @@ void main() {
         if (vignetteEnabled) {
             vec2 d = abs(uv - 0.5) * 2.0;
             float dist = length(d);
-            float vignette = 1.0 - smoothstep(0.6, 1.4, dist) * 0.4;
+            float vignette = 1.0 - smoothstep(0.6, 1.4, dist) * 0.5;
             vignette = clamp(vignette, 0.0, 1.0);
             color.rgb *= vignette;
+
+            float dit = (dither(gl_FragCoord.xy) - 0.5) / 255.0;
+            color += dit;
         }
         FragColor = color;
     }

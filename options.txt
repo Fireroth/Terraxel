@@ -21,3 +21,4 @@ enable_lighting=1
 vignette=1
 clouds=2
 cloud_render_distance=64
+brightness=0.1

@@ -626,6 +626,13 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             layout.y = columnsStartY;
             layout.customXOffset = rightColumnX;
 
+            float brightnessPercent = getOptionFloat("brightness", 0.0f) * 400.0f;
+            if (drawMenuSliderFloat(layout, "Brightness", "##Brightness", &brightnessPercent, 0.0f, 100.0f, 300.0f, "%.0f%%")) {
+                float val = brightnessPercent / 400.0f;
+                setOption("brightness", val);
+                renderer->minBrightness = val;
+            }
+
             int use_mipmaps = getOptionInt("use_mipmaps", 1);
             static const char* mipmapLabels[] = { "Off", "Nearest", "Bilinear", "Trilinear" };
             if (drawMenuSliderInt(layout, "Mipmaps", "##UseMipmaps", &use_mipmaps, 0, 3, 300.0f, "%d", mipmapLabels)) {

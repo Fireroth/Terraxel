@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <future>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include "../world/biomeDB.hpp"
@@ -9,6 +10,13 @@
 struct CloudVertex {
     float x, y, z;
     float brightness;
+};
+
+struct CloudMeshResult {
+    std::vector<CloudVertex> vertices;
+    int centerCX = 0;
+    int centerCZ = 0;
+    int radius = 0;
 };
 
 class Sky {
@@ -54,11 +62,14 @@ public:
     GLuint cloud3DVAO = 0;
     GLuint cloud3DVBO = 0;
     int cloud3DVertexCount = 0;
-    int lastCenterCX = -999999;
-    int lastCenterCZ = -999999;
-    int lastCloudRadius = -1;
+    int activeCenterCX = -999999;
+    int activeCenterCZ = -999999;
+    int activeCloudRadius = -1;
     glm::vec3 cloud3DOffset = glm::vec3(0.0f);
     float cloudRenderDistance = 384.0f;
+
+    Sky();
+    ~Sky();
 
     void init(int seed);
     void updateSeed(int seed);
@@ -70,6 +81,9 @@ public:
 private:
     int currentSeed = 0;
     std::vector<BiomeNoise> noises;
+
+    std::future<CloudMeshResult> meshFuture;
+    bool isMeshingAsync = false;
 
     void loadJson(const std::string& path);
     void generateNoiseTexture();

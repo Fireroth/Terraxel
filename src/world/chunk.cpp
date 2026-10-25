@@ -34,6 +34,15 @@ static inline bool isAirOrLiquidBlock(uint16_t type) {
     return info && info->liquid;
 }
 
+static inline bool shouldPlaceWithChance(uint8_t chance, float noiseValue) {
+    switch (chance) {
+        case 1: return noiseValue < 0.5f;   // 1 in 2
+        case 2: return noiseValue < 0.2f;   // 1 in 5
+        case 3: return noiseValue < 0.05f;  // 1 in 20
+        default: return true;
+    }
+}
+
 void clearPendingBlockPlacements() {
     std::lock_guard<std::mutex> lock(pendingPlacementsMutex);
     pendingBlockPlacements.clear();
@@ -156,13 +165,7 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                     float randNoise = noises.randomNoise.GetNoise((double)worldX, (double)worldY, (double)worldZ);
                     float noiseValue = (randNoise + 1.0f) * 0.5f;
 
-                    bool place = false;
-                    switch (chance) {
-                        case 1: place = !(noiseValue >= (1.0f / 2)); break;  // 1 in 2
-                        case 2: place = !(noiseValue >= (1.0f / 5)); break;  // 1 in 5
-                        case 3: place = !(noiseValue >= (1.0f / 20)); break;  // 1 in 20
-                    }
-                    if (!place) {
+                    if (!shouldPlaceWithChance(chance, noiseValue)) {
                         continue;
                     }
                 }
@@ -214,13 +217,7 @@ void Chunk::placeStructure(const Structure& structure, int baseX, int baseY, int
                     float randNoise = noises.randomNoise.GetNoise((double)worldX, (double)(baseY - 1), (double)worldZ);
                     float noiseValue = (randNoise + 1.0f) * 0.5f;
 
-                    bool place = false;
-                    switch (chance) {
-                        case 1: place = !(noiseValue >= (1.0f / 2)); break;  // 1 in 2
-                        case 2: place = !(noiseValue >= (1.0f / 5)); break;  // 1 in 5
-                        case 3: place = !(noiseValue >= (1.0f / 20)); break;  // 1 in 20
-                    }
-                    if (!place) {
+                    if (!shouldPlaceWithChance(chance, noiseValue)) {
                         continue;
                     }
                 }

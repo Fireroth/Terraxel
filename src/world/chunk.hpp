@@ -8,9 +8,9 @@
 #include <mutex>
 #include <cstring>
 #include "blockDB.hpp"
-#include "../core/camera.hpp"
 #include "structureDB.hpp"
 #include "noise.hpp"
+#include "../core/camera.hpp"
 
 class World;
 
@@ -46,9 +46,9 @@ struct ChunkMeshData {
 
 class Chunk {
 public:
-    static const int chunkWidth = 16;
-    static const int chunkHeight = 256;
-    static const int chunkDepth = 16;
+    static constexpr int chunkWidth = 16;
+    static constexpr int chunkHeight = 256;
+    static constexpr int chunkDepth = 16;
 
     ChunkNoises noises;
 

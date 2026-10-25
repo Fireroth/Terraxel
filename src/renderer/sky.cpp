@@ -43,6 +43,12 @@ static BiomeNoise parseNoiseJson(const nlohmann::json& noiseJson) {
     return n;
 }
 
+Sky::Sky() = default;
+
+Sky::~Sky() {
+    cleanup();
+}
+
 void Sky::init(int seed) {
     currentSeed = seed;
 
@@ -161,6 +167,11 @@ void Sky::updateSeed(int seed) {
 }
 
 void Sky::generateNoiseTexture() {
+    if (meshFuture.valid()) {
+        meshFuture.wait();
+        isMeshingAsync = false;
+    }
+
     if (cloudTexture != 0) {
         glDeleteTextures(1, &cloudTexture);
         cloudTexture = 0;
@@ -222,8 +233,9 @@ void Sky::generateNoiseTexture() {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     cloudNoiseData = std::move(data);
-    lastCenterCX = -999999;
-    lastCenterCZ = -999999;
+    activeCenterCX = -999999;
+    activeCenterCZ = -999999;
+    activeCloudRadius = -1;
 }
 
 bool Sky::isCloudCell(int cx, int cz) const {
@@ -258,56 +270,75 @@ void Sky::compute2DCloudOrigin(const glm::dvec3& camPos, double time, glm::vec2&
     outBaseUV = glm::vec2(static_cast<float>(u - std::floor(u)), static_cast<float>(v - std::floor(v)));
 }
 
-void Sky::update3DMesh(const glm::dvec3& camPos, double time) {
-    if (cloudNoiseData.empty()) {
-        generateNoiseTexture();
+static CloudMeshResult build3DCloudMesh(
+    int centerCX, int centerCZ, int R,
+    double pSize, float thickness, float cloudThreshold,
+    int cloudTextureSize, double cloudScale,
+    float cloudRenderDistance,
+    const std::vector<uint8_t>& noiseData)
+{
+    CloudMeshResult result;
+    result.centerCX = centerCX;
+    result.centerCZ = centerCZ;
+    result.radius = R;
+
+    if (noiseData.empty() || cloudTextureSize <= 0) {
+        return result;
     }
-
-    const double pSize = (cloudPixelSize > 0.1f) ? cloudPixelSize : 10.0;
-    const float thickness = (cloudThickness > 0.1f) ? cloudThickness : 4.0f;
-    const double driftSpeed = (cloudScale > 0.0f) ? (cloudSpeed / static_cast<double>(cloudScale)) : 0.0;
-    const double driftX = time * driftSpeed;
-    const double driftZ = time * driftSpeed * 0.5;
-    const double playerGridX = camPos.x - driftX;
-    const double playerGridZ = camPos.z - driftZ;
-    int centerCX = static_cast<int>(std::floor(playerGridX / pSize));
-    int centerCZ = static_cast<int>(std::floor(playerGridZ / pSize));
-
-    int R = static_cast<int>(std::ceil(std::max(static_cast<double>(cloudRenderDistance), 16.0) / pSize)) + 1;
-    R = std::clamp(R, 2, 256);
-
-    cloud3DOffset = glm::vec3(
-        static_cast<float>(static_cast<double>(centerCX) * pSize + driftX - camPos.x),
-        static_cast<float>(static_cast<double>(cloudHeight) - camPos.y),
-        static_cast<float>(static_cast<double>(centerCZ) * pSize + driftZ - camPos.z)
-    );
-
-    if (cloud3DVAO != 0 && centerCX == lastCenterCX && centerCZ == lastCenterCZ && R == lastCloudRadius) {
-        return;
-    }
-
-    lastCenterCX = centerCX;
-    lastCenterCZ = centerCZ;
-    lastCloudRadius = R;
 
     int W = 2 * (R + 1) + 1;
     std::vector<bool> solid(W * W, false);
+
+    const uint8_t thresholdByte = static_cast<uint8_t>(std::clamp(
+        static_cast<int>(std::ceil(cloudThreshold * 255.0f - 1e-4f)), 0, 255
+    ));
+
+    std::vector<int> colTx(W);
+    for (int i = 0; i < W; ++i) {
+        int cx = centerCX - (R + 1) + i;
+        double u = static_cast<double>(cx) * pSize * cloudScale;
+        u = u - std::floor(u);
+        int tx = static_cast<int>(u * cloudTextureSize) % cloudTextureSize;
+        if (tx < 0) tx += cloudTextureSize;
+        colTx[i] = tx;
+    }
+
+    std::vector<int> rowTz(W);
     for (int j = 0; j < W; ++j) {
         int cz = centerCZ - (R + 1) + j;
+        double v = static_cast<double>(cz) * pSize * cloudScale;
+        v = v - std::floor(v);
+        int tz = static_cast<int>(v * cloudTextureSize) % cloudTextureSize;
+        if (tz < 0) tz += cloudTextureSize;
+        rowTz[j] = tz;
+    }
+
+    for (int j = 0; j < W; ++j) {
+        const uint8_t* rowData = &noiseData[rowTz[j] * cloudTextureSize];
+        int rowStart = j * W;
         for (int i = 0; i < W; ++i) {
-            int cx = centerCX - (R + 1) + i;
-            solid[j * W + i] = isCloudCell(cx, cz);
+            solid[rowStart + i] = (rowData[colTx[i]] >= thresholdByte);
         }
     }
 
-    std::vector<CloudVertex> verts;
-    verts.reserve(W * W * 12);
+    std::vector<CloudVertex>& verts = result.vertices;
+    verts.reserve(W * W * 6);
+
+    const double maxDistFromCenter = static_cast<double>(cloudRenderDistance) + static_cast<double>(8 + 1) * pSize;
+    const double maxDist2 = maxDistFromCenter * maxDistFromCenter;
 
     for (int dz = -R; dz <= R; ++dz) {
         int j = dz + (R + 1);
+        double cellCenterZ = (static_cast<double>(dz) + 0.5) * pSize;
+        double cellZ2 = cellCenterZ * cellCenterZ;
+        if (cellZ2 > maxDist2) continue;
+
         for (int dx = -R; dx <= R; ++dx) {
             int i = dx + (R + 1);
             if (!solid[j * W + i]) continue;
+
+            double cellCenterX = (static_cast<double>(dx) + 0.5) * pSize;
+            if (cellCenterX * cellCenterX + cellZ2 > maxDist2) continue;
 
             bool solidNorth = solid[(j - 1) * W + i];
             bool solidSouth = solid[(j + 1) * W + i];
@@ -379,7 +410,67 @@ void Sky::update3DMesh(const glm::dvec3& camPos, double time) {
         }
     }
 
+    return result;
+}
+
+void Sky::update3DMesh(const glm::dvec3& camPos, double time) {
+    if (cloudNoiseData.empty()) {
+        generateNoiseTexture();
+    }
+
+    const double pSize = (cloudPixelSize > 0.1f) ? cloudPixelSize : 10.0;
+    const float thickness = (cloudThickness > 0.1f) ? cloudThickness : 4.0f;
+    const double scale = (cloudScale > 0.0f) ? cloudScale : 0.0005;
+    const double driftSpeed = (cloudScale > 0.0f) ? (cloudSpeed / static_cast<double>(cloudScale)) : 0.0;
+    const double driftX = time * driftSpeed;
+    const double driftZ = time * driftSpeed * 0.5;
+    const double playerGridX = camPos.x - driftX;
+    const double playerGridZ = camPos.z - driftZ;
+    int currentCenterCX = static_cast<int>(std::floor(playerGridX / pSize));
+    int currentCenterCZ = static_cast<int>(std::floor(playerGridZ / pSize));
+
+    int R_base = static_cast<int>(std::ceil(std::max(static_cast<double>(cloudRenderDistance), 16.0) / pSize)) + 1;
+    R_base = std::clamp(R_base, 2, 256);
+
+    const int MARGIN_CELLS = 8;
+    int R_build = std::clamp(R_base + MARGIN_CELLS + 1, 2, 256);
+
+    if (isMeshingAsync && meshFuture.valid()) {
+        if (meshFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            CloudMeshResult res = meshFuture.get();
+            isMeshingAsync = false;
+
+            if (cloud3DVAO == 0) {
+                glGenVertexArrays(1, &cloud3DVAO);
+                glGenBuffers(1, &cloud3DVBO);
+                glBindVertexArray(cloud3DVAO);
+                glBindBuffer(GL_ARRAY_BUFFER, cloud3DVBO);
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(CloudVertex), (void*)offsetof(CloudVertex, x));
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(CloudVertex), (void*)offsetof(CloudVertex, brightness));
+                glBindVertexArray(0);
+            }
+
+            cloud3DVertexCount = static_cast<int>(res.vertices.size());
+            glBindBuffer(GL_ARRAY_BUFFER, cloud3DVBO);
+            glBufferData(GL_ARRAY_BUFFER, res.vertices.size() * sizeof(CloudVertex), res.vertices.data(), GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            activeCenterCX = res.centerCX;
+            activeCenterCZ = res.centerCZ;
+            activeCloudRadius = res.radius;
+        }
+    }
+
     if (cloud3DVAO == 0) {
+        CloudMeshResult initialRes = build3DCloudMesh(
+            currentCenterCX, currentCenterCZ, R_build,
+            pSize, thickness, cloudThreshold,
+            cloudTextureSize, scale,
+            cloudRenderDistance, cloudNoiseData
+        );
+
         glGenVertexArrays(1, &cloud3DVAO);
         glGenBuffers(1, &cloud3DVBO);
         glBindVertexArray(cloud3DVAO);
@@ -389,12 +480,43 @@ void Sky::update3DMesh(const glm::dvec3& camPos, double time) {
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(CloudVertex), (void*)offsetof(CloudVertex, brightness));
         glBindVertexArray(0);
+
+        cloud3DVertexCount = static_cast<int>(initialRes.vertices.size());
+        glBindBuffer(GL_ARRAY_BUFFER, cloud3DVBO);
+        glBufferData(GL_ARRAY_BUFFER, initialRes.vertices.size() * sizeof(CloudVertex), initialRes.vertices.data(), GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        activeCenterCX = currentCenterCX;
+        activeCenterCZ = currentCenterCZ;
+        activeCloudRadius = R_base;
     }
 
-    cloud3DVertexCount = static_cast<int>(verts.size());
-    glBindBuffer(GL_ARRAY_BUFFER, cloud3DVBO);
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(CloudVertex), verts.data(), GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    cloud3DOffset = glm::vec3(
+        static_cast<float>(static_cast<double>(activeCenterCX) * pSize + driftX - camPos.x),
+        static_cast<float>(static_cast<double>(cloudHeight) - camPos.y),
+        static_cast<float>(static_cast<double>(activeCenterCZ) * pSize + driftZ - camPos.z)
+    );
+
+    int distCX = std::abs(currentCenterCX - activeCenterCX);
+    int distCZ = std::abs(currentCenterCZ - activeCenterCZ);
+    bool radiusChanged = (R_base != activeCloudRadius);
+
+    if ((distCX >= MARGIN_CELLS || distCZ >= MARGIN_CELLS || radiusChanged) && !isMeshingAsync) {
+        isMeshingAsync = true;
+        meshFuture = std::async(
+            std::launch::async,
+            [currentCenterCX, currentCenterCZ, R_build, R_base, pSize, thickness,
+             threshold = this->cloudThreshold, texSize = this->cloudTextureSize,
+             scale, renderDist = this->cloudRenderDistance, noiseCopy = this->cloudNoiseData]() {
+                CloudMeshResult res = build3DCloudMesh(
+                    currentCenterCX, currentCenterCZ, R_build,
+                    pSize, thickness, threshold, texSize, scale, renderDist, noiseCopy
+                );
+                res.radius = R_base;
+                return res;
+            }
+        );
+    }
 }
 
 void Sky::initMesh() {
@@ -436,6 +558,11 @@ void Sky::initMesh() {
 }
 
 void Sky::cleanup() {
+    if (meshFuture.valid()) {
+        meshFuture.wait();
+    }
+    isMeshingAsync = false;
+
     if (cloudTexture != 0) {
         glDeleteTextures(1, &cloudTexture);
         cloudTexture = 0;
@@ -459,8 +586,9 @@ void Sky::cleanup() {
         cloud3DVBO = 0;
     }
     cloud3DVertexCount = 0;
-    lastCenterCX = -999999;
-    lastCenterCZ = -999999;
+    activeCenterCX = -999999;
+    activeCenterCZ = -999999;
+    activeCloudRadius = -1;
 }
 
 void Sky::updateColors(float timeOfDay) {
