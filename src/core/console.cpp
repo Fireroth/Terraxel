@@ -2,6 +2,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <unordered_set>
 #include <cmath>
 #include <filesystem>
@@ -47,6 +48,19 @@ void Console::init() {
             "Clear the console window",
             [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
                 clear();
+            }
+        },
+        {
+            "crash",
+            "crash",
+            "Intentionally crash the game",
+            [](const std::vector<std::string>& args, const std::string& argString, Camera& camera, World* world, Renderer* renderer) {
+                if (args.size() < 1 || args[0] != "confirm") {
+                    write("Any unsaved changes will be lost!\nType 'crash confirm' to intentionally abort the game.");
+                    return;
+                }
+                write("Crash command confirmed. Aborting process...");
+                std::abort();
             }
         },
         {

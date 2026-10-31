@@ -52,13 +52,6 @@
                 "gain": 0.5,
                 "operation": "add"
             }
-        ],
-        "modifiers": [
-            {
-                "type": "deepen",
-                "belowY": 63.0,
-                "factor": 0.5
-            }
         ]
     },
     "layers": [

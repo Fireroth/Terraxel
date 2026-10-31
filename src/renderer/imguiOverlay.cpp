@@ -2,6 +2,8 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <random>
 #include <cmath>
+#include <algorithm>
+#include <cstring>
 #include "../world/world.hpp"
 #include "../world/chunk.hpp"
 #include "../core/camera.hpp"
@@ -70,9 +72,66 @@ static void drawMenuTitle(MenuLayout& layout, const char* text) {
     layout.advance(ImGui::GetTextLineHeightWithSpacing());
 }
 
+enum class MenuButtonTone { Neutral, Primary, Danger, Warning };
+
+static bool drawStyledButton(const char* label, ImVec2 size, MenuButtonTone tone = MenuButtonTone::Neutral) {
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+    const bool clicked = ImGui::InvisibleButton(label, size);
+    const bool hovered = ImGui::IsItemHovered();
+    const bool held = ImGui::IsItemActive();
+
+    ImU32 face, hoverFace, base;
+    switch (tone) {
+        case MenuButtonTone::Primary:
+            face = IM_COL32(36, 112, 76, 255);
+            hoverFace = IM_COL32(52, 150, 96, 255);
+            base = IM_COL32(15, 52, 36, 255);
+            break;
+        case MenuButtonTone::Danger:
+            face = IM_COL32(132, 48, 46, 255);
+            hoverFace = IM_COL32(174, 62, 58, 255);
+            base = IM_COL32(58, 20, 22, 255);
+            break;
+        case MenuButtonTone::Warning:
+            face = IM_COL32(166, 119, 28, 255);
+            hoverFace = IM_COL32(211, 157, 43, 255);
+            base = IM_COL32(75, 49, 12, 255);
+            break;
+        default:
+            face = IM_COL32(43, 47, 61, 255);
+            hoverFace = IM_COL32(61, 68, 88, 255);
+            base = IM_COL32(15, 17, 24, 255);
+            break;
+    }
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const float depth = 4.0f;
+    const float pressOffset = held ? 2.0f : 0.0f;
+    const ImVec2 end(pos.x + size.x, pos.y + size.y);
+    const ImVec2 faceMin(pos.x, pos.y + pressOffset);
+    const ImVec2 faceMax(end.x, end.y - depth + pressOffset);
+    const ImU32 currentFace = hovered ? hoverFace : face;
+
+    draw->AddRectFilled(pos, end, base);
+    draw->AddRectFilled(faceMin, faceMax, currentFace);
+    draw->AddRectFilled(ImVec2(faceMin.x, faceMin.y), ImVec2(faceMax.x, faceMin.y + 2.0f), IM_COL32(255, 255, 255, hovered ? 52 : 30));
+
+    const ImVec2 labelSize = ImGui::CalcTextSize(label);
+    const ImVec2 labelPos(pos.x + (size.x - labelSize.x) * 0.5f, faceMin.y + (faceMax.y - faceMin.y - labelSize.y) * 0.5f);
+    draw->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), IM_COL32(0, 0, 0, 150), label);
+    draw->AddText(labelPos, IM_COL32(240, 242, 248, 255), label);
+    return clicked;
+}
+
 static bool drawMenuButton(MenuLayout& layout, const char* label, ImVec2 size) {
     layout.center(size.x);
-    bool clicked = ImGui::Button(label, size);
+    MenuButtonTone tone = MenuButtonTone::Neutral;
+    if (std::strcmp(label, "Resume") == 0 || std::strcmp(label, "Create World") == 0)
+        tone = MenuButtonTone::Primary;
+    else if (std::strcmp(label, "Quit Game") == 0)
+        tone = MenuButtonTone::Danger;
+
+    const bool clicked = drawStyledButton(label, size, tone);
     layout.advance(size.y);
     return clicked;
 }
@@ -81,18 +140,8 @@ static bool drawMenuToggle(MenuLayout& layout, const char* label, bool* value, I
     char displayText[128];
     snprintf(displayText, sizeof(displayText), "%s: %s", label, *value ? "ON" : "OFF");
 
-    if (*value) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.35f, 0.20f, 0.85f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.45f, 0.25f, 0.90f));
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.12f, 0.12f, 0.85f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.18f, 0.18f, 0.90f));
-    }
-
     layout.center(size.x);
-    bool toggled = ImGui::Button(displayText, size);
-    ImGui::PopStyleColor(2);
-
+    const bool toggled = drawStyledButton(displayText, size, *value ? MenuButtonTone::Primary : MenuButtonTone::Danger);
     if (toggled)
         *value = !*value;
 
@@ -109,11 +158,20 @@ static bool drawMenuSliderInt(MenuLayout& layout, const char* label, const char*
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, 12.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.17f, 0.18f, 0.24f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.70f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(1.00f, 1.00f, 1.00f, 0.80f));
     ImGui::PushItemWidth(sliderWidth);
 
     bool changed = ImGui::SliderInt(id, &normVal, 0, NORM_MAX, "");
     ImGui::PopItemWidth();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(6);
+    ImGui::PopStyleVar(4);
 
     if (changed) {
         int mapped = vmin + (int)roundf(normVal * (float)(vmax - vmin) / (float)NORM_MAX);
@@ -149,10 +207,20 @@ static bool drawMenuSliderFloat(MenuLayout& layout, const char* label, const cha
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, 12.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.17f, 0.18f, 0.24f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.70f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(1.00f, 1.00f, 1.00f, 0.80f));
     ImGui::PushItemWidth(sliderWidth);
+
     bool changed = ImGui::SliderFloat(id, &normVal, 0.0f, 1.0f, "");
     ImGui::PopItemWidth();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(6);
+    ImGui::PopStyleVar(4);
 
     if (changed) {
         float mapped = vmin + normVal * (vmax - vmin);
@@ -175,6 +243,25 @@ static bool drawMenuSliderFloat(MenuLayout& layout, const char* label, const cha
 
     layout.advance(rMax.y - rMin.y);
     return changed;
+}
+
+static void pushMenuInputStyle(float width = 0.0f) {
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.17f, 0.18f, 0.24f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, ImVec4(0.25f, 0.39f, 0.62f, 0.35f));
+    if (width != 0.0f) ImGui::PushItemWidth(width);
+}
+
+static void popMenuInputStyle(bool hasWidth = false) {
+    if (hasWidth) ImGui::PopItemWidth();
+    ImGui::PopStyleColor(6);
+    ImGui::PopStyleVar(3);
 }
 
 static void pushMenuStyle() {
@@ -376,7 +463,8 @@ void ImGuiOverlay::renderMessage(float deltaTime) {
     ImGui::SetNextWindowSize(ImVec2(winW, winH), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.62f * alpha);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.07f, 0.09f, 0.95f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padX, padY));
 
@@ -401,6 +489,7 @@ void ImGuiOverlay::renderMessage(float deltaTime) {
 
     ImGui::End();
     ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor(1);
 }
 
 static int parseSeed(const char* seedBuf) {
@@ -552,7 +641,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
 
         case PauseMenuPage::Video: {
             float sliderHeight = buttonSize.y;
-            float totalH = titleH + spacing + 8 * (sliderHeight + spacing) + buttonSize.y;
+            float totalH = titleH + spacing + 9 * (sliderHeight + spacing) + buttonSize.y;
             MenuLayout layout(totalH, spacing);
 
             drawMenuTitle(layout, "Video Settings");
@@ -736,6 +825,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
 
             layout.center(controlsWidth);
             ImGui::BeginChild("ControlsCustomize", ImVec2(controlsWidth, controlsHeight), true);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0f);
             ImGui::Text("Customize Controls");
             ImGui::Separator();
 
@@ -743,25 +833,26 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             static bool waitingForKey = false;
             static int pendingKeyControl = -1;
 
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0f);
             ImGui::Text("Click on a control to rebind it, then press the new key");
             ImGui::Spacing();
 
             auto displayControlRow = [&](const char* label, int& controlKey, int controlIndex) {
                 bool isSelected = (selectedControlIndex == controlIndex && waitingForKey);
-                
-                if (isSelected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.5f, 0.0f, 0.9f));
-                }
+                const float buttonWidth = controlsWidth - 20.0f;
+                const float contentWidth = ImGui::GetContentRegionAvail().x;
+                const float leftPadding = std::max(0.0f, (contentWidth - buttonWidth) * 0.5f);
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + leftPadding);
 
                 std::string displayText = std::string(label) + ": " + getKeyName(controlKey);
-                if (ImGui::Button(displayText.c_str(), ImVec2(controlsWidth - 20, 30))) {
+                if (drawStyledButton(displayText.c_str(), ImVec2(buttonWidth, 30),
+                                     isSelected ? MenuButtonTone::Primary : MenuButtonTone::Neutral)) {
                     selectedControlIndex = controlIndex;
                     waitingForKey = true;
                     pendingKeyControl = controlIndex;
                 }
 
                 if (isSelected) {
-                    ImGui::PopStyleColor();
                     ImGui::Indent(10.0f);
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Press a key...");
                     ImGui::Unindent(10.0f);
@@ -814,17 +905,17 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             float totalBtnW = 3 * btnW + 2 * btnGap;
             layout.center(totalBtnW);
 
-            if (ImGui::Button("Load Defaults", ImVec2(btnW, bottomBtnH))) {
+            if (drawStyledButton("Load Defaults", ImVec2(btnW, bottomBtnH), MenuButtonTone::Neutral)) {
                 initializeDefaultControls();
             }
             ImGui::SameLine(0.0f, btnGap);
-            if (ImGui::Button("Save & Back", ImVec2(btnW, bottomBtnH))) {
+            if (drawStyledButton("Save & Back", ImVec2(btnW, bottomBtnH), MenuButtonTone::Primary)) {
                 saveControlsToFile("config/controls.txt");
                 saveOptionsToFile("config/options.txt");
                 pauseScreenPage = PauseMenuPage::Settings;
             }
             ImGui::SameLine(0.0f, btnGap);
-            if (ImGui::Button("Cancel", ImVec2(btnW, bottomBtnH))) {
+            if (drawStyledButton("Cancel", ImVec2(btnW, bottomBtnH), MenuButtonTone::Danger)) {
                 pauseScreenPage = PauseMenuPage::Settings;
             }
         } break;
@@ -906,6 +997,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, Renderer* ren
     ImGui::Text("Time: %.0f", renderer ? renderer->timeOfDay : 0.0f);
     ImGui::Text("Delta Time: %.2f ms", deltaTime*1000);
     ImGui::Text("Chunk: %d, %d", chunkX, chunkZ);
+    ImGui::Text("Chunk Biome: %s", eyeChunk && eyeChunk->biomeIndex >= 0 ? BiomeDB::getBiome(eyeChunk->biomeIndex) ? BiomeDB::getBiome(eyeChunk->biomeIndex)->name.c_str() : "Unknown" : "Unknown");
     ImGui::Text("Message elapsed time: %.5f", g_toast.elapsed);
     ImGui::Separator();
     ImGui::Text("Camera -> Yaw: %.2f", camYaw);
@@ -926,20 +1018,20 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, Renderer* ren
     ImGui::Separator();
     if (blockInfo.valid) {
         const auto* info = BlockDB::getBlockInfo(blockInfo.type);
-        ImGui::Text("Block -> name: %s", info->name.c_str());
+        ImGui::Text("Block -> Name: %s", info->name.c_str());
         ImGui::Text("Block -> ID: %d", blockInfo.type);
-        ImGui::Text("Block -> position: %d / %d / %d", blockInfo.worldPos.x, blockInfo.worldPos.y, blockInfo.worldPos.z);
-        ImGui::Text("Block -> transparent: %s", info->transparent ? "True" : "False");
-        ImGui::Text("Block -> translucent: %s", info->translucent ? "True" : "False");
-        ImGui::Text("Block -> renderFacesInBetween: %s", info->renderFacesInBetween ? "True" : "False");
-        ImGui::Text("Block -> model name: %s", info->modelName.c_str());
-        ImGui::Text("Block -> light emission: %i", info->lightEmission);
-        ImGui::Text("Block -> sky light: %d", blockInfo.skyLight);
-        ImGui::Text("Block -> block light: %d", blockInfo.blockLight);
-        ImGui::Text("Block -> drag: %.1f", info->drag);
+        ImGui::Text("Block -> Pos: %d / %d / %d", blockInfo.worldPos.x, blockInfo.worldPos.y, blockInfo.worldPos.z);
+        ImGui::Text("Block -> Transparent: %s", info->transparent ? "True" : "False");
+        ImGui::Text("Block -> Translucent: %s", info->translucent ? "True" : "False");
+        ImGui::Text("Block -> Render Faces In Between: %s", info->renderFacesInBetween ? "True" : "False");
+        ImGui::Text("Block -> Model Name: %s", info->modelName.c_str());
+        ImGui::Text("Block -> Light Emission: %i", info->lightEmission);
+        ImGui::Text("Block -> Sky Light: %d", blockInfo.skyLight);
+        ImGui::Text("Block -> Block Light: %d", blockInfo.blockLight);
+        ImGui::Text("Block -> Drag: %.1f", info->drag);
 
     } else {
-        ImGui::Text("Block -> name: Air");
+        ImGui::Text("Block -> Name: Air");
         ImGui::Text("Block -> ID: 0");
     }
     ImGui::PopStyleColor(2);
@@ -952,7 +1044,7 @@ void ImGuiOverlay::renderInventory() {
     const float slotSize = 64.0f;
     const float slotPad = 6.0f;
     const float slotGap = 4.0f;
-    const uint8_t itemsPerRow = 6;
+    const uint8_t itemsPerRow = 7;
     const float gridWidth = itemsPerRow * (slotSize + slotPad * 2 + slotGap) - slotGap + 16.0f;
     const float winWidth = gridWidth + 20.0f;
     const float winHeight = io.DisplaySize.y * 0.65f;
@@ -961,10 +1053,10 @@ void ImGuiOverlay::renderInventory() {
     ImGui::SetNextWindowPos(invPos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(winWidth, winHeight), ImGuiCond_Always);
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.10f, 0.10f, 0.12f, 0.96f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.45f, 0.45f, 0.55f, 0.70f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.5f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.07f, 0.09f, 0.95f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.17f, 0.18f, 0.24f, 1.00f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
 
     ImGui::Begin("Inventory",
@@ -975,11 +1067,11 @@ void ImGuiOverlay::renderInventory() {
             ImGuiWindowFlags_NoCollapse |
             ImGuiWindowFlags_NoScrollbar);
 
-    ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.14f, 0.14f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.30f, 0.40f, 0.55f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.22f, 0.30f, 0.48f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TabSelectedOverline,ImVec4(0.50f, 0.65f, 1.00f, 1.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 4.0f);
+    ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.11f, 0.13f, 0.17f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.20f, 0.51f, 0.83f, 0.85f));
+    ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TabSelectedOverline, ImVec4(0.20f, 0.59f, 0.38f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 0.0f);
 
     if (ImGui::BeginTabBar("InventoryTabs")) {
         for (const auto& tabName : tabOrder) {
@@ -995,7 +1087,7 @@ void ImGuiOverlay::renderInventory() {
                 ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, ImVec4(0,0,0,0));
                 ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
                 ImGui::BeginChild("BlockGrid", ImVec2(0, 0), false, 0);
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(slotPad, slotPad));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(slotGap, slotGap));
@@ -1026,10 +1118,11 @@ void ImGuiOverlay::renderInventory() {
                         uv1 = ImVec2(((tileX + 1) * 16) / 256.0f, ((15 - tileY) * 16) / 256.0f);
                     }
 
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.16f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered,ImVec4(0.28f, 0.38f, 0.55f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.35f, 0.50f, 0.75f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.35f, 0.45f, 0.80f));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.13f, 0.15f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.30f, 0.42f, 1.0f));
+                    
 
                     ImGui::ImageButton(blockItems[i], texId, ImVec2(slotSize, slotSize), uv0, uv1);
                     
@@ -1096,7 +1189,7 @@ void ImGuiOverlay::renderHotbar() {
     const float totalSlotW = slotSize + slotPad * 2.0f;
     const float winWidth = numSlots * totalSlotW + (numSlots - 1) * slotGap + winPadX * 2.0f;
     const float winHeight = totalSlotW + winPadY * 2.0f;
-    const float bottomGap = 8.0f;
+    const float bottomGap = 12.0f;
 
     ImVec2 hotbarPos(io.DisplaySize.x * 0.5f - winWidth * 0.5f, io.DisplaySize.y - winHeight - bottomGap);
 
@@ -1117,10 +1210,10 @@ void ImGuiOverlay::renderHotbar() {
     ImGui::SetNextWindowPos(hotbarPos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(winWidth, winHeight), ImGuiCond_Always);
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.10f, 0.82f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.45f, 0.45f, 0.55f, 0.60f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.5f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.07f, 0.09f, 0.40f));
+    ImGui::PushStyleColor(ImGuiCol_Border, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(winPadX, winPadY));
 
     ImGui::Begin("Hotbar",
@@ -1131,8 +1224,8 @@ void ImGuiOverlay::renderHotbar() {
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoScrollbar);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(slotPad, slotPad));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(slotGap, slotGap));
 
@@ -1159,15 +1252,15 @@ void ImGuiOverlay::renderHotbar() {
 
         bool isSelected = (i == selectedHotbarIndex);
         if (isSelected) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.28f, 0.40f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.28f, 0.40f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.22f, 0.28f, 0.40f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.55f, 0.75f, 1.00f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.40f, 0.68f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.40f, 0.70f, 1.00f, 1.0f));
         } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.14f, 0.18f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.18f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.14f, 0.14f, 0.18f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.32f, 0.32f, 0.40f, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.13f, 0.15f, 0.20f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.21f, 0.28f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.12f, 0.16f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.30f, 0.42f, 1.0f));
         }
 
         std::string buttonLabel = "##hotbar_" + std::to_string(i);
@@ -1177,14 +1270,14 @@ void ImGuiOverlay::renderHotbar() {
         ImVec2 rMin = ImGui::GetItemRectMin();
         char numBuf[4];
         snprintf(numBuf, sizeof(numBuf), "%d", (int)(i + 1) % 10);
-        ImVec2 numPos(rMin.x + 4.0f, rMin.y + 2.0f);
+        ImVec2 numPos(rMin.x + 5.0f, rMin.y + 3.0f);
         drawList->AddText(ImVec2(numPos.x + 1.0f, numPos.y + 1.0f), IM_COL32(0, 0, 0, 180), numBuf);
-        drawList->AddText(numPos, IM_COL32(200, 200, 200, 160), numBuf);
+        drawList->AddText(numPos, IM_COL32(220, 224, 232, 200), numBuf);
 
         if (isSelected) {
             ImVec2 rMin = ImGui::GetItemRectMin();
             ImVec2 rMax = ImGui::GetItemRectMax();
-            drawList->AddRect(rMin, rMax, IM_COL32(140, 190, 255, 220), 5.0f, 0, 2.0f);
+            drawList->AddRect(rMin, rMax, IM_COL32(52, 132, 211, 255), 2.0f, 0, 2.0f);
         }
 
         if (i < hotbarBlocks.size() - 1)
@@ -1278,6 +1371,52 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
 
     pushMenuStyle();
 
+    const float bgScale = std::max(0.90f, io.DisplaySize.y / 1080.0f);
+    const float bgTileW = 133.0f * 12.0f * bgScale;
+    const float bgTileH = 20.0f * 12.0f * bgScale;
+    const float bgScrollSpeed = 60.0f;
+    const float bgBackScrollSpeed = 30.0f;
+    const float bgFarScrollSpeed = 15.0f;
+
+    static float bgScroll = 0.0f;
+    static float bgBackScroll = 0.0f;
+    static float bgFarScroll = 0.0f;
+
+    bgScroll = std::fmod(bgScroll + io.DeltaTime * bgScrollSpeed, bgTileW);
+    bgBackScroll = std::fmod(bgBackScroll + io.DeltaTime * bgBackScrollSpeed, bgTileW);
+    bgFarScroll = std::fmod(bgFarScroll + io.DeltaTime * bgFarScrollSpeed, bgTileW);
+
+    const float atlasTexel = 1.0f / 256.0f;
+    const float atlasPad = 0.1f * atlasTexel;
+    const ImVec2 bgUv0(123.0f / 256.0f + atlasPad, 1.0f - atlasPad);
+    const ImVec2 bgUv1(1.0f - atlasPad, 1.0f - 20.0f / 256.0f + atlasPad);
+    const ImVec2 bgBackUv0(123.0f / 256.0f + atlasPad, 1.0f - (20.0f + 1.0f) / 256.0f - atlasPad);
+    const ImVec2 bgBackUv1(1.0f - atlasPad, 1.0f - (20.0f + 1.0f + 20.0f) / 256.0f + atlasPad);
+    const ImVec2 bgFarUv0(123.0f / 256.0f + atlasPad, 1.0f - (20.0f + 1.0f + 20.0f + 1.0f) / 256.0f - atlasPad);
+    const ImVec2 bgFarUv1(1.0f - atlasPad, 1.0f - (20.0f + 1.0f + 20.0f + 1.0f + 20.0f) / 256.0f + atlasPad);
+    const float bgY = io.DisplaySize.y - bgTileH;
+    const float bgBackY = bgY - 85.0f;
+    const float bgFarY = bgBackY - 130.0f;
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    const float gradientCutoff = std::min(400.0f, io.DisplaySize.y * 0.25f);
+    drawList->AddRectFilledMultiColor(ImVec2(0.0f, 0.0f), ImVec2(io.DisplaySize.x, io.DisplaySize.y - gradientCutoff),
+        IM_COL32(14, 13, 26, 255),
+        IM_COL32(14, 13, 26, 255),
+        IM_COL32(83, 52, 50, 255),
+        IM_COL32(83, 52, 50, 255));
+
+    for (float x = -bgTileW; x < io.DisplaySize.x + bgTileW; x += bgTileW) {
+        drawList->AddImage(uiAtlas, ImVec2(x - bgFarScroll, bgFarY), ImVec2(x + bgTileW - bgFarScroll, bgFarY + bgTileH), bgFarUv0, bgFarUv1);
+    }
+    for (float x = -bgTileW; x < io.DisplaySize.x + bgTileW; x += bgTileW) {
+        drawList->AddImage(uiAtlas, ImVec2(x - bgBackScroll, bgBackY), ImVec2(x + bgTileW - bgBackScroll, bgBackY + bgTileH), bgBackUv0, bgBackUv1);
+    }
+    for (float x = -bgTileW; x < io.DisplaySize.x + bgTileW; x += bgTileW) {
+        drawList->AddImage(uiAtlas, ImVec2(x - bgScroll, bgY), ImVec2(x + bgTileW - bgScroll, bgY + bgTileH), bgUv0, bgUv1);
+    }
+
     const ImVec2 buttonSize(260, 45);
     const float spacing = 16.0f;
 
@@ -1296,7 +1435,10 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             float listX = (io.DisplaySize.x - listWidth) * 0.5f;
 
             ImGui::SetCursorPos(ImVec2(listX, listTop));
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.07f, 0.09f, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.17f, 0.18f, 0.24f, 1.00f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
             ImGui::BeginChild("WorldList", ImVec2(listWidth, listBottom - listTop), true);
 
             auto worlds = SaveManager::listWorlds();
@@ -1316,60 +1458,55 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
                     float availWidth = ImGui::GetContentRegionAvail().x;
 
                     ImVec2 panelPos = ImGui::GetCursorScreenPos();
+                    ImVec2 panelEnd(panelPos.x + availWidth, panelPos.y + entryHeight);
                     ImDrawList* dl = ImGui::GetWindowDrawList();
-                    dl->AddRectFilled(panelPos, ImVec2(panelPos.x + availWidth, panelPos.y + entryHeight), IM_COL32(30, 30, 40, 220), 4.0f);
-                    dl->AddRect(panelPos, ImVec2(panelPos.x + availWidth, panelPos.y + entryHeight), IM_COL32(80, 80, 100, 120), 4.0f);
+
+                    bool cardHovered = ImGui::IsMouseHoveringRect(panelPos, panelEnd);
+                    
+                    ImU32 cardBg = cardHovered ? IM_COL32(22, 25, 34, 255) : IM_COL32(14, 16, 22, 255);
+                    ImU32 cardBorder = cardHovered ? IM_COL32(52, 112, 166, 200) : IM_COL32(32, 35, 46, 255);
+
+                    dl->AddRectFilled(panelPos, panelEnd, cardBg, 2.0f);
+                    dl->AddRect(panelPos, panelEnd, cardBorder, 2.0f);
 
                     dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 8), IM_COL32(255, 255, 255, 230), w.name.c_str());
 
+                    const float metaFontSize = std::max(12.0f, std::round(ImGui::GetFontSize() * 0.75f));
                     char seedBuf[64];
                     snprintf(seedBuf, sizeof(seedBuf), "Seed: %d", w.seed);
-                    dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 30), IM_COL32(180, 180, 190, 200), seedBuf);
+                    dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(panelPos.x + 12, panelPos.y + 30), IM_COL32(180, 180, 190, 200), seedBuf);
 
                     char dateBuf[64];
                     snprintf(dateBuf, sizeof(dateBuf), "Created: %s", w.createdAt.c_str());
-                    dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 48), IM_COL32(140, 140, 150, 180), dateBuf);
+                    dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(panelPos.x + 12, panelPos.y + 48), IM_COL32(140, 140, 150, 180), dateBuf);
 
                     float btnW = 90.0f;
                     float btnH = 30.0f;
+                    float playBtnW = 120.0f;
+                    float playBtnH = 40.0f;
                     float btnGap = 5.0f;
-                    float btnsX = panelPos.x + availWidth - 2 * btnW - btnGap - 10.0f;
+                    float btnsX = panelPos.x + availWidth - playBtnW - btnW - btnGap - 10.0f;
                     float btnsY = panelPos.y + (entryHeight - (2 * btnH + btnGap)) * 0.5f;
 
-                    // Play button (green)
-                    ImGui::SetCursorScreenPos(ImVec2(btnsX, btnsY + (btnH + btnGap) * 0.5f));
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.40f, 0.15f, 0.90f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.55f, 0.20f, 0.95f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.45f, 0.18f, 1.0f));
-                    if (ImGui::Button("Play", ImVec2(btnW, btnH))) {
+                    ImGui::SetCursorScreenPos(ImVec2(btnsX, panelPos.y + (entryHeight - playBtnH) * 0.5f));
+                    if (drawStyledButton("Play", ImVec2(playBtnW, playBtnH), MenuButtonTone::Primary)) {
                         enterWorld(w, world, camera, renderer);
                     }
-                    ImGui::PopStyleColor(3);
 
-                    // Edit button (yellow) - top
-                    ImGui::SetCursorScreenPos(ImVec2(btnsX + btnW + btnGap, btnsY));
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.60f, 0.50f, 0.10f, 0.90f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.75f, 0.65f, 0.15f, 0.95f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.65f, 0.55f, 0.12f, 1.0f));
-                    if (ImGui::Button("Edit", ImVec2(btnW, btnH))) {
+                    ImGui::SetCursorScreenPos(ImVec2(btnsX + playBtnW + btnGap, btnsY));
+                    if (drawStyledButton("Edit", ImVec2(btnW, btnH), MenuButtonTone::Warning)) {
                         editingWorldUUID = w.uuid;
                         snprintf(editingWorldNameBuf, sizeof(editingWorldNameBuf), "%s", w.name.c_str());
                         mainMenuPage = MainMenuPage::EditWorld;
                         deleteConfirmUUID = "";
                     }
-                    ImGui::PopStyleColor(3);
 
-                    // Delete button (red) - bottom
-                    ImGui::SetCursorScreenPos(ImVec2(btnsX + btnW + btnGap, btnsY + btnH + btnGap));
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.12f, 0.12f, 0.85f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.18f, 0.18f, 0.95f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.48f, 0.15f, 0.15f, 1.0f));
-                    if (ImGui::Button("Delete", ImVec2(btnW, btnH))) {
+                    ImGui::SetCursorScreenPos(ImVec2(btnsX + playBtnW + btnGap, btnsY + btnH + btnGap));
+                    if (drawStyledButton("Delete", ImVec2(btnW, btnH), MenuButtonTone::Danger)) {
                         deleteConfirmUUID = w.uuid;
                         deleteConfirmName = w.name;
                         mainMenuPage = MainMenuPage::DeleteConfirm;
                     }
-                    ImGui::PopStyleColor(3);
 
                     ImGui::SetCursorScreenPos(ImVec2(panelPos.x, panelPos.y + entryHeight));
                     ImGui::Dummy(ImVec2(availWidth, 6.0f));
@@ -1379,7 +1516,8 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             }
 
             ImGui::EndChild();
-            ImGui::PopStyleVar();
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(2);
 
             // Bottom buttons
             float bottomY = io.DisplaySize.y - 100.0f;
@@ -1387,7 +1525,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             float btnStartX = (io.DisplaySize.x - totalBtnWidth) * 0.5f;
 
             ImGui::SetCursorPos(ImVec2(btnStartX, bottomY));
-            if (ImGui::Button("Create New World", buttonSize)) {
+            if (drawStyledButton("Create New World", buttonSize, MenuButtonTone::Primary)) {
                 mainMenuPage = MainMenuPage::CreateWorld;
                 snprintf(worldNameBuf, sizeof(worldNameBuf), "New World");
                 worldSeedBuf[0] = '\0';
@@ -1395,7 +1533,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             }
 
             ImGui::SetCursorPos(ImVec2(btnStartX + buttonSize.x + spacing, bottomY));
-            if (ImGui::Button("Quit Game", buttonSize)) {
+            if (drawStyledButton("Quit Game", buttonSize, MenuButtonTone::Danger)) {
                 glfwSetWindowShouldClose(glfwGetCurrentContext(), true);
             }
         } break;
@@ -1420,11 +1558,9 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
 
             // World name input
             layout.center(inputWidth);
-            ImGui::PushItemWidth(inputWidth);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+            pushMenuInputStyle(inputWidth);
             ImGui::InputText("##WorldName", worldNameBuf, sizeof(worldNameBuf));
-            ImGui::PopStyleVar();
-            ImGui::PopItemWidth();
+            popMenuInputStyle(true);
             layout.advance(inputHeight);
 
             // Seed label
@@ -1436,11 +1572,9 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
 
             // Seed input
             layout.center(inputWidth);
-            ImGui::PushItemWidth(inputWidth);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+            pushMenuInputStyle(inputWidth);
             ImGui::InputText("##WorldSeed", worldSeedBuf, sizeof(worldSeedBuf));
-            ImGui::PopStyleVar();
-            ImGui::PopItemWidth();
+            popMenuInputStyle(true);
             layout.advance(inputHeight);
 
             // Create & Play button
@@ -1477,11 +1611,9 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
 
             // World name input
             layout.center(inputWidth);
-            ImGui::PushItemWidth(inputWidth);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 10.0f));
+            pushMenuInputStyle(inputWidth);
             ImGui::InputText("##EditWorldName", editingWorldNameBuf, sizeof(editingWorldNameBuf));
-            ImGui::PopStyleVar();
-            ImGui::PopItemWidth();
+            popMenuInputStyle(true);
             layout.advance(inputHeight);
 
             // Save button

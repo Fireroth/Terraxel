@@ -94,8 +94,10 @@ void main() {
 
         // Sun
         float sunDot = dot(dir, sunDir);
+        float sunHorizonFade = smoothstep(-0.5, 0.08, sunDir.y);
+
         if (sunDot > 0.0) {
-            float sunGlow = pow(sunDot, 16.0) * 0.35 + pow(sunDot, 64.0) * 0.45;
+            float sunGlow = (pow(sunDot, 16.0) * 0.22 + pow(sunDot, 64.0) * 0.33) * sunHorizonFade;
             color += vec3(1.0, 0.85, 0.55) * sunGlow;
 
             vec2 sunCoord = vec2(dot(dir, right), dot(dir, upSun)) / sunDot;
@@ -110,12 +112,14 @@ void main() {
 
         // Moon
         float moonDot = dot(dir, moonDir);
+        float moonHorizonFade = smoothstep(-0.06, 0.10, moonDir.y);
+
         if (moonDot > 0.0) {
-            float moonGlow = pow(moonDot, 32.0) * 0.20 + pow(moonDot, 128.0) * 0.30;
+            float moonGlow = (pow(moonDot, 32.0) * 0.20 + pow(moonDot, 128.0) * 0.30) * moonHorizonFade;
             color += vec3(0.65, 0.78, 1.0) * moonGlow;
 
             vec2 moonCoord = vec2(dot(dir, right), dot(dir, upMoon)) / moonDot;
-            float moonHalfSize = 0.055;
+            float moonHalfSize = 0.045;
             if (abs(moonCoord.x) <= moonHalfSize && abs(moonCoord.y) <= moonHalfSize) {
                 float edge = max(abs(moonCoord.x), abs(moonCoord.y));
                 float alpha = 1.0 - smoothstep(moonHalfSize * 0.94, moonHalfSize, edge);
