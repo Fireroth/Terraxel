@@ -155,18 +155,18 @@ void Renderer::init() {
 
     sky.init(SaveManager::getActiveSeed());
 
-    currentFov = getOptionFloat("fov", 70.0f);
+    currentFov = getOptionFloat("fov");
 
-    lightingEnabled = (getOptionInt("enable_lighting", 1) != 0);\
+    lightingEnabled = (getOptionInt("enable_lighting") != 0);\
 
-    fogEnabled = getOptionInt("fog", 1);
-    vignetteEnabled = getOptionInt("vignette", 1);
-    cloudsMode = getOptionInt("clouds", 2);
-    cloudRenderDistance = getOptionInt("cloud_render_distance", 24);
+    fogEnabled = getOptionInt("fog");
+    vignetteEnabled = getOptionInt("vignette");
+    cloudsMode = getOptionInt("clouds");
+    cloudRenderDistance = getOptionInt("cloud_render_distance");
     fogDensity = 0.30f;
-    fogStartDistance = ((getOptionFloat("render_distance", 7) + 1) * 16) - 20;
+    fogStartDistance = ((getOptionInt("render_distance") + 1) * 16) - 20;
     fogColor = sky.fogColor;
-    minBrightness = getOptionFloat("brightness", 0.0f);
+    minBrightness = getOptionFloat("brightness");
 }
 
 void Renderer::initCrosshair() {
@@ -284,7 +284,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     sky.updateColors(timeOfDay);
     fogColor = sky.fogColor;
 
-    fogStartDistance = ((getOptionFloat("render_distance", 7) + 1) * 16) - 20;
+    fogStartDistance = ((getOptionInt("render_distance") + 1) * 16) - 20;
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glViewport(0, 0, width, height);
     glPolygonMode(GL_FRONT_AND_BACK, getWireframeEnabled() ? GL_LINE : GL_FILL);
@@ -292,9 +292,9 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     // Check if mipmap options changed
-    int currentMipmapOption = getOptionInt("use_mipmaps", 1);
-    int currentMipmapLevels = getOptionInt("mipmap_levels", 4);
-    float currentLodBias = getOptionFloat("lod_bias", -0.2f);
+    int currentMipmapOption = getOptionInt("use_mipmaps");
+    int currentMipmapLevels = getOptionInt("mipmap_levels");
+    float currentLodBias = getOptionFloat("lod_bias");
     if (currentMipmapOption != lastMipmapOption || currentMipmapLevels != lastMipmapLevels || currentLodBias != lastLodBias) {
         lastMipmapOption = currentMipmapOption;
         lastMipmapLevels = currentMipmapLevels;
@@ -302,11 +302,11 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
         reloadTextureAtlases();
     }
     
-    int renderDist = getOptionInt("render_distance", 7) + 1; // +1 to account for invisible "mesh helper" chunk
+    int renderDist = getOptionInt("render_distance") + 1; // +1 to account for invisible "mesh helper" chunk
     world.updateChunksAroundPlayer(camera.getPositionDouble(), renderDist);
 
     GLFWwindow* window = getCurrentGLFWwindow();
-    float baseFov = getOptionFloat("fov", 70.0f);
+    float baseFov = getOptionFloat("fov");
     
     bool sprintState = window && getSpeedMultiplier(window) > 2.0f;
     float sprintFov = baseFov + 10.0f;
@@ -712,14 +712,14 @@ void Renderer::loadTextureAtlas(const std::string& path) {
         }
     }
 
-    int maxMipLevel = getOptionInt("mipmap_levels", 4);
-    float lodBias = getOptionFloat("lod_bias", -0.2f);
+    int maxMipLevel = getOptionInt("mipmap_levels");
+    float lodBias = getOptionFloat("lod_bias");
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, maxMipLevel);
     glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_LOD_BIAS, lodBias);
     
     glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
-    int mipmapOption = getOptionInt("use_mipmaps", 1);
+    int mipmapOption = getOptionInt("use_mipmaps");
     if (mipmapOption) {
         if (mipmapOption == 1) {
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST); // Nearest

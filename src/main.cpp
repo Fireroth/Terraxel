@@ -38,15 +38,15 @@ int main() {
     loadOptionsFromFile("config/options.txt");
     loadControlsFromFile("config/controls.txt");
 
-    int windowWidth = getOptionInt("window_width", 1280);
-    int windowHeight = getOptionInt("window_height", 720);
+    int windowWidth = getOptionInt("window_width");
+    int windowHeight = getOptionInt("window_height");
     float aspectRatio = static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
     #ifdef _WIN32
         HWND hwnd = GetConsoleWindow();
-        ShowWindow(hwnd, getOptionInt("hide_console", 1) ? SW_HIDE : SW_SHOW);
+        ShowWindow(hwnd, getOptionInt("hide_console") ? SW_HIDE : SW_SHOW);
         timeBeginPeriod(1);
     #endif
 
@@ -80,7 +80,7 @@ int main() {
     glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     cursorCaptured = false;
 
-    glfwSwapInterval(getOptionInt("vsync", 1));
+    glfwSwapInterval(getOptionInt("vsync"));
     
     renderer.init();
     ImGuiOverlay.init(glfwWindow, renderer.textureAtlas2D, renderer.uiAtlas);
@@ -107,7 +107,7 @@ int main() {
         window.pollEvents();
 
         // Frame rate limiting
-        int currentMaxFPS = getOptionInt("max_fps", 60);
+        int currentMaxFPS = getOptionInt("max_fps");
         if (currentMaxFPS > 0) {
             double targetFrameTime = 1.0 / static_cast<double>(currentMaxFPS);
             double frameEnd = currentFrame + targetFrameTime;

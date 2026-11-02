@@ -118,7 +118,7 @@ void BlockDB::init() {
     }
     }
 
-    bool fasterModels = (getOptionInt("faster_models", 0) != 0);
+    bool fasterModels = (getOptionInt("faster_models") != 0);
     std::string preferred = fasterModels ? "fast" : "slow";
     std::string fallback  = fasterModels ? "slow" : "fast";
 

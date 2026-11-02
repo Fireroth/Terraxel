@@ -412,7 +412,7 @@ void World::updateChunksAroundPlayer(const glm::dvec3& playerPos, int radius, bo
         }
     }
 
-    int chunksToLoadPerFrame = getOptionInt("chunks_to_load_per_frame", 5);
+    int chunksToLoadPerFrame = getOptionInt("chunks_to_load_per_frame");
     for (int i = 0; i < chunksToLoadPerFrame && !chunkLoadQueue.empty(); i++) {
         auto pos = chunkLoadQueue.front();
         chunkLoadQueue.pop_front();
@@ -638,7 +638,7 @@ void World::renderCross(const Camera& camera, GLint uModelLoc, const Frustum& fr
 }
 
 void World::renderTranslucent(const Camera& camera, GLint uModelLoc, const Frustum& frustum) {
-    int chunksToSortPerFrame = getOptionInt("chunks_to_sort_per_frame", 3);
+    int chunksToSortPerFrame = getOptionInt("chunks_to_sort_per_frame");
     glm::dvec3 camPos = camera.getPositionDouble();
 
     std::vector<std::pair<float, Chunk*>> visible;

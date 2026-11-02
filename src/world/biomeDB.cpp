@@ -383,32 +383,54 @@ void BiomeDB::init() {
                 }
 
                 // Parse features
-                if (j.contains("features") && j["features"].is_array()) {
-                    for (auto& featureJson : j["features"]) {
-                        BiomeFeature feature;
-                        feature.type = featureJson.value("type", std::string("block"));
-                        feature.structure = featureJson.value("structure", std::string(""));
-                        feature.block = featureJson.value("block", 0);
-                        feature.threshold = featureJson.value("threshold", 0.99f);
-                        if (featureJson.contains("xOffset")) {
-                            feature.xOffset = featureJson["xOffset"].get<int>();
+                auto parseFeatureJson = [](const nlohmann::json& featureJson, const std::string& defaultType, int calculatedSeedOffset) {
+                    BiomeFeature feature;
+                    feature.type = featureJson.value("type", defaultType);
+                    feature.structure = featureJson.value("structure", std::string(""));
+                    feature.block = featureJson.value("block", 0);
+                    feature.threshold = featureJson.value("threshold", 0.99f);
+                    if (featureJson.contains("xOffset")) {
+                        feature.xOffset = featureJson["xOffset"].get<int>();
+                    }
+                    if (featureJson.contains("zOffset")) {
+                        feature.zOffset = featureJson["zOffset"].get<int>();
+                    }
+                    if (featureJson.contains("yOffset")) {
+                        feature.yOffset = featureJson["yOffset"].get<int>();
+                    }
+                    feature.allowedBlock = featureJson.value("allowedBlock", 1);
+                    feature.seedOffset = featureJson.value("seedOffset", calculatedSeedOffset);
+                    feature.minCount = featureJson.value("minCount", 1);
+                    feature.maxCount = featureJson.value("maxCount", 8);
+                    feature.yMin = featureJson.value("yMin", 0);
+                    feature.yMax = featureJson.value("yMax", 256);
+                    feature.spread = featureJson.value("spread", 1.0f);
+                    return feature;
+                };
+
+                if (j.contains("features")) {
+                    int nextSeedOffset = 0;
+                    if (j["features"].is_object()) {
+                        const auto& featuresObj = j["features"];
+                        static const std::vector<std::pair<std::string, std::string>> sections = { {"structures", "structure"}, {"blocks", "block"}, {"ores", "ore"} };
+
+                        for (const auto& [sectionKey, featureType] : sections) {
+                            if (featuresObj.contains(sectionKey) && featuresObj[sectionKey].is_array()) {
+                                for (const auto& featureJson : featuresObj[sectionKey]) {
+                                    BiomeFeature feature = parseFeatureJson(featureJson, featureType, nextSeedOffset++);
+                                    biome.features.push_back(feature);
+                                    LOG_TRACE("BiomeDB: biome '", biome.id, "' parsed feature: type=", feature.type,
+                                              feature.type == "structure" ? ", structure=" + feature.structure : ", block=" + std::to_string(feature.block));
+                                }
+                            }
                         }
-                        if (featureJson.contains("zOffset")) {
-                            feature.zOffset = featureJson["zOffset"].get<int>();
+                    } else if (j["features"].is_array()) {
+                        for (auto& featureJson : j["features"]) {
+                            BiomeFeature feature = parseFeatureJson(featureJson, "block", nextSeedOffset++);
+                            biome.features.push_back(feature);
+                            LOG_TRACE("BiomeDB: biome '", biome.id, "' parsed feature: type=", feature.type,
+                                      feature.type == "structure" ? ", structure=" + feature.structure : ", block=" + std::to_string(feature.block));
                         }
-                        if (featureJson.contains("yOffset")) {
-                            feature.yOffset = featureJson["yOffset"].get<int>();
-                        }
-                        feature.allowedBlock = featureJson.value("allowedBlock", 1);
-                        feature.seedOffset = featureJson.value("seedOffset", 0);
-                        feature.minCount = featureJson.value("minCount", 1);
-                        feature.maxCount = featureJson.value("maxCount", 8);
-                        feature.yMin = featureJson.value("yMin", 0);
-                        feature.yMax = featureJson.value("yMax", 256);
-                        feature.spread = featureJson.value("spread", 1.0f);
-                        biome.features.push_back(feature);
-                        LOG_TRACE("BiomeDB: biome '", biome.id, "' parsed feature: type=", feature.type,
-                                  feature.type == "structure" ? ", structure=" + feature.structure : ", block=" + std::to_string(feature.block));
                     }
                     LOG_DEBUG("BiomeDB: biome '", biome.id, "' parsed ", biome.features.size(), " features");
                 }

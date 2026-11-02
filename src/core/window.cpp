@@ -44,7 +44,7 @@ void Window::init() {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     GLFWmonitor* monitor = nullptr;
-    if (getOptionInt("fullscreen", 0) == 1) {
+    if (getOptionInt("fullscreen") == 1) {
         monitor = glfwGetPrimaryMonitor();
         if (monitor) {
             const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -150,5 +150,5 @@ void Window::toggleFullscreen() {
     }
 
     // Restore VSync setting
-    glfwSwapInterval(getOptionInt("vsync", 1));
+    glfwSwapInterval(getOptionInt("vsync"));
 }

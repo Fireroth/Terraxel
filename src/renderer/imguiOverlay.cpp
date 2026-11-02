@@ -656,28 +656,28 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             layout.useCustomX = true;
             layout.customXOffset = leftColumnX;
 
-            int renderDistance = getOptionInt("render_distance", 7);
+            int renderDistance = getOptionInt("render_distance");
             if (drawMenuSliderInt(layout, "Render Distance", "##RenderDistance", &renderDistance, 1, 64)) {
                 setOption("render_distance", static_cast<float>(renderDistance));
                 world->updateChunksAroundPlayer(camera.getPosition(), renderDistance + 1, true);
             }
 
-            int chunks_to_load_per_frame = getOptionInt("chunks_to_load_per_frame", 1);
+            int chunks_to_load_per_frame = getOptionInt("chunks_to_load_per_frame");
             if (drawMenuSliderInt(layout, "Chunks to Load per Frame", "##ChunksToLoadPerFrame", &chunks_to_load_per_frame, 1, 16)) {
                 setOption("chunks_to_load_per_frame", static_cast<float>(chunks_to_load_per_frame));
             }
 
-            int chunks_to_sort_per_frame = getOptionInt("chunks_to_sort_per_frame", 3);
+            int chunks_to_sort_per_frame = getOptionInt("chunks_to_sort_per_frame");
             if (drawMenuSliderInt(layout, "Chunks to Sort per Frame", "##ChunksToSortPerFrame", &chunks_to_sort_per_frame, 1, 16)) {
                 setOption("chunks_to_sort_per_frame", static_cast<float>(chunks_to_sort_per_frame));
             }
 
-            float fov = getOptionFloat("fov", 70.0f);
+            float fov = getOptionFloat("fov");
             if (drawMenuSliderFloat(layout, "Field of View", "##FOV", &fov, 10.0f, 110.0f)) {
                 setOption("fov", static_cast<float>(fov));
             }
 
-            int maxFps = getOptionInt("max_fps", 60);
+            int maxFps = getOptionInt("max_fps");
             int sliderVal = (maxFps == 0) ? 250 : maxFps;
             const char* fpsFormat = (sliderVal >= 250) ? "Unlimited" : "%d";
             if (drawMenuSliderInt(layout, "Max FPS", "##MaxFPS", &sliderVal, 10, 250, 300.0f, fpsFormat)) {
@@ -691,7 +691,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 world->reset();
             }
 
-            bool fasterModelsEnabled = getOptionInt("faster_models", 0) != 0;
+            bool fasterModelsEnabled = getOptionInt("faster_models") != 0;
             if (drawMenuToggle(layout, "Faster Models", &fasterModelsEnabled, ImVec2(300, buttonSize.y))) {
                 setOption("faster_models", static_cast<float>(fasterModelsEnabled ? 1 : 0));
                 world->reset();
@@ -715,14 +715,14 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             layout.y = columnsStartY;
             layout.customXOffset = rightColumnX;
 
-            float brightnessPercent = getOptionFloat("brightness", 0.0f) * 400.0f;
+            float brightnessPercent = getOptionFloat("brightness") * 400.0f;
             if (drawMenuSliderFloat(layout, "Brightness", "##Brightness", &brightnessPercent, 0.0f, 100.0f, 300.0f, "%.0f%%")) {
                 float val = brightnessPercent / 400.0f;
                 setOption("brightness", val);
                 renderer->minBrightness = val;
             }
 
-            int use_mipmaps = getOptionInt("use_mipmaps", 1);
+            int use_mipmaps = getOptionInt("use_mipmaps");
             static const char* mipmapLabels[] = { "Off", "Nearest", "Bilinear", "Trilinear" };
             if (drawMenuSliderInt(layout, "Mipmaps", "##UseMipmaps", &use_mipmaps, 0, 3, 300.0f, "%d", mipmapLabels)) {
                 setOption("use_mipmaps", static_cast<float>(use_mipmaps));
@@ -739,12 +739,12 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 ImGui::EndTooltip();
             }
 
-            int mipmap_levels = getOptionInt("mipmap_levels", 4);
+            int mipmap_levels = getOptionInt("mipmap_levels");
             if (drawMenuSliderInt(layout, "Mipmap Levels", "##MipmapLevels", &mipmap_levels, 1, 4)) {
                 setOption("mipmap_levels", static_cast<float>(mipmap_levels));
             }
 
-            float lod_bias = getOptionFloat("lod_bias", -0.2f);
+            float lod_bias = getOptionFloat("lod_bias");
             if (drawMenuSliderFloat(layout, "LOD Bias", "##LODBias", &lod_bias, -1.0f, 1.0f)) {
                 setOption("lod_bias", static_cast<float>(lod_bias));
             }
@@ -757,7 +757,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 setOption("vignette", static_cast<float>(renderer->vignetteEnabled ? 1 : 0));
             }
 
-            bool vsyncEnabled = getOptionInt("vsync", 1) != 0;
+            bool vsyncEnabled = getOptionInt("vsync") != 0;
             if (drawMenuToggle(layout, "VSync", &vsyncEnabled, ImVec2(300, buttonSize.y))) {
                 setOption("vsync", static_cast<float>(vsyncEnabled ? 1 : 0));
                 glfwSwapInterval(vsyncEnabled ? 1 : 0);
@@ -771,7 +771,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
                 }
             }
 
-            bool aoEnabled = getOptionInt("ambient_occlusion", 1) != 0;
+            bool aoEnabled = getOptionInt("ambient_occlusion") != 0;
             if (drawMenuToggle(layout, "Ambient Occlusion", &aoEnabled, ImVec2(300, buttonSize.y))) {
                 setOption("ambient_occlusion", static_cast<float>(aoEnabled ? 1 : 0));
                 world->reset();
@@ -895,7 +895,7 @@ void ImGuiOverlay::renderPauseMenu(Camera& camera, World* world, Renderer* rende
             ImGui::EndChild();
             layout.advance(controlsHeight);
 
-            int mouseSensitivity = getOptionInt("mouse_sensitivity", 10);
+            int mouseSensitivity = getOptionInt("mouse_sensitivity");
             if (drawMenuSliderInt(layout, "Mouse Sensitivity", "##MouseSensitivity", &mouseSensitivity, 1, 100)) {
                 setOption("mouse_sensitivity", static_cast<float>(mouseSensitivity));
             }
@@ -962,7 +962,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, Renderer* ren
     Chunk* eyeChunk = world->getChunk(eyeChunkX, eyeChunkZ);
     uint8_t eyeSkyLight = 0;
     uint8_t eyeBlockLight = 0;
-    if (getOptionInt("enable_lighting", 1) == 0) {
+    if (getOptionInt("enable_lighting") == 0) {
         eyeSkyLight = 15;
         eyeBlockLight = 0;
     } else if (eyeChunk) {
@@ -1075,7 +1075,7 @@ void ImGuiOverlay::renderInventory() {
 
     if (ImGui::BeginTabBar("InventoryTabs")) {
         for (const auto& tabName : tabOrder) {
-            if (tabName == "Internal" && !getOptionInt("show_internal_tab", 0)) {
+            if (tabName == "Internal" && !getOptionInt("show_internal_tab")) {
                 continue;
             }
             auto& indices = tabMap[tabName];

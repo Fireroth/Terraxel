@@ -39,8 +39,8 @@ void Camera::processKeyboard(const char *direction, float deltaTime, float speed
 }
 
 void Camera::processMouseMovement(float xOffset, float yOffset) {
-    xOffset *= getOptionInt("mouse_sensitivity", 10) / 100.0f;
-    yOffset *= getOptionInt("mouse_sensitivity", 10) / 100.0f;
+    xOffset *= getOptionInt("mouse_sensitivity") / 100.0f;
+    yOffset *= getOptionInt("mouse_sensitivity") / 100.0f;
 
     yaw += xOffset;
     pitch += yOffset;

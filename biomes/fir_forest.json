@@ -45,7 +45,10 @@
             "block": 23,
             "depth": 1,
             "overrides": [
-                { "maxY": 62, "block": 4 }
+                {
+                    "maxY": 62,
+                    "block": 4
+                }
             ]
         },
         {
@@ -63,160 +66,134 @@
             "position": "fill"
         }
     ],
-    "features": [
-        {
-            "type": "structure",
-            "structure": "firTree",
-            "threshold": 0.985,
-            "allowedBlock": 23,
-            "seedOffset": 0,
-            "yOffset": 0
-        },
-        {
-            "type": "structure",
-            "structure": "smallFirTree",
-            "threshold": 0.99,
-            "allowedBlock": 23,
-            "seedOffset": 1,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 24,
-            "threshold": 0.80,
-            "allowedBlock": 23,
-            "seedOffset": 2,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 26,
-            "threshold": 0.88,
-            "allowedBlock": 23,
-            "seedOffset": 3,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 25,
-            "threshold": 0.93,
-            "allowedBlock": 23,
-            "seedOffset": 4,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 56,
-            "threshold": 0.98,
-            "allowedBlock": 9,
-            "seedOffset": 5,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 60,
-            "threshold": 0.98,
-            "allowedBlock": 23,
-            "seedOffset": 6,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 61,
-            "threshold": 0.98,
-            "allowedBlock": 23,
-            "seedOffset": 7,
-            "yOffset": 0
-        },
-        {
-            "type": "block",
-            "block": 163,
-            "threshold": 0.975,
-            "allowedBlock": 23,
-            "seedOffset": 8,
-            "yOffset": 0
-        },
-        {
-            "type": "structure",
-            "structure": "rock",
-            "threshold": 0.998,
-            "xOffset": 2,
-            "zOffset": 2,
-            "allowedBlock": 23,
-            "seedOffset": 9,
-            "yOffset": -1
-        },
-        {
-            "type": "ore",
-            "block": 138,
-            "threshold": 0.9,
-            "allowedBlock": 3,
-            "seedOffset": 10,
-            "minCount": 4,
-            "maxCount": 16,
-            "yMin": 5,
-            "yMax": 80,
-            "spread": 0.3
-        },
-        {
-            "type": "ore",
-            "block": 139,
-            "threshold": 0.92,
-            "allowedBlock": 3,
-            "seedOffset": 11,
-            "minCount": 2,
-            "maxCount": 8,
-            "yMin": 10,
-            "yMax": 50,
-            "spread": 0.6
-        },
-        {
-            "type": "ore",
-            "block": 140,
-            "threshold": 0.96,
-            "allowedBlock": 3,
-            "seedOffset": 12,
-            "minCount": 2,
-            "maxCount": 8,
-            "yMin": 2,
-            "yMax": 40,
-            "spread": 1.0
-        },
-        {
-            "type": "ore",
-            "block": 141,
-            "threshold": 0.97,
-            "allowedBlock": 3,
-            "seedOffset": 13,
-            "minCount": 2,
-            "maxCount": 6,
-            "yMin": 2,
-            "yMax": 30,
-            "spread": 1.0
-        },
-        {
-            "type": "ore",
-            "block": 142,
-            "threshold": 0.96,
-            "allowedBlock": 3,
-            "seedOffset": 14,
-            "minCount": 35,
-            "maxCount": 70,
-            "yMin": 7,
-            "yMax": 90,
-            "spread": 0.2
-        },
-        {
-            "type": "ore",
-            "block": 143,
-            "threshold": 0.96,
-            "allowedBlock": 3,
-            "seedOffset": 15,
-            "minCount": 35,
-            "maxCount": 70,
-            "yMin": 7,
-            "yMax": 90,
-            "spread": 0.2
-        }
-    ]
+    "features": {
+        "structures": [
+            {
+                "structure": "firTree",
+                "threshold": 0.985,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "structure": "smallFirTree",
+                "threshold": 0.99,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "structure": "rock",
+                "threshold": 0.998,
+                "xOffset": 2,
+                "zOffset": 2,
+                "allowedBlock": 23,
+                "yOffset": -1
+            }
+        ],
+        "blocks": [
+            {
+                "block": 24,
+                "threshold": 0.8,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "block": 26,
+                "threshold": 0.88,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "block": 25,
+                "threshold": 0.93,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "block": 56,
+                "threshold": 0.98,
+                "allowedBlock": 9,
+                "yOffset": 0
+            },
+            {
+                "block": 60,
+                "threshold": 0.98,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "block": 61,
+                "threshold": 0.98,
+                "allowedBlock": 23,
+                "yOffset": 0
+            },
+            {
+                "block": 163,
+                "threshold": 0.975,
+                "allowedBlock": 23,
+                "yOffset": 0
+            }
+        ],
+        "ores": [
+            {
+                "block": 138,
+                "threshold": 0.9,
+                "allowedBlock": 3,
+                "minCount": 4,
+                "maxCount": 16,
+                "yMin": 5,
+                "yMax": 80,
+                "spread": 0.3
+            },
+            {
+                "block": 139,
+                "threshold": 0.92,
+                "allowedBlock": 3,
+                "minCount": 2,
+                "maxCount": 8,
+                "yMin": 10,
+                "yMax": 50,
+                "spread": 0.6
+            },
+            {
+                "block": 140,
+                "threshold": 0.96,
+                "allowedBlock": 3,
+                "minCount": 2,
+                "maxCount": 8,
+                "yMin": 2,
+                "yMax": 40,
+                "spread": 1.0
+            },
+            {
+                "block": 141,
+                "threshold": 0.97,
+                "allowedBlock": 3,
+                "minCount": 2,
+                "maxCount": 6,
+                "yMin": 2,
+                "yMax": 30,
+                "spread": 1.0
+            },
+            {
+                "block": 142,
+                "threshold": 0.96,
+                "allowedBlock": 3,
+                "minCount": 35,
+                "maxCount": 70,
+                "yMin": 7,
+                "yMax": 90,
+                "spread": 0.2
+            },
+            {
+                "block": 143,
+                "threshold": 0.96,
+                "allowedBlock": 3,
+                "minCount": 35,
+                "maxCount": 70,
+                "yMin": 7,
+                "yMax": 90,
+                "spread": 0.2
+            }
+        ]
+    }
 }

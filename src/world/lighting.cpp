@@ -324,7 +324,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> calculateFullLighting(World* world, Chunk* chunkData) {
-        if (getOptionInt("enable_lighting", 1) == 0) {
+        if (getOptionInt("enable_lighting") == 0) {
             chunkData->isLightCalculated.store(true, std::memory_order_release);
             return {};
         }
@@ -547,7 +547,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> addSkyLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
-        if (getOptionInt("enable_lighting", 1) == 0) return {};
+        if (getOptionInt("enable_lighting") == 0) return {};
         SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
@@ -622,7 +622,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> removeSkyLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
-        if (getOptionInt("enable_lighting", 1) == 0) return {};
+        if (getOptionInt("enable_lighting") == 0) return {};
         SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
@@ -657,7 +657,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> addLightEmitter(World* world, Chunk* chunkData, int x, int y, int z, int lightLevel) {
-        if (getOptionInt("enable_lighting", 1) == 0) return {};
+        if (getOptionInt("enable_lighting") == 0) return {};
         SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
@@ -672,7 +672,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> removeLightEmitter(World* world, Chunk* chunkData, int x, int y, int z) {
-        if (getOptionInt("enable_lighting", 1) == 0) return {};
+        if (getOptionInt("enable_lighting") == 0) return {};
         SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         std::set<Chunk*> chunksToRemesh;
         NeighborCache neighbors(world);
@@ -758,7 +758,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> addLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
-        if (getOptionInt("enable_lighting", 1) == 0) return {};
+        if (getOptionInt("enable_lighting") == 0) return {};
         SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         int lightLevel = chunkData->getBlockLight(x, y, z);
         if (lightLevel > 0) {
@@ -768,7 +768,7 @@ namespace VoxelLighting {
     }
 
     std::set<Chunk*> removeLightBlocker(World* world, Chunk* chunkData, int x, int y, int z) {
-        if (getOptionInt("enable_lighting", 1) == 0) return {};
+        if (getOptionInt("enable_lighting") == 0) return {};
         SpatialLockGuard lock(chunkData->chunkX, chunkData->chunkZ);
         static const int dx[6] = {-1,  1,  0,  0,  0,  0};
         static const int dy[6] = { 0,  0, -1,  1,  0,  0};

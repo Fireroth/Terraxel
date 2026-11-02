@@ -351,7 +351,7 @@ void Chunk::computeMesh() {
         }
     }
 
-    if (getOptionInt("enable_lighting", 1) != 0 && !isLightCalculated.load(std::memory_order_acquire)) {
+    if (getOptionInt("enable_lighting") != 0 && !isLightCalculated.load(std::memory_order_acquire)) {
         return;
     }
 
@@ -366,9 +366,9 @@ void Chunk::computeMesh() {
         }
     }
 
-    bool fasterModels = (getOptionInt("faster_models", 0) != 0);
-    bool useAO = (getOptionInt("ambient_occlusion", 1) != 0);
-    bool useLighting = (getOptionInt("enable_lighting", 1) != 0);
+    bool fasterModels = (getOptionInt("faster_models") != 0);
+    bool useAO = (getOptionInt("ambient_occlusion") != 0);
+    bool useLighting = (getOptionInt("enable_lighting") != 0);
 
     ChunkMeshData data;
     unsigned int indexOffset = 0;

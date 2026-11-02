@@ -328,7 +328,7 @@ BlockInfo getLookedAtBlockInfo(World* world, const Camera& camera) {
     );
     info.type = hit.hitChunk->blocks[hit.hitBlockPos.x][hit.hitBlockPos.y][hit.hitBlockPos.z].type;
 
-    if (getOptionInt("enable_lighting", 1) == 0) {
+    if (getOptionInt("enable_lighting") == 0) {
         info.skyLight = 15;
         info.blockLight = 0;
         return info;
