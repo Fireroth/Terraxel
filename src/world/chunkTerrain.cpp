@@ -41,7 +41,7 @@ void generateCaves(Chunk& chunk) {
     for (int cx = chunkX - SEARCH_RADIUS; cx <= chunkX + SEARCH_RADIUS; ++cx) {
         for (int cz = chunkZ - SEARCH_RADIUS; cz <= chunkZ + SEARCH_RADIUS; ++cz) {
             const uint64_t chunkSeed = static_cast<uint64_t>(cx) * 341873128712ULL + static_cast<uint64_t>(cz) * 132897987541ULL + static_cast<uint64_t>(worldSeed);
-            std::mt19937 rng(chunkSeed);
+            std::mt19937 rng(static_cast<uint32_t>(chunkSeed));
 
             if (spawnDist(rng) >= CAVE_SPAWN_PROBABILITY)
                 continue;
@@ -464,7 +464,7 @@ void generateChunkBiomeOres(Chunk& chunk, float threshold, int blockID, int allo
             float n = seededHash(worldX, worldZ, seedOffset);
             if (n > threshold) {
                 uint64_t veinSeed = static_cast<uint64_t>(worldX) * 341873128712ULL + static_cast<uint64_t>(worldZ) * 132897987541ULL + static_cast<uint64_t>(seedOffset) + static_cast<uint64_t>(SaveManager::getActiveSeed());
-                std::mt19937 rng(veinSeed);
+                std::mt19937 rng(static_cast<uint32_t>(veinSeed));
 
                 std::uniform_int_distribution<int> yDist(yMin, yMax);
                 int startY = yDist(rng);

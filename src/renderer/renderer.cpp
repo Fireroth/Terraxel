@@ -164,7 +164,7 @@ void Renderer::init() {
     cloudsMode = getOptionInt("clouds");
     cloudRenderDistance = getOptionInt("cloud_render_distance");
     fogDensity = 0.30f;
-    fogStartDistance = ((getOptionInt("render_distance") + 1) * 16) - 20;
+    fogStartDistance = ((getOptionFloat("render_distance") + 1) * 16) - 20;
     fogColor = sky.fogColor;
     minBrightness = getOptionFloat("brightness");
 }
@@ -284,7 +284,7 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
     sky.updateColors(timeOfDay);
     fogColor = sky.fogColor;
 
-    fogStartDistance = ((getOptionInt("render_distance") + 1) * 16) - 20;
+    fogStartDistance = ((getOptionFloat("render_distance") + 1) * 16) - 20;
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glViewport(0, 0, width, height);
     glPolygonMode(GL_FRONT_AND_BACK, getWireframeEnabled() ? GL_LINE : GL_FILL);

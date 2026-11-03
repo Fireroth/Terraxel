@@ -1211,7 +1211,7 @@ void ImGuiOverlay::renderHotbar() {
     ImGui::SetNextWindowSize(ImVec2(winWidth, winHeight), ImGuiCond_Always);
 
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.07f, 0.09f, 0.40f));
-    ImGui::PushStyleColor(ImGuiCol_Border, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(winPadX, winPadY));
