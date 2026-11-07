@@ -9,6 +9,7 @@
 #include "saveManager.hpp"
 #include "logger.hpp"
 #include "../world/biomeDB.hpp"
+#include "../world/worldPresetsDB.hpp"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -71,6 +72,7 @@ std::vector<WorldInfo> SaveManager::listWorlds() {
             info.seed = j.value("seed", 0);
             info.createdAt = j.value("createdAt", "");
             info.savePath = entry.path().string();
+            info.preset = j.value("preset", "classic");
 
             worlds.push_back(info);
         } catch (std::exception& e) {
@@ -87,13 +89,14 @@ std::vector<WorldInfo> SaveManager::listWorlds() {
     return worlds;
 }
 
-WorldInfo SaveManager::createWorld(const std::string& name, int seed) {
+WorldInfo SaveManager::createWorld(const std::string& name, int seed, const std::string& preset) {
     WorldInfo info;
     info.uuid = generateUUID();
     info.name = name;
     info.seed = seed;
     info.createdAt = getCurrentTimestamp();
     info.savePath = SAVES_DIR + "/" + info.uuid;
+    info.preset = preset.empty() ? "classic" : preset;
 
     fs::create_directories(info.savePath);
     fs::create_directories(info.savePath + "/chunks");
@@ -103,10 +106,11 @@ WorldInfo SaveManager::createWorld(const std::string& name, int seed) {
     j["name"] = info.name;
     j["seed"] = info.seed;
     j["createdAt"] = info.createdAt;
+    j["preset"] = info.preset;
 
     std::ofstream file(info.savePath + "/world.json");
     file << j.dump(4);
-    LOG_INFO("SaveManager: Created world '", info.name, "' with UUID ", info.uuid, " at ", info.createdAt);
+    LOG_INFO("SaveManager: Created world '", info.name, "' (preset: ", info.preset, ") with UUID ", info.uuid, " at ", info.createdAt);
 
     return info;
 }
@@ -148,6 +152,7 @@ void SaveManager::setActiveWorld(const WorldInfo& world) {
     activeWorld = world;
     hasActiveWorld = true;
     BiomeDB::setWorldSeed(world.seed);
+    WorldPresetsDB::setActivePreset(world.preset);
 }
 
 int SaveManager::getActiveSeed() {
@@ -162,6 +167,7 @@ const WorldInfo* SaveManager::getActiveWorld() {
 
 void SaveManager::clearActiveWorld() {
     hasActiveWorld = false;
+    WorldPresetsDB::clearActivePreset();
 }
 
 bool SaveManager::savePlayerState(const glm::dvec3& position, float yaw, float pitch, const std::array<uint16_t, 9>& hotbar, bool flyEnabled, bool isSneaking, float timeOfDay, bool dayCycleEnabled) {

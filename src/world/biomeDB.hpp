@@ -125,7 +125,6 @@ struct BiomeData {
     std::vector<BiomeLayer> layers;
     std::vector<BiomeFeature> features;
     int waterBlock = 9;
-    int waterLevel = 37;
 
     float evaluateTerrainNoise(double worldX, double worldZ) const;
     float applyModifiers(float height) const;
@@ -137,6 +136,7 @@ public:
     static const BiomeData* getBiome(int index);
     static int getBiomeCount();
     static const BiomeData* getBiomeByName(const std::string& id);
+    static int getBiomeIndexByID(const std::string& id);
     static void setWorldSeed(int seed);
 
 private:

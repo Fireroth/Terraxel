@@ -1,0 +1,21 @@
+{
+    "name": "Emptiness",
+    "id": "emptiness",
+    "waterBlock": 0,
+    "terrain": {
+        "baseHeight": 0.0,
+        "noises": [],
+        "modifiers": []
+    },
+    "layers": [
+        {
+            "block": 0,
+            "position": "fill"
+        }
+    ],
+    "features": {
+        "structures": [],
+        "blocks": [],
+        "ores": []
+    }
+}

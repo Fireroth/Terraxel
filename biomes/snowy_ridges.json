@@ -2,7 +2,6 @@
     "name": "Snowy Ridges",
     "id": "snowy_ridges",
     "waterBlock": 9,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 72.0,
         "noises": [

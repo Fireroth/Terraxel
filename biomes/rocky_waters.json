@@ -2,7 +2,6 @@
     "name": "Rocky Waters",
     "id": "rocky_waters",
     "waterBlock": 9,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 20.0,
         "noises": [

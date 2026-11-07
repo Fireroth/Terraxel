@@ -64,6 +64,7 @@ file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/models/*
     ${CMAKE_SOURCE_DIR}/blocks/*
     ${CMAKE_SOURCE_DIR}/biomes/*
+    ${CMAKE_SOURCE_DIR}/worldPresets/*
     ${CMAKE_SOURCE_DIR}/sky.json
     ${CMAKE_SOURCE_DIR}/options.txt
     ${CMAKE_SOURCE_DIR}/controls.txt
@@ -92,6 +93,8 @@ add_custom_command(
             ${CMAKE_SOURCE_DIR}/blocks ${OUTPUT_DIR}/assets/blocks
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/biomes ${OUTPUT_DIR}/assets/biomes
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/worldPresets ${OUTPUT_DIR}/assets/worldPresets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_SOURCE_DIR}/sky.json" "${OUTPUT_DIR}/assets/sky.json"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

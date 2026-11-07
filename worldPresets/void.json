@@ -1,0 +1,20 @@
+{
+    "name": "Void",
+    "id": "void",
+    "waterLevel": 0,
+    "bottomLayer": {
+        "block": 0,
+        "height": 0
+    },
+    "spawnPlatform": {
+        "enabled": true,
+        "height": 60,
+        "block": 3
+    },
+    "biomes": [
+        "emptiness"
+    ],
+    "caves": {
+        "enabled": false
+    }
+}

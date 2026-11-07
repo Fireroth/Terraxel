@@ -1,0 +1,34 @@
+{
+    "name": "Classic",
+    "id": "classic",
+    "waterLevel": 63,
+    "bottomLayer": {
+        "block": 6,
+        "height": 1
+    },
+    "spawnPlatform": {
+        "enabled": false
+    },
+    "biomes": [
+        "crystal_shallows",
+        "desert",
+        "fir_forest",
+        "flower_field",
+        "forest",
+        "maple_forest",
+        "mushroom_swamp",
+        "ocean",
+        "plains",
+        "rocky_waters",
+        "snowy_ridges",
+        "tropical_beach"
+    ],
+    "caves": {
+        "enabled": true,
+        "blocksToNotCarve": [0, 6, 9, 10, 69, 164],
+        "blocksToNotCarveAround": [9, 69, 164],
+        "noCarveAroundSearchRadius": 2,
+        "spawnProbability": 0.15,
+        "lavaLevel": 8
+    }
+}

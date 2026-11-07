@@ -8,15 +8,24 @@
 #include "noise.hpp"
 #include "chunkTerrain.hpp"
 #include "biomeDB.hpp"
+#include "worldPresetsDB.hpp"
 #include "../core/saveManager.hpp"
 
 void generateCaves(Chunk& chunk) {
+    const WorldPreset* preset = WorldPresetsDB::getActivePreset();
+    const CaveParams& caveParams = preset ? preset->caves : CaveParams{};
+
+    if (!caveParams.enabled) return;
+
     constexpr float PI = 3.14159265358979f;
     constexpr int SEARCH_RADIUS = 5;
     constexpr float STEP_SIZE = 1.2f;
-    constexpr float CAVE_SPAWN_PROBABILITY = 0.15f;
-    constexpr int LAVA_LEVEL = 8;
-    constexpr int WATER_CHECK_RANGE = 2;
+    const float CAVE_SPAWN_PROBABILITY = caveParams.spawnProbability;
+    const int LAVA_LEVEL = caveParams.lavaLevel;
+    const int BLOCK_CHECK_RANGE = caveParams.noCarveAroundSearchRadius;
+
+    const auto& noCarveBlocks = caveParams.blocksToNotCarve;
+    const auto& noCarveAroundBlocks = caveParams.blocksToNotCarveAround;
 
     const int worldSeed = SaveManager::getActiveSeed();
     const int chunkX = chunk.chunkX;
@@ -101,38 +110,48 @@ void generateCaves(Chunk& chunk) {
 
                                         const uint16_t blockType = chunk.blocks[lx][wy][lz].type;
 
-                                        if (blockType == 0 || blockType == 6 || blockType == 9 || blockType == 10 || blockType == 69 || blockType == 164)
-                                            continue;
+                                        bool skipBlock = false;
+                                        for (const uint16_t noCarve : noCarveBlocks) {
+                                            if (blockType == noCarve) { skipBlock = true; break; }
+                                        }
+                                        if (skipBlock) continue;
 
-                                        bool nearWater = false;
+                                        bool nearProtected = false;
+
+                                        auto isProtectedBlock = [&noCarveAroundBlocks](uint16_t bt) -> bool {
+                                            for (const uint16_t pb : noCarveAroundBlocks) {
+                                                if (bt == pb) return true;
+                                            }
+                                            return false;
+                                        };
 
                                         // Check Y axis
                                         {
-                                            const int checkUp  = std::min(chunkHeight - 1, wy + WATER_CHECK_RANGE);
-                                            const int checkDn  = std::max(0, wy - WATER_CHECK_RANGE);
-                                            for (int cy = checkDn; cy <= checkUp && !nearWater; ++cy)
-                                                if (chunk.blocks[lx][cy][lz].type == 9 || chunk.blocks[lx][cy][lz].type == 69 || chunk.blocks[lx][cy][lz].type == 164)
-                                                    nearWater = true;
+                                            const int checkUp  = std::min(chunkHeight - 1, wy + BLOCK_CHECK_RANGE);
+                                            const int checkDn  = std::max(0, wy - BLOCK_CHECK_RANGE);
+                                            for (int cy = checkDn; cy <= checkUp && !nearProtected; ++cy)
+                                                if (isProtectedBlock(chunk.blocks[lx][cy][lz].type))
+                                                    nearProtected = true;
                                         }
 
                                         // Check X axis
-                                        if (!nearWater) {
-                                            const int checkXMin = std::max(0, lx - WATER_CHECK_RANGE);
-                                            const int checkXMax = std::min(chunkWidth-1, lx + WATER_CHECK_RANGE);
-                                            for (int cx2 = checkXMin; cx2 <= checkXMax && !nearWater; ++cx2)
-                                                if (chunk.blocks[cx2][wy][lz].type == 9 || chunk.blocks[cx2][wy][lz].type == 69 || chunk.blocks[cx2][wy][lz].type == 164)
-                                                    nearWater = true;
+                                        if (!nearProtected) {
+                                            const int checkXMin = std::max(0, lx - BLOCK_CHECK_RANGE);
+                                            const int checkXMax = std::min(chunkWidth-1, lx + BLOCK_CHECK_RANGE);
+                                            for (int cx2 = checkXMin; cx2 <= checkXMax && !nearProtected; ++cx2)
+                                                if (isProtectedBlock(chunk.blocks[cx2][wy][lz].type))
+                                                    nearProtected = true;
                                         }
 
                                         // Check Z axis
-                                        if (!nearWater) {
-                                            const int checkZMin = std::max(0, lz - WATER_CHECK_RANGE);
-                                            const int checkZMax = std::min(chunkDepth-1, lz + WATER_CHECK_RANGE);
-                                            for (int cz2 = checkZMin; cz2 <= checkZMax && !nearWater; ++cz2)
-                                                if (chunk.blocks[lx][wy][cz2].type == 9 || chunk.blocks[lx][wy][cz2].type == 69 || chunk.blocks[lx][wy][cz2].type == 164)
-                                                    nearWater = true;
+                                        if (!nearProtected) {
+                                            const int checkZMin = std::max(0, lz - BLOCK_CHECK_RANGE);
+                                            const int checkZMax = std::min(chunkDepth-1, lz + BLOCK_CHECK_RANGE);
+                                            for (int cz2 = checkZMin; cz2 <= checkZMax && !nearProtected; ++cz2)
+                                                if (isProtectedBlock(chunk.blocks[lx][wy][cz2].type))
+                                                    nearProtected = true;
                                         }
-                                        if (nearWater) continue;
+                                        if (nearProtected) continue;
 
                                         chunk.blocks[lx][wy][lz].type = (wy < LAVA_LEVEL) ? 10 : 0;
                                     }
@@ -179,12 +198,12 @@ void generateChunkTerrain(Chunk& chunk) {
     const int chunkWidth = Chunk::chunkWidth;
     const int chunkHeight = Chunk::chunkHeight;
     const int chunkDepth = Chunk::chunkDepth;
+    const int bottomLayerHeight = WorldPresetsDB::getBottomLayerHeight();
+    const uint16_t bottomLayerBlock = WorldPresetsDB::getBottomLayerBlock();
     auto& noises = chunk.noises;
     int chunkX = chunk.chunkX;
     int chunkZ = chunk.chunkZ;
     
-    int biomeCount = BiomeDB::getBiomeCount();
-
     // Get the "main" biome for this chunk for feature generation
     double chunkWorldX = static_cast<double>(chunkX) * static_cast<double>(chunkWidth);
     double chunkWorldZ = static_cast<double>(chunkZ) * static_cast<double>(chunkDepth);
@@ -192,7 +211,7 @@ void generateChunkTerrain(Chunk& chunk) {
         chunkWorldX + noises.biomeDistortNoise.GetNoise(chunkWorldX, chunkWorldZ) * biomeDistortStrength,
         chunkWorldZ + noises.biomeDistortNoise.GetNoise(chunkWorldX + 1000.0, chunkWorldZ + 1000.0) * biomeDistortStrength
     );
-    int mainBiomeIndex = getBiomeIndex(b, biomeCount);
+    int mainBiomeIndex = WorldPresetsDB::sampleBiomeIndex(b);
 
     // Precompute biome and height values for the blending
     std::vector<std::vector<int>> biomeCache(chunkWidth + 2 * transitionRadius, std::vector<int>(chunkDepth + 2 * transitionRadius));
@@ -207,7 +226,7 @@ void generateChunkTerrain(Chunk& chunk) {
             float distortX = noises.biomeDistortNoise.GetNoise((double)worldX, (double)worldZ) * biomeDistortStrength;
             float distortY = noises.biomeDistortNoise.GetNoise((double)worldX + 1000.0, (double)worldZ + 1000.0) * biomeDistortStrength;
             float biomeNoise = noises.biomeNoise.GetNoise((double)worldX + distortX, (double)worldZ + distortY);
-            int biomeIdx = getBiomeIndex(biomeNoise, biomeCount);
+            int biomeIdx = WorldPresetsDB::sampleBiomeIndex(biomeNoise);
             biomeCache[localOffsetX + transitionRadius][localOffsetZ + transitionRadius] = biomeIdx;
 
             const BiomeData* biomeData = BiomeDB::getBiome(biomeIdx);
@@ -287,7 +306,7 @@ void generateChunkTerrain(Chunk& chunk) {
             int height = static_cast<int>(blendedHeight);
 
             const BiomeData* finalBiome = BiomeDB::getBiome(finalBiomeIdx);
-            int waterLevel = finalBiome ? finalBiome->waterLevel : 63;
+            int waterLevel = WorldPresetsDB::getWaterLevel();
             int waterBlock = finalBiome ? finalBiome->waterBlock : 9;
             bool hasLayers = finalBiome && !finalBiome->layers.empty();
 
@@ -314,8 +333,8 @@ void generateChunkTerrain(Chunk& chunk) {
             }
 
             for (int y = 0; y < chunkHeight; y++) {
-                if (y == 0) {
-                    chunk.blocks[x][y][z].type = 6; // Bedrock
+                if (y < bottomLayerHeight) {
+                    chunk.blocks[x][y][z].type = bottomLayerBlock;
                 } else if (y > height) {
                     // Above terrain: water or air
                     chunk.blocks[x][y][z].type = (y < waterLevel) ? static_cast<uint16_t>(waterBlock) : 0;
@@ -443,7 +462,6 @@ void generateChunkBiomeOres(Chunk& chunk, float threshold, int blockID, int allo
     const int chunkWorldZ = chunk.chunkZ * chunkDepth;
 
     const float biomeDistortStrength = 8.0f;
-    const int biomeCount = BiomeDB::getBiomeCount();
     auto& noises = chunk.noises;
 
     // Search radius of 6 blocks around the current chunk
@@ -456,7 +474,7 @@ void generateChunkBiomeOres(Chunk& chunk, float threshold, int blockID, int allo
             float biomeDistortX = noises.biomeDistortNoise.GetNoise((double)worldX, (double)worldZ) * biomeDistortStrength;
             float biomeDistortY = noises.biomeDistortNoise.GetNoise((double)worldX + 1000.0, (double)worldZ + 1000.0) * biomeDistortStrength;
             float b = noises.biomeNoise.GetNoise((double)worldX + biomeDistortX, (double)worldZ + biomeDistortY);
-            int colBiomeIdx = getBiomeIndex(b, biomeCount);
+            int colBiomeIdx = WorldPresetsDB::sampleBiomeIndex(b);
 
             if (colBiomeIdx != mainBiomeIndex) 
                 continue;

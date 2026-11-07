@@ -10,6 +10,7 @@
 #include "../core/options.hpp"
 #include "../core/saveManager.hpp"
 #include "../core/logger.hpp"
+#include "worldPresetsDB.hpp"
 
 static std::deque<std::pair<int, int>> chunkLoadQueue;
 namespace fs = std::filesystem;
@@ -253,6 +254,40 @@ glm::dvec3 World::findSpawnPosition() {
     int spawnX = 0;
     int spawnZ = 0;
     int spawnY = 70; // fallback
+
+    if (WorldPresetsDB::hasSpawnPlatform()) {
+        uint16_t platformBlock = WorldPresetsDB::getSpawnPlatformBlock();
+        int platformY = WorldPresetsDB::getSpawnPlatformHeight();
+
+        if (platformY < 0) platformY = 0;
+        if (platformY >= Chunk::chunkHeight) platformY = Chunk::chunkHeight - 1;
+
+        std::set<Chunk*> modifiedChunks;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                int wx = spawnX + dx;
+                int wz = spawnZ + dz;
+                int chunkX = static_cast<int>(std::floor((float)wx / Chunk::chunkWidth));
+                int chunkZ = static_cast<int>(std::floor((float)wz / Chunk::chunkDepth));
+                Chunk* chunk = getChunk(chunkX, chunkZ);
+                if (chunk) {
+                    int lx = ((wx % Chunk::chunkWidth) + Chunk::chunkWidth) % Chunk::chunkWidth;
+                    int lz = ((wz % Chunk::chunkDepth) + Chunk::chunkDepth) % Chunk::chunkDepth;
+                    chunk->blocks[lx][platformY][lz].type = platformBlock;
+                    chunk->isModified = true;
+                    modifiedChunks.insert(chunk);
+                }
+            }
+        }
+
+        for (Chunk* c : modifiedChunks) {
+            VoxelLighting::calculateFullLighting(this, c);
+            c->buildMesh();
+        }
+
+        spawnY = platformY + 1;
+        return glm::dvec3(spawnX + 0.5, spawnY + 1.6, spawnZ + 0.5);
+    }
 
     for (int attempt = 0; attempt < 64; attempt++) {
         int chunkX = static_cast<int>(std::floor((float)spawnX / Chunk::chunkWidth));

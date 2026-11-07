@@ -11,12 +11,13 @@ struct WorldInfo {
     int seed;
     std::string createdAt;
     std::string savePath;
+    std::string preset = "classic";
 };
 
 class SaveManager {
 public:
     static std::vector<WorldInfo> listWorlds();
-    static WorldInfo createWorld(const std::string& name, int seed);
+    static WorldInfo createWorld(const std::string& name, int seed, const std::string& preset = "classic");
     static bool deleteWorld(const std::string& uuid);
     static bool renameWorld(const std::string& uuid, const std::string& newName);
 

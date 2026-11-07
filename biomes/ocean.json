@@ -2,7 +2,6 @@
     "name": "Ocean",
     "id": "ocean",
     "waterBlock": 9,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 52.0,
         "noises": [

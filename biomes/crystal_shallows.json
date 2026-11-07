@@ -2,7 +2,6 @@
     "name": "Crystal Shallows",
     "id": "crystal_shallows",
     "waterBlock": 69,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 59.0,
         "noises": [

@@ -64,6 +64,7 @@ public:
 
     char worldNameBuf[64] = "New World";
     char worldSeedBuf[32] = "";
+    int selectedPresetIndex = 0;
     std::string deleteConfirmUUID = "";
     std::string deleteConfirmName = "";
 

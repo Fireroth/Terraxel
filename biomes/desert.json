@@ -2,7 +2,6 @@
     "name": "Desert",
     "id": "desert",
     "waterBlock": 9,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 63.0,
         "noises": [

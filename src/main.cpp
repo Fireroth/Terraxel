@@ -19,6 +19,7 @@
 #include "world/modelDB.hpp"
 #include "world/biomeDB.hpp"
 #include "world/structureDB.hpp"
+#include "world/worldPresetsDB.hpp"
 #include "core/logger.hpp"
 
 GLFWwindow* g_currentGLFWwindow = nullptr;
@@ -59,6 +60,7 @@ int main() {
     BiomeDB::init();
     ModelDB::init();
     StructureDB::init();
+    WorldPresetsDB::init();
     
     Camera camera(
         glm::vec3(0.5f, 70.0f, 0.5f),  // Position

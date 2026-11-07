@@ -199,7 +199,6 @@ void BiomeDB::init() {
                 biome.name = j.value("name", "Unknown");
                 biome.id = j.value("id", "unknown");
                 biome.waterBlock = j.value("waterBlock", 9);
-                biome.waterLevel = j.value("waterLevel", 37);
 
                 // Parse terrain params
                 if (j.contains("terrain") && j["terrain"].is_object()) {
@@ -454,7 +453,6 @@ void BiomeDB::init() {
         defaultBiome.name = "Fallback Biome";
         defaultBiome.id = "default";
         defaultBiome.waterBlock = 65000;
-        defaultBiome.waterLevel = 37;
 
         defaultBiome.terrain.baseHeight = 30.0f;
 
@@ -515,4 +513,11 @@ const BiomeData* BiomeDB::getBiomeByName(const std::string& id) {
     if (it != biomeNameToIndex.end())
         return &biomes[it->second];
     return nullptr;
+}
+
+int BiomeDB::getBiomeIndexByID(const std::string& id) {
+    auto it = biomeNameToIndex.find(id);
+    if (it != biomeNameToIndex.end())
+        return it->second;
+    return -1;
 }

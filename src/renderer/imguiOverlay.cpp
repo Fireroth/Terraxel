@@ -16,6 +16,7 @@
 #include "../core/controls.hpp"
 #include "../core/window.hpp"
 #include "../core/saveManager.hpp"
+#include "../world/worldPresetsDB.hpp"
 #include "../core/logger.hpp"
 #include "../core/console.hpp"
 
@@ -942,6 +943,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, Renderer* ren
     bool grounded = camera.isGrounded();
     bool inLiquid = camera.isInLiquidCached();
     uint16_t eyeBlock = camera.getEyeBlock(world);
+    const auto* curPreset = WorldPresetsDB::getActivePreset();
 
     uint16_t selectedBlockType = getSelectedBlockType();
     glm::dvec3 velocity = camera.getVelocity();
@@ -998,6 +1000,7 @@ void ImGuiOverlay::renderDebugWindow(Camera& camera, World* world, Renderer* ren
     ImGui::Text("Delta Time: %.2f ms", deltaTime*1000);
     ImGui::Text("Chunk: %d, %d", chunkX, chunkZ);
     ImGui::Text("Chunk Biome: %s", eyeChunk && eyeChunk->biomeIndex >= 0 ? BiomeDB::getBiome(eyeChunk->biomeIndex) ? BiomeDB::getBiome(eyeChunk->biomeIndex)->name.c_str() : "Unknown" : "Unknown");
+    ImGui::Text("World Preset: %s", curPreset ? curPreset->name.c_str() : "Default");
     ImGui::Text("Message elapsed time: %.5f", g_toast.elapsed);
     ImGui::Separator();
     ImGui::Text("Camera -> Yaw: %.2f", camYaw);
@@ -1472,8 +1475,10 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
                     dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 8), IM_COL32(255, 255, 255, 230), w.name.c_str());
 
                     const float metaFontSize = std::max(12.0f, std::round(ImGui::GetFontSize() * 0.75f));
-                    char seedBuf[64];
-                    snprintf(seedBuf, sizeof(seedBuf), "Seed: %d", w.seed);
+                    char seedBuf[96];
+                    const auto* p = WorldPresetsDB::getPreset(w.preset);
+                    std::string presetName = p ? p->name : (w.preset.empty() ? "Classic" : w.preset);
+                    snprintf(seedBuf, sizeof(seedBuf), "Seed: %d | Preset: %s", w.seed, presetName.c_str());
                     dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(panelPos.x + 12, panelPos.y + 30), IM_COL32(180, 180, 190, 200), seedBuf);
 
                     char dateBuf[64];
@@ -1529,6 +1534,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
                 mainMenuPage = MainMenuPage::CreateWorld;
                 snprintf(worldNameBuf, sizeof(worldNameBuf), "New World");
                 worldSeedBuf[0] = '\0';
+                selectedPresetIndex = WorldPresetsDB::getDefaultPresetIndex();
                 deleteConfirmUUID = "";
             }
 
@@ -1542,7 +1548,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             float inputHeight = 40.0f;
             float labelHeight = 20.0f;
             float totalH = ImGui::GetTextLineHeightWithSpacing() + spacing
-                         + 2 * (labelHeight + inputHeight + spacing)
+                         + 3 * (labelHeight + inputHeight + spacing)
                          + 2 * buttonSize.y + spacing;
             MenuLayout layout(totalH, spacing);
 
@@ -1577,12 +1583,59 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             popMenuInputStyle(true);
             layout.advance(inputHeight);
 
+            // World Preset label
+            layout.center(inputWidth);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.82f, 0.9f));
+            ImGui::TextUnformatted("World Preset");
+            ImGui::PopStyleColor();
+            layout.advance(labelHeight);
+
+            // World Preset dropdown
+            layout.center(inputWidth);
+            pushMenuInputStyle(inputWidth);
+
+            const auto& presets = WorldPresetsDB::getAllPresets();
+            if (selectedPresetIndex < 0 || selectedPresetIndex >= static_cast<int>(presets.size())) {
+                selectedPresetIndex = WorldPresetsDB::getDefaultPresetIndex();
+            }
+            std::string previewName = (!presets.empty() && selectedPresetIndex >= 0 && selectedPresetIndex < static_cast<int>(presets.size())) ? presets[selectedPresetIndex].name : "Default";
+
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.08f, 0.09f, 0.12f, 0.98f));
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.40f, 0.70f, 1.00f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.20f, 0.51f, 0.83f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.06f, 0.07f, 0.09f, 1.00f));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 4.0f));
+
+            if (ImGui::BeginCombo("##WorldPreset", previewName.c_str())) {
+                for (size_t i = 0; i < presets.size(); ++i) {
+                    bool isSelected = (selectedPresetIndex == static_cast<int>(i));
+                    if (ImGui::Selectable(presets[i].name.c_str(), isSelected)) {
+                        selectedPresetIndex = static_cast<int>(i);
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopStyleVar(1);
+            ImGui::PopStyleColor(7);
+            popMenuInputStyle(true);
+            layout.advance(inputHeight);
+
             // Create & Play button
             if (drawMenuButton(layout, "Create & Play", buttonSize)) {
                 std::string name(worldNameBuf);
                 if (name.empty()) name = "New World";
                 int seed = parseSeed(worldSeedBuf);
-                WorldInfo info = SaveManager::createWorld(name, seed);
+                std::string presetId = "classic";
+                if (!presets.empty() && selectedPresetIndex >= 0 && selectedPresetIndex < static_cast<int>(presets.size())) {
+                    presetId = presets[selectedPresetIndex].id;
+                }
+                WorldInfo info = SaveManager::createWorld(name, seed, presetId);
                 enterWorld(info, world, camera, renderer);
                 mainMenuPage = MainMenuPage::WorldList;
             }

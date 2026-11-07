@@ -2,7 +2,6 @@
     "name": "Plains",
     "id": "plains",
     "waterBlock": 9,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 56.0,
         "noises": [

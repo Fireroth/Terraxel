@@ -2,7 +2,6 @@
     "name": "Fir Forest",
     "id": "fir_forest",
     "waterBlock": 9,
-    "waterLevel": 63,
     "terrain": {
         "baseHeight": 55.0,
         "noises": [

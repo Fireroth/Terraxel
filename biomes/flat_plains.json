@@ -1,0 +1,31 @@
+{
+    "name": "Flat Plains",
+    "id": "flat_plains",
+    "waterBlock": 9,
+    "terrain": {
+        "baseHeight": 10.0,
+        "noises": [],
+        "modifiers": []
+    },
+    "layers": [
+        {
+            "position": "top",
+            "block": 1,
+            "depth": 1
+        },
+        {
+            "block": 2,
+            "depth": 3,
+            "position": "below_top"
+        },
+        {
+            "block": 3,
+            "position": "fill"
+        }
+    ],
+    "features": {
+        "structures": [],
+        "blocks": [],
+        "ores": []
+    }
+}
