@@ -9,6 +9,7 @@
     "spawnPlatform": {
         "enabled": false
     },
+    "startingHotbar": [1, 2, 3, 4, 5, 14, 7, 8, 16],
     "biomes": [
         "flat_plains"
     ],

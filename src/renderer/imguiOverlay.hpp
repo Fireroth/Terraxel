@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include "../core/camera.hpp"
+#include "../core/saveManager.hpp"
 #include "blockPreviewRenderer.hpp"
 
 class Renderer;
@@ -69,6 +70,7 @@ public:
     std::string deleteConfirmName = "";
 
     std::string editingWorldUUID = "";
+    WorldInfo editingWorldInfo;
     char editingWorldNameBuf[64] = "";
 
 private:

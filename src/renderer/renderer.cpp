@@ -387,8 +387,6 @@ void Renderer::renderWorld(const Camera& camera, float aspectRatio, float deltaT
 
     // -------------------------------- Render Clouds --------------------------------
     if (cloudsMode > 0) {
-        sky.updateSeed(SaveManager::getActiveSeed());
-
         glEnable(GL_DEPTH_TEST);
         glDepthMask(GL_TRUE);
         glEnable(GL_BLEND);

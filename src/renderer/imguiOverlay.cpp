@@ -509,6 +509,9 @@ static int parseSeed(const char* seedBuf) {
 
 void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camera, Renderer* renderer) {
     SaveManager::setActiveWorld(info);
+    if (renderer) {
+        renderer->sky.updateSeed(info.seed);
+    }
     world->reset();
 
     glm::dvec3 position;
@@ -534,7 +537,7 @@ void ImGuiOverlay::enterWorld(const WorldInfo& info, World* world, Camera& camer
             renderer->dayCycleEnabled = savedDayCycleEnabled;
         }
     } else {
-        setHotbarBlocks({1, 2, 3, 4, 5, 14, 7, 8, 16});
+        setHotbarBlocks(WorldPresetsDB::getStartingHotbar());
         camera.setPosition(world->findSpawnPosition());
         setFlyMode(false);
         if (renderer) {
@@ -1474,16 +1477,11 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
 
                     dl->AddText(ImVec2(panelPos.x + 12, panelPos.y + 8), IM_COL32(255, 255, 255, 230), w.name.c_str());
 
+                    // World created date
                     const float metaFontSize = std::max(12.0f, std::round(ImGui::GetFontSize() * 0.75f));
-                    char seedBuf[96];
-                    const auto* p = WorldPresetsDB::getPreset(w.preset);
-                    std::string presetName = p ? p->name : (w.preset.empty() ? "Classic" : w.preset);
-                    snprintf(seedBuf, sizeof(seedBuf), "Seed: %d | Preset: %s", w.seed, presetName.c_str());
-                    dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(panelPos.x + 12, panelPos.y + 30), IM_COL32(180, 180, 190, 200), seedBuf);
-
                     char dateBuf[64];
                     snprintf(dateBuf, sizeof(dateBuf), "Created: %s", w.createdAt.c_str());
-                    dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(panelPos.x + 12, panelPos.y + 48), IM_COL32(140, 140, 150, 180), dateBuf);
+                    dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(panelPos.x + 12, panelPos.y + entryHeight - metaFontSize - 8.0f), IM_COL32(140, 140, 150, 180), dateBuf);
 
                     float btnW = 90.0f;
                     float btnH = 30.0f;
@@ -1501,6 +1499,7 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
                     ImGui::SetCursorScreenPos(ImVec2(btnsX + playBtnW + btnGap, btnsY));
                     if (drawStyledButton("Edit", ImVec2(btnW, btnH), MenuButtonTone::Warning)) {
                         editingWorldUUID = w.uuid;
+                        editingWorldInfo = w;
                         snprintf(editingWorldNameBuf, sizeof(editingWorldNameBuf), "%s", w.name.c_str());
                         mainMenuPage = MainMenuPage::EditWorld;
                         deleteConfirmUUID = "";
@@ -1649,13 +1648,20 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
         case MainMenuPage::EditWorld: {
             float inputHeight = 40.0f;
             float labelHeight = 20.0f;
-            float totalH = ImGui::GetTextLineHeightWithSpacing() + spacing + labelHeight + inputHeight + spacing + 2 * buttonSize.y + spacing;
+            float infoLineHeight = 18.0f;
+            float infoSpacing = 4.0f;
+            int numInfoLines = 4;
+            float infoBoxH = numInfoLines * (infoLineHeight + infoSpacing) + 12.0f;
+            float totalH = ImGui::GetTextLineHeightWithSpacing() + spacing 
+                         + labelHeight + inputHeight + spacing 
+                         + infoBoxH + spacing 
+                         + 2 * buttonSize.y + spacing;
             MenuLayout layout(totalH, spacing);
 
             drawMenuTitle(layout, "Edit World");
 
             // World name label
-            float inputWidth = 300.0f;
+            float inputWidth = 320.0f;
             layout.center(inputWidth);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78f, 0.78f, 0.82f, 0.9f));
             ImGui::TextUnformatted("World Name");
@@ -1667,7 +1673,43 @@ void ImGuiOverlay::renderMainMenu(Camera& camera, World* world, Renderer* render
             pushMenuInputStyle(inputWidth);
             ImGui::InputText("##EditWorldName", editingWorldNameBuf, sizeof(editingWorldNameBuf));
             popMenuInputStyle(true);
-            layout.advance(inputHeight);
+            layout.advance(inputHeight + spacing * 0.5f);
+
+            // World details box
+            layout.center(inputWidth);
+            ImVec2 boxPos = ImGui::GetCursorScreenPos();
+            ImVec2 boxEnd(boxPos.x + inputWidth, boxPos.y + infoBoxH);
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            dl->AddRectFilled(boxPos, boxEnd, IM_COL32(14, 16, 22, 220), 4.0f);
+            dl->AddRect(boxPos, boxEnd, IM_COL32(32, 35, 46, 255), 4.0f);
+
+            float textPadX = 10.0f;
+            float curY = boxPos.y + 8.0f;
+            const float metaFontSize = std::max(12.0f, std::round(ImGui::GetFontSize() * 0.75f));
+
+            const auto* p = WorldPresetsDB::getPreset(editingWorldInfo.preset);
+            std::string presetDisplayName = p ? p->name : (editingWorldInfo.preset.empty() ? "Classic" : editingWorldInfo.preset);
+
+            char uuidText[128];
+            snprintf(uuidText, sizeof(uuidText), "UUID: %s", editingWorldInfo.uuid.c_str());
+            dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(boxPos.x + textPadX, curY), IM_COL32(180, 180, 190, 220), uuidText);
+            curY += infoLineHeight + infoSpacing;
+
+            char dateText[128];
+            snprintf(dateText, sizeof(dateText), "Created: %s", editingWorldInfo.createdAt.c_str());
+            dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(boxPos.x + textPadX, curY), IM_COL32(180, 180, 190, 220), dateText);
+            curY += infoLineHeight + infoSpacing;
+
+            char seedText[128];
+            snprintf(seedText, sizeof(seedText), "Seed: %d", editingWorldInfo.seed);
+            dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(boxPos.x + textPadX, curY), IM_COL32(180, 180, 190, 220), seedText);
+            curY += infoLineHeight + infoSpacing;
+
+            char presetText[128];
+            snprintf(presetText, sizeof(presetText), "Preset: %s", presetDisplayName.c_str());
+            dl->AddText(ImGui::GetFont(), metaFontSize, ImVec2(boxPos.x + textPadX, curY), IM_COL32(180, 180, 190, 220), presetText);
+
+            layout.advance(infoBoxH + spacing * 0.5f);
 
             // Save button
             if (drawMenuButton(layout, "Save", buttonSize)) {

@@ -114,6 +114,23 @@ void WorldPresetsDB::init() {
                 preset.spawnPlatform.height = sp.value("height", 64);
             }
 
+            // Parse starting hotbar
+            if (j.contains("startingHotbar") && j["startingHotbar"].is_array()) {
+                const auto& sh = j["startingHotbar"];
+                for (size_t i = 0; i < preset.startingHotbar.size() && i < sh.size(); ++i) {
+                    if (sh[i].is_number_unsigned() || sh[i].is_number_integer()) {
+                        preset.startingHotbar[i] = sh[i].get<uint16_t>();
+                    }
+                }
+            } else if (j.contains("hotbar") && j["hotbar"].is_array()) {
+                const auto& sh = j["hotbar"];
+                for (size_t i = 0; i < preset.startingHotbar.size() && i < sh.size(); ++i) {
+                    if (sh[i].is_number_unsigned() || sh[i].is_number_integer()) {
+                        preset.startingHotbar[i] = sh[i].get<uint16_t>();
+                    }
+                }
+            }
+
             size_t index = presets.size();
             presetIdToIndex[preset.id] = index;
             presets.push_back(preset);
@@ -245,6 +262,13 @@ int WorldPresetsDB::getSpawnPlatformHeight() {
         return activePreset->spawnPlatform.height;
     }
     return 64;
+}
+
+std::array<uint16_t, 9> WorldPresetsDB::getStartingHotbar() {
+    if (activePreset) {
+        return activePreset->startingHotbar;
+    }
+    return {0};
 }
 
 int WorldPresetsDB::sampleBiomeIndex(float noiseValue) {

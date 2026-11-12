@@ -26,7 +26,7 @@ bool wireframeEnabled = false;
 bool ingoreInput = false;
 bool zoomedIn = false;
 int selectedHotbarIndex = 0;
-std::array<uint16_t, 9> hotbarBlocks = {1, 2, 3, 4, 5, 14, 7, 8, 16};
+std::array<uint16_t, 9> hotbarBlocks = {0};
 
 bool getZoomState(GLFWwindow*) {
     return zoomedIn;

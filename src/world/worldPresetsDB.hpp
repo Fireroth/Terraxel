@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 #include <unordered_map>
 #include <nlohmannJSON/json.hpp>
 
@@ -34,6 +35,7 @@ struct WorldPreset {
     int waterLevel = 63;
     BottomLayerParams bottomLayer;
     SpawnPlatformParams spawnPlatform;
+    std::array<uint16_t, 9> startingHotbar = {0};
     nlohmann::json rawJson;
 };
 
@@ -58,6 +60,7 @@ public:
     static bool hasSpawnPlatform();
     static uint16_t getSpawnPlatformBlock();
     static int getSpawnPlatformHeight();
+    static std::array<uint16_t, 9> getStartingHotbar();
     static void resolveBiomeIndices();
 
 private:

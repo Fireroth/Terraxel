@@ -1,13 +1,12 @@
-#include "lighting.hpp"
-#include "chunk.hpp"
-#include "world.hpp"
-#include "../core/options.hpp"
-
 #include <array>
 #include <unordered_map>
 #include <algorithm>
 #include <atomic>
 #include <mutex>
+#include "lighting.hpp"
+#include "chunk.hpp"
+#include "world.hpp"
+#include "../core/options.hpp"
 
 namespace VoxelLighting {
     static constexpr size_t SPATIAL_GRID_SIZE = 32;
